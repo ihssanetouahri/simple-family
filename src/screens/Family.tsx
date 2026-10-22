@@ -4,7 +4,7 @@ import { MobileHeader, SimpleButton, type Navigate } from '../components/SimpleU
 import { FamilyExperience } from '../family/FamilyExperience';
 
 /** Full interactive local prototype of Simple Family. */
-export const FamilyBaseScreen: React.FC<{navigate:Navigate}> = ({navigate}) => <FamilyExperience navigate={navigate}/>;
+export const FamilyBaseScreen: React.FC<{navigate:Navigate;onChatViewChange?:(active:boolean)=>void}> = ({navigate,onChatViewChange}) => <FamilyExperience navigate={navigate} onChatViewChange={onChatViewChange}/>;
 
 export const FinancePlaceholderScreen: React.FC<{ navigate: Navigate }> = ({ navigate }) => (
   <div className="flex flex-col min-h-full bg-simple-canvas">
