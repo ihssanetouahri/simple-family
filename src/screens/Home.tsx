@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Bell, ChevronRight, CreditCard, Eye, EyeOff, MoreHorizontal, ReceiptText, Search, Send, Smartphone, Sparkles, ShoppingBag, ShoppingCart, TrainFront, Users, Wifi } from 'lucide-react';
+import { ArrowRight, Bell, ChevronRight, CreditCard, Eye, EyeOff, MoreHorizontal, ReceiptText, Search, Send, Smartphone, ShoppingBag, ShoppingCart, TrainFront, Users, Wifi } from 'lucide-react';
 import { loadFamilyState } from '../family/model';
 import { demoBalance, demoTransactions, formatDH, type DemoTransaction } from '../data/demoData';
 import { SimpleBarsIcon, SimpleButton, type Navigate } from '../components/SimpleUI';
@@ -77,19 +77,6 @@ export const BankingHomeScreen: React.FC<{ navigate: Navigate }> = ({ navigate }
             </div>
           </div>
           <SimpleButton onClick={() => navigate('FAMILY')}>Découvrir Ma famille <ArrowRight size={16} /></SimpleButton>
-        </section>
-
-        {/* Preserved PFM promotional asset, no PFM routes imported. */}
-        <section aria-label="Découvrir mes finances" className="relative rounded-[28px] overflow-hidden bg-[#EEE5FB] p-5 border border-[#D2B4FE] shadow-[0_10px_28px_rgba(91,32,170,0.14)] min-h-[275px] flex flex-col justify-between">
-          <img src="/assets/aistudio/pfm-discovery-banner.png" alt="" aria-hidden="true" className="absolute left-[-8.31%] top-[-6.96%] w-[116.91%] h-[121.61%] max-w-none pointer-events-none select-none" />
-          <div className="relative z-10 flex-1 flex flex-col">
-            <div className="flex items-center gap-1.5 text-[#8000EB] text-[11.5px] font-semibold tracking-wide"><Sparkles size={13} className="text-[#8000EB]" /><span>Votre compagnon financier</span></div>
-            <h2 className="mt-2.5 max-w-[190px] text-[17px] font-bold text-[#180A33] leading-[1.25] tracking-[-0.015em]">Votre solde ne raconte pas tout.</h2>
-            <p className="my-auto py-3 max-w-[182px] text-[13px] font-normal text-[#62586F] leading-[1.44]">Et si on découvrait ensemble tout ce que vos finances peuvent vous permettre de réaliser ?</p>
-          </div>
-          <div className="relative z-10">
-            <button type="button" onClick={() => navigate('FINANCE_INFO')} className="w-full h-[48px] rounded-full bg-[#8000EB] text-white transition-all flex items-center justify-center gap-2 text-[14px] font-semibold shadow-[0_4px_16px_rgba(128,0,235,0.25)]"><span>Découvrir mes finances</span><ArrowRight size={16} strokeWidth={2.4} /></button>
-          </div>
         </section>
 
         <section className="space-y-3">
