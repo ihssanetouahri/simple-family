@@ -71,3 +71,73 @@
 .animate-pulse-subtle {
   animation: pulse-subtle 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+
+/* Global interactive hover and focus states — Simple Family.
+   Hover enhancements only run for mouse/trackpad (not touch screens). */
+:where(
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  input:is([type="checkbox"], [type="radio"], [type="button"], [type="submit"]):not(:disabled)
+) {
+  cursor: pointer;
+}
+
+:where(button:disabled, select:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+:where(
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled)
+) {
+  transition-property: transform, filter, box-shadow, background-color, border-color;
+  transition-duration: 160ms;
+  transition-timing-function: ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    button:not(:disabled),
+    a[href],
+    [role="button"]:not([aria-disabled="true"]),
+    summary
+  ):hover {
+    transform: translateY(-1px);
+    filter: brightness(1.07);
+  }
+
+  /* Make tappable cards noticeably interactive while keeping the Simple palette. */
+  :where(
+    button.card-simple,
+    button[class*="shadow"],
+    button[class*="border"]
+  ):not(:disabled):hover {
+    box-shadow: 0 6px 18px rgba(94, 29, 240, 0.14);
+  }
+
+  :where(input:not(:disabled), textarea:not(:disabled), select:not(:disabled)):hover {
+    border-color: rgba(128, 0, 235, 0.48);
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]):not(:disabled):hover {
+    filter: brightness(1.12);
+  }
+}
+
+:where(button, a[href], [role="button"], select, input, textarea, summary):focus-visible {
+  outline: 2px solid #8000EB;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, a[href], [role="button"], summary, select) {
+    transition-duration: 0.01ms;
+  }
+}
