@@ -27,9 +27,12 @@ const PrototypeShell: React.FC = () => {
           {screen === 'FAMILY' && <FamilyBaseScreen navigate={navigate} onChatViewChange={setFamilyChatOpen} />}
           {screen === 'FINANCE_INFO' && <FinancePlaceholderScreen navigate={navigate} />}
         </main>
-        {screen === 'FAMILY' && familyChatOpen
-          ? <div id="simple-chat-composer-slot" className="relative z-30 shrink-0" />
-          : <BottomBankingNav screen={screen} navigate={navigate} />}
+        {/* Keep the composer mount point in the DOM before opening Chat Famille. */}
+        <div
+          id="simple-chat-composer-slot"
+          className={`relative z-30 shrink-0 ${screen === 'FAMILY' && familyChatOpen ? '' : 'hidden'}`}
+        />
+        {!(screen === 'FAMILY' && familyChatOpen) && <BottomBankingNav screen={screen} navigate={navigate} />}
       </div>
     </div>
   );
