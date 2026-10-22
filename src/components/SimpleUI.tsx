@@ -40,7 +40,7 @@ export const BottomBankingNav: React.FC<{ screen: Screen; navigate: Navigate }> 
     { label: 'Menu', screen: 'MENU' as Screen, Icon: Menu },
   ];
   return (
-    <div className="sticky bottom-0 left-0 right-0 z-30 pt-2 mt-auto">
+    <div className="relative z-30 shrink-0 pt-2">
       <nav className="relative bg-white/95 backdrop-blur-md rounded-t-[30px] shadow-[0_-8px_30px_rgba(20,17,31,0.06)] border-t border-[#F0ECF9] h-[74px] pl-6 pr-24 grid grid-cols-3 items-center">
         {navItems.map(({ label, screen: target, Icon }) => {
           const active = screen === target;
