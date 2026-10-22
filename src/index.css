@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #14111F;
+    background-color: #F4F1FA;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Soft pastel lavender mobile canvas matching Simple reference screens */
+.bg-simple-canvas {
+  background: radial-gradient(120% 60% at 50% 0%, #F2EBFF 0%, #F8F6FE 52%, #F9F8FC 100%);
+}
+
+/* Signature Simple card shadow & radius */
+.card-simple {
+  background-color: #FFFFFF;
+  border-radius: 28px;
+  box-shadow: 0 10px 30px -4px rgba(94, 29, 240, 0.055), 0 2px 8px -2px rgba(20, 17, 31, 0.03);
+  border: 1px solid rgba(235, 228, 250, 0.65);
+}
+
+/* Primary purple pill CTA matching reference screens */
+.btn-simple-primary {
+  background: linear-gradient(92deg, #5614E3 0%, #6A28F8 52%, #5816E7 100%);
+  color: #FFFFFF;
+  border-radius: 9999px;
+  box-shadow: 0 8px 22px -4px rgba(94, 29, 240, 0.34);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-simple-primary:hover {
+  filter: brightness(1.05);
+}
+
+.btn-simple-primary:active {
+  transform: scale(0.985);
+}
+
+/* Custom subtle scrollbars inside mobile container */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.82; transform: scale(0.98); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
