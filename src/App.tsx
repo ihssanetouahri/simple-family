@@ -19,14 +19,14 @@ const PrototypeShell: React.FC = () => {
           <div className="w-[114px] h-[30px] bg-black rounded-full flex items-center justify-end pr-3"><span className="w-2.5 h-2.5 bg-[#16192B] rounded-full ring-1 ring-white/10" /></div>
           <div className="flex items-center gap-1.5"><svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor" aria-hidden="true"><rect x="0" y="7" width="2.5" height="4" rx="0.8"/><rect x="4" y="5" width="2.5" height="6" rx="0.8"/><rect x="8" y="2.5" width="2.5" height="8.5" rx="0.8"/><rect x="12" y="0" width="2.5" height="11" rx="0.8"/></svg><div className="w-6 h-3 rounded-[4px] border border-[#14111F]/50 p-0.5"><div className="w-full h-full bg-[#14111F] rounded-[2px]" /></div></div>
         </div>
-        <main id="simple-scroll-area" className="flex-1 overflow-y-auto no-scrollbar relative flex flex-col bg-simple-canvas">
+        <main id="simple-scroll-area" className="flex-1 min-h-0 overflow-y-auto no-scrollbar relative flex flex-col bg-simple-canvas">
           {screen === 'HOME' && <BankingHomeScreen navigate={navigate} />}
           {screen === 'MENU' && <MenuScreen navigate={navigate} />}
           {screen === 'CARDS' && <CardsScreen navigate={navigate} />}
           {screen === 'FAMILY' && <FamilyBaseScreen navigate={navigate} />}
           {screen === 'FINANCE_INFO' && <FinancePlaceholderScreen navigate={navigate} />}
-          <BottomBankingNav screen={screen} navigate={navigate} />
         </main>
+        <BottomBankingNav screen={screen} navigate={navigate} />
       </div>
     </div>
   );
