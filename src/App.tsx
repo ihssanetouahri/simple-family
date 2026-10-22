@@ -6,6 +6,7 @@ import { MenuScreen, CardsScreen } from './screens/MenuAndCards';
 
 const PrototypeShell: React.FC = () => {
   const [screen, setScreen] = useState<Screen>('HOME');
+  const [familyChatOpen, setFamilyChatOpen] = useState(false);
   const navigate = (target: Screen) => setScreen(target);
   useEffect(() => {
     const scrollable = document.getElementById('simple-scroll-area');
@@ -23,10 +24,12 @@ const PrototypeShell: React.FC = () => {
           {screen === 'HOME' && <BankingHomeScreen navigate={navigate} />}
           {screen === 'MENU' && <MenuScreen navigate={navigate} />}
           {screen === 'CARDS' && <CardsScreen navigate={navigate} />}
-          {screen === 'FAMILY' && <FamilyBaseScreen navigate={navigate} />}
+          {screen === 'FAMILY' && <FamilyBaseScreen navigate={navigate} onChatViewChange={setFamilyChatOpen} />}
           {screen === 'FINANCE_INFO' && <FinancePlaceholderScreen navigate={navigate} />}
         </main>
-        <BottomBankingNav screen={screen} navigate={navigate} />
+        {screen === 'FAMILY' && familyChatOpen
+          ? <div id="simple-chat-composer-slot" className="relative z-30 shrink-0" />
+          : <BottomBankingNav screen={screen} navigate={navigate} />}
       </div>
     </div>
   );
