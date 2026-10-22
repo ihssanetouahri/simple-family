@@ -51,7 +51,7 @@ function SelectInput({label,value,onChange,options}:{label:string;value?:string;
 function Progress({value,total,tone='violet'}:{value:number;total:number;tone?:'violet'|'green'|'amber'}) { const colors={violet:'bg-[#7926EB]',green:'bg-[#18AB7F]',amber:'bg-[#F4A344]'}; return <div className="h-2.5 rounded-full bg-[#EEEAF4] overflow-hidden"><div className={`h-full rounded-full ${colors[tone]} transition-all`} style={{width:`${Math.min(100,Math.max(0,total?value/total*100:0))}%`}}/></div> }
 const dateFor = (date:string) => date ? new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'À définir';
 
-export function FamilyExperience({navigate}:{navigate:Navigate}) {
+export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;onChatViewChange?:(active:boolean)=>void}) {
  const [data,setData]=useState<FamilyState>(loadFamilyState);
  const [route,setRoute]=useState<Route>('dashboard');
  const [stack,setStack]=useState<Route[]>([]);
@@ -91,6 +91,15 @@ export function FamilyExperience({navigate}:{navigate:Navigate}) {
  };
  useEffect(()=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(data))}catch{}},[data]);
  useEffect(()=>{if(route==='dashboard')scrollTop()},[data.activeFamilyId]);
+ useEffect(()=>{
+   onChatViewChange?.(route==='chat');
+   return ()=>onChatViewChange?.(false);
+ },[route,onChatViewChange]);
+ useEffect(()=>{
+   if(route!=='chat')return;
+   const scrollable=document.getElementById('simple-scroll-area');
+   if(scrollable)scrollable.scrollTop=scrollable.scrollHeight;
+ },[route,family?.chat.length]);
  const memberOptions=family?.members.map(m=>({value:m.id,label:`${m.name}${m.simpleOne?' · Simple One':''}`}))||[];
  const visiblePockets=family?.pockets.filter(p=>canSeePocket(family,data.viewerId,p.ownerId))||[];
  const transferOptions=useMemo(()=>{
@@ -374,8 +383,22 @@ export function FamilyExperience({navigate}:{navigate:Navigate}) {
        <section><Heading title="Autres avantages"/><Panel className="px-4"><ActionLine icon={Coins} title="Fidélité Famille" subtitle="Points liés aux opérations éligibles" onClick={()=>mainGo('loyalty')}/><ActionLine icon={Landmark} title="Demande de crédit" subtitle="Selon le profil et les droits" onClick={()=>mainGo('loan')}/></Panel></section>
      </>}
 
-     {route==='chat'&&<><Panel className="p-3 space-y-4 min-h-[360px]"><div className="flex items-center gap-2 p-2 border-b border-[#EEE8F7]"><Users size={18} className="text-[#762DDC]"/><div><strong className="text-sm">Discussion Famille</strong><p className="text-[10px] text-[#877B98]">{family.members.length} membres · fil de démonstration</p></div></div>{family.chat.map(msg=><div key={msg.id} className={`flex ${msg.authorId===data.viewerId?'justify-end':'justify-start'}`}><div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===data.viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-[#F1EBF9] text-[#352746] rounded-bl-sm'}`}><p className="text-[10px] font-bold opacity-70 mb-1">{initialsFor(msg.authorId)}</p><p className="text-[13px]">{msg.text}</p><p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p></div></div>)}</Panel><form onSubmit={createMessage} className="flex gap-2"><input aria-label="Message" value={chatInput} onChange={e=>setChatInput(e.target.value)} className="flex-1 min-w-0 h-12 rounded-full bg-white border border-[#E8E0F4] px-4 outline-none text-sm" placeholder="Écrire un message…"/><button type="submit" aria-label="Envoyer" className="w-12 h-12 rounded-full flex justify-center items-center bg-[#6324D8] text-white"><Send size={18}/></button></form><p className="text-[11px] text-[#867B94]">Messagerie locale simulée ; aucun message n’est envoyé à un tiers.</p></>}
-     {route==='vault'&&<><Panel className="p-5"><div className="flex gap-3"><div className="w-12 h-12 rounded-2xl flex justify-center items-center bg-[#F1EAFF] text-[#7631DD]"><LockKeyhole size={23}/></div><div className="flex-1"><h2 className="text-lg font-extrabold">Documents de famille</h2><p className="text-xs text-[#8B7F98]">Centralisez les références utiles.</p></div></div></Panel>{family.documents.filter(d=>leader||d.visibleTo.includes(data.viewerId)||d.ownerId===data.viewerId).map(d=><Panel className="p-4 flex items-center gap-3" key={d.id}><FileText size={23} className="text-[#7132DC]"/><div className="flex-1"><strong className="text-[13px]">{d.title}</strong><p className="text-[11px] text-[#897D96]">{d.type}{d.expiry?` · Expire le ${dateFor(d.expiry)}`:''}</p><p className="text-[10px] text-[#887C97]">Accessible à {leader?'Leader / personnes autorisées':d.visibleTo.length+' membre(s)'}</p></div></Panel>)}<PillButton onClick={()=>launch('new-document',{type:'Autre',visibleTo:data.viewerId})}><Plus size={17}/>Ajouter une fiche document</PillButton><p className="text-xs text-[#897D97]">Aucun fichier n’est chargé ou hébergé par ce prototype ; il stocke uniquement des métadonnées locales.</p></>}
+     {route==='chat'&&<div className="space-y-3">
+        <div className="flex items-center gap-2 px-1 text-[#7A6C90] text-[11px]">
+          <Users size={16} className="text-[#762DDC]"/>
+          <span>{family.members.length} membres · Discussion familiale</span>
+        </div>
+        <div className="space-y-4 pb-3" aria-label="Messages du chat famille">
+          {family.chat.map(msg=><div key={msg.id} className={`flex ${msg.authorId===data.viewerId?'justify-end':'justify-start'}`}>
+            <div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===data.viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-white border border-[#EBE3F5] text-[#352746] rounded-bl-sm'}`}>
+              <p className="text-[10px] font-bold opacity-70 mb-1">{initialsFor(msg.authorId)}</p>
+              <p className="text-[13px] break-words whitespace-pre-wrap">{msg.text}</p>
+              <p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p>
+            </div>
+          </div>)}
+        </div>
+      </div>}
+      {route==='vault'&&<><Panel className="p-5"><div className="flex gap-3"><div className="w-12 h-12 rounded-2xl flex justify-center items-center bg-[#F1EAFF] text-[#7631DD]"><LockKeyhole size={23}/></div><div className="flex-1"><h2 className="text-lg font-extrabold">Documents de famille</h2><p className="text-xs text-[#8B7F98]">Centralisez les références utiles.</p></div></div></Panel>{family.documents.filter(d=>leader||d.visibleTo.includes(data.viewerId)||d.ownerId===data.viewerId).map(d=><Panel className="p-4 flex items-center gap-3" key={d.id}><FileText size={23} className="text-[#7132DC]"/><div className="flex-1"><strong className="text-[13px]">{d.title}</strong><p className="text-[11px] text-[#897D96]">{d.type}{d.expiry?` · Expire le ${dateFor(d.expiry)}`:''}</p><p className="text-[10px] text-[#887C97]">Accessible à {leader?'Leader / personnes autorisées':d.visibleTo.length+' membre(s)'}</p></div></Panel>)}<PillButton onClick={()=>launch('new-document',{type:'Autre',visibleTo:data.viewerId})}><Plus size={17}/>Ajouter une fiche document</PillButton><p className="text-xs text-[#897D97]">Aucun fichier n’est chargé ou hébergé par ce prototype ; il stocke uniquement des métadonnées locales.</p></>}
      {route==='trip'&&<><Panel className="p-5 space-y-3"><div className="text-4xl">🌍</div><h2 className="text-[21px] font-extrabold">Voyagez en famille</h2><p className="text-xs text-[#867A92]">Le Leader et les Co-leaders peuvent réserver pour les membres, dont les enfants. Simulation sans connexion à Simple Trip.</p></Panel>{family.bookings.map(b=><Panel key={b.id} className="p-4"><div className="flex gap-3"><Plane size={20} className="text-[#7432DF]"/><div><p className="text-sm font-bold">{b.destination}</p><p className="text-xs text-[#877A96]">{initialsFor(b.travelerId)} · {dateFor(b.date)}</p></div></div></Panel>)}{admin&&<PillButton onClick={()=>launch('new-trip',{traveler:data.viewerId,date:'2027-07-15'})}>Simuler une réservation <ArrowRight size={15}/></PillButton>}{!admin&&<p className="text-xs text-[#897D96]">Seul un Leader ou Co-leader peut réserver pour un membre de la famille.</p>}</>}
      {route==='loyalty'&&<><Panel className="p-6 text-center bg-gradient-to-br from-[#4A1A94] to-[#7A37E9] text-white border-none"><Gift size={31} className="mx-auto"/><p className="text-sm text-white/75 mt-3">Fidélité Famille</p><p className="text-[38px] font-extrabold mt-1">{family.loyaltyPoints.toLocaleString('fr-FR')}</p><p className="text-sm">Points illustratifs</p></Panel><Panel className="px-4"><ActionLine icon={CreditCard} title="Paiements éligibles" subtitle="Points selon le barème métier à valider"/><ActionLine icon={Target} title="Objectifs atteints" subtitle="Possibles bonus de fidélité"/><ActionLine icon={Sparkles} title="Défis familiaux" subtitle="Éligibilité et récompenses à définir"/></Panel><p className="text-xs text-[#8A7D95]">Les règles de calcul sont fictives. Les virements entre membres et les contributions ne génèrent pas de points dans le cadrage.</p></>}
      {route==='loan'&&<><Panel className="p-5"><h2 className="text-xl font-extrabold">Demander un crédit</h2><p className="text-xs text-[#867991] mt-2">Chaque membre peut initier une demande. Les comptes associés dépendent de son rôle ; les avantages conjoints sont soumis à vérification.</p></Panel>{family.creditRequests.filter(req=>req.applicantId===data.viewerId||admin).map(req=><Panel key={req.id} className="p-4"><Tag tone="amber">{req.status}</Tag><p className="text-base font-extrabold mt-2">{currency(req.amount)}</p><p className="text-xs text-[#857A94]">Demande fictive · {initialsFor(req.applicantId)}</p></Panel>)}<PillButton onClick={()=>launch('new-credit',{account:`simple:${data.viewerId}`})}>Simuler une demande <ArrowRight size={16}/></PillButton>{family.members.some(m=>m.role==='coleader'&&m.relation==='Conjoint')&&<Panel className="p-4 space-y-1"><p className="text-sm font-bold">Avantages conjoints</p><p className="text-xs text-[#85788F]">Le cadrage prévoit l’héritage de conventions éligibles entre conjoints vérifiés. Aucune convention, taux ou éligibilité n’est inventé dans cette démonstration.</p></Panel>}<p className="text-xs text-[#887C95]">Aucun scoring ni vérification bancaire ; ce formulaire ne constitue pas une demande réelle.</p></>}
@@ -397,7 +420,22 @@ export function FamilyExperience({navigate}:{navigate:Navigate}) {
      </>}
      </>}
    </div>
-   {toast&&<div role="status" className="sticky bottom-[78px] z-40 mx-5 mb-2 bg-[#2B1751] text-white text-xs rounded-2xl px-4 py-3 shadow-lg flex items-start gap-2"><CheckCircle2 size={16} className="shrink-0 text-[#A7E7C7]"/>{toast}</div>}
+   {route==='chat' && document.getElementById('simple-chat-composer-slot') && createPortal(
+      <div className="bg-white/95 backdrop-blur-md border-t border-[#ECE6F6] shadow-[0_-8px_26px_rgba(35,18,70,0.05)] px-5 pt-3 pb-5">
+        <form onSubmit={createMessage} className="flex items-center gap-2.5">
+          <input aria-label="Écrire un message" value={chatInput} onChange={e=>setChatInput(e.target.value)}
+            className="flex-1 min-w-0 h-12 rounded-full bg-[#F8F6FC] border border-[#E8E0F4] px-4 outline-none focus:ring-2 focus:ring-[#C6A9FF] text-[13px] text-[#241536]"
+            placeholder="Écrire un message…" />
+          <button type="submit" aria-label="Envoyer le message" disabled={!chatInput.trim()}
+            className="w-12 h-12 shrink-0 rounded-full flex justify-center items-center bg-[#6324D8] text-white disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all">
+            <Send size={19}/>
+          </button>
+        </form>
+        <p className="text-[10px] text-center text-[#91869E] mt-2">Messages simulés, enregistrés uniquement sur cet appareil.</p>
+      </div>,
+      document.getElementById('simple-chat-composer-slot')!
+    )}
+    {toast&&<div role="status" className="sticky bottom-[78px] z-40 mx-5 mb-2 bg-[#2B1751] text-white text-xs rounded-2xl px-4 py-3 shadow-lg flex items-start gap-2"><CheckCircle2 size={16} className="shrink-0 text-[#A7E7C7]"/>{toast}</div>}
    {modal&&createPortal(<div className="absolute inset-0 z-50 flex flex-col justify-end bg-[#1C1234]/45 backdrop-blur-[2px]" onClick={close}>
     <div onClick={e=>e.stopPropagation()} className="max-h-[94%] min-h-[240px] overflow-y-auto no-scrollbar bg-white rounded-t-[32px] shadow-2xl px-5 pt-3 pb-7">
       <div className="w-12 h-1 rounded-full bg-[#DAD3E6] mx-auto mb-5"/>
