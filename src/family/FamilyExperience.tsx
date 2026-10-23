@@ -36,15 +36,52 @@ const softBorder='border border-[#EDE7F6]';
 
 // All six generated family cover photos are embedded in a lightweight AVIF sprite.
 // First row: vacation, studies, weekend; second row: birthday, gift, outing.
-function FamilyPhotoCover({id, kind, label, height=124}: {id:string;kind:'goal'|'pot';label:string;height?:number}) {
+function FamilyPhotoCover({id, kind, label}: {id:string;kind:'goal'|'pot';label:string}) {
   const goalPositions:Record<string,number>={goal_vac:0,goal_school:1,goal_weekend:2};
   const potPositions:Record<string,number>={pot1:3,pot2:4,pot3:5};
   const index=(kind==='goal'?goalPositions:potPositions)[id] ?? (kind==='goal'?0:3);
   const x=['0%','50%','100%'][index%3];
   const y=index<3?'0%':'100%';
   return <div role="img" aria-label={label}
-    style={{height,backgroundImage:`url("${familyCoverSprite}")`,backgroundSize:'300% 200%',backgroundPosition:`${x} ${y}`}}
-    className="w-full shrink-0 bg-[#EFE9F6] bg-no-repeat"/>;
+    style={{backgroundImage:`url("${familyCoverSprite}")`,backgroundSize:'300% 200%',backgroundPosition:`${x} ${y}`}}
+    className="w-full h-full bg-[#EFE9F6] bg-no-repeat"/>;
+}
+
+// Compact, swipeable circular-progress card shared by goals and cagnottes.
+function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick}:{
+  id:string;kind:'goal'|'pot';title:string;description:string;current:number;target:number;onClick:()=>void
+}) {
+  const progress=target>0?Math.max(0,Math.min(100,Math.round(current/target*100))):0;
+  const isPot=kind==='pot';
+  const accent=isPot?'#169C72':'#8000EB';
+  const remaining=Math.max(0,target-current);
+  return <button type="button" onClick={onClick}
+    className="shrink-0 w-[264px] snap-start group rounded-[27px] bg-white border border-[#EDE5F7] p-4 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)] hover:shadow-[0_9px_23px_rgba(72,30,132,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+    <div className="relative mx-auto w-[134px] h-[140px] flex items-start justify-center">
+      <svg viewBox="0 0 134 134" className="absolute inset-0 w-[134px] h-[134px]" aria-hidden="true">
+        <circle cx="67" cy="67" r="58" fill="none" stroke="#EEE8F8" strokeWidth="7"/>
+        <circle cx="67" cy="67" r="58" fill="none" stroke={accent} strokeWidth="7" strokeLinecap="round"
+          pathLength={100} strokeDasharray={`${progress} 100`} transform="rotate(-90 67 67)" />
+      </svg>
+      <div className="absolute top-[16px] left-[16px] w-[102px] h-[102px] rounded-full overflow-hidden border-[3px] border-white bg-[#F4EEF9]">
+        <FamilyPhotoCover id={id} kind={kind} label={`Photo : ${title}`}/>
+      </div>
+      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 shadow-sm text-white text-[11px] leading-none font-extrabold"
+        style={{backgroundColor:accent}}>{progress} %</span>
+    </div>
+    <h3 className="font-extrabold text-[14px] text-[#281936] leading-[1.3] mt-3 min-h-[37px] flex items-center justify-center">{title}</h3>
+    <p className="text-[11px] text-[#877796] mt-1 min-h-[30px] flex items-center justify-center leading-[1.3]">{description}</p>
+    <div className="border-t border-[#F0EAF6] mt-3 pt-3 text-left grid grid-cols-2 gap-2">
+      <div className="min-w-0">
+        <p className="text-[10px] text-[#8C809C]">{isPot?'Collecté':'Épargné'}</p>
+        <p className="text-[13px] font-extrabold text-[#352547] mt-1 whitespace-nowrap">{currency(current)}</p>
+      </div>
+      <div className="min-w-0 text-right">
+        <p className="text-[10px] text-[#8C809C]">Reste {isPot?'à collecter':'à épargner'}</p>
+        <p className="text-[13px] font-extrabold mt-1 whitespace-nowrap" style={{color:accent}}>{currency(remaining)}</p>
+      </div>
+    </div>
+  </button>;
 }
 
 function Avatar({member, size=42}: {member?:Member;size?:number}) {
@@ -478,58 +515,32 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          </div>
        </section>
 
-       {/* Each section previews only two image cards. 'Voir tout' retains every item. */}
+       {/* Two cards visible in each preview; swipe to view the second. */}
        <section>
          <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         <div className="space-y-3">
-           {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><button type="button" key={g.id} onClick={()=>navigateToGoal(g.id)}
-             className="block w-full text-left overflow-hidden bg-white rounded-[25px] border border-[#ECE5F6] shadow-[0_5px_18px_rgba(74,24,131,0.05)] hover:shadow-[0_9px_24px_rgba(80,23,148,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-             <FamilyPhotoCover id={g.id} kind="goal" label={`Illustration du projet ${g.title}`}/>
-             <div className="p-4 space-y-3">
-               <div className="flex items-start justify-between gap-3">
-                 <div className="min-w-0 flex-1">
-                   <p className="text-[14px] font-extrabold text-[#281936] truncate">{g.title}</p>
-                   <p className="text-[11px] text-[#81748F] mt-0.5 truncate">{goalHomeLabel(g)}</p>
-                 </div>
-                 <span className="text-[12px] font-extrabold text-[#7529DB] shrink-0">{Math.round(g.balance/g.target*100)} %</span>
-               </div>
-               <Progress value={g.balance} total={g.target}/>
-               <p className="text-[11px] text-[#81758F]">{showBalance(g.balance)} sur {showBalance(g.target)}</p>
+         {visibleGoals.some(g=>g.status==='active')?
+           <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Projets d’épargne, faire défiler horizontalement">
+             {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.id} kind="goal" title={g.title}
+               description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} onClick={()=>navigateToGoal(g.id)}/>)}
+           </div>:
+           <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
+             <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
+               <button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer un projet <ArrowRight size={14} className="inline"/></button>
              </div>
-           </button>)}
-           {visibleGoals.filter(g=>g.status==='active').length===0&&
-             <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
-               <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
-                 <button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer un projet <ArrowRight size={14} className="inline"/></button>
-               </div>
-             </Panel>}
-         </div>
+           </Panel>}
        </section>
-
        <section>
          <Heading title="Nos cagnottes" right={<button type="button" onClick={()=>mainGo('pots')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         <div className="space-y-3">
-           {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><button type="button" key={p.id} onClick={()=>navigateToPot(p.id)}
-             className="block w-full text-left overflow-hidden bg-white rounded-[25px] border border-[#ECE5F6] shadow-[0_5px_18px_rgba(74,24,131,0.05)] hover:shadow-[0_9px_24px_rgba(80,23,148,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-             <FamilyPhotoCover id={p.id} kind="pot" label={`Illustration de la cagnotte ${p.title}`}/>
-             <div className="p-4 space-y-3">
-               <div className="flex items-start justify-between gap-3">
-                 <div className="min-w-0 flex-1"><p className="text-[14px] font-extrabold text-[#281936] truncate">{p.title}</p>
-                   <p className="text-[11px] text-[#81748F] mt-0.5">Cagnotte collective · {p.members.length} participant{p.members.length>1?'s':''}</p>
-                 </div>
-                 <span className="text-[12px] font-extrabold text-[#178E66] shrink-0">{Math.round(p.balance/p.target*100)} %</span>
-               </div>
-               <Progress value={p.balance} total={p.target} tone="green"/>
-               <p className="text-[11px] text-[#81758F]">{showBalance(p.balance)} sur {showBalance(p.target)}</p>
+         {family.pots.some(p=>p.status==='active')?
+           <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Cagnottes, faire défiler horizontalement">
+             {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
+               description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} onClick={()=>navigateToPot(p.id)}/>)}
+           </div>:
+           <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
+             <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
+               <button type="button" onClick={()=>mainGo('pots')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer une cagnotte <ArrowRight size={14} className="inline"/></button>
              </div>
-           </button>)}
-           {family.pots.filter(p=>p.status==='active').length===0&&
-             <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
-               <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
-                 <button type="button" onClick={()=>mainGo('pots')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer une cagnotte <ArrowRight size={14} className="inline"/></button>
-               </div>
-             </Panel>}
-         </div>
+           </Panel>}
        </section>
 
        <section>
@@ -648,25 +659,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <Panel className="p-5 bg-gradient-to-br from-[#4F178F] to-[#8C43E6] text-white border-none"><div className="flex items-center gap-2 text-white/80 text-xs"><PiggyBank size={18}/> Objectifs d’épargne</div><p className="text-[29px] font-extrabold mt-4">{showBalance(visibleGoals.filter(g=>g.status==='active').reduce((s,g)=>s+g.balance,0))}</p><p className="text-[11px] text-white/75 mt-1">Épargne active de cette famille</p></Panel>
        <div className="flex justify-between items-center"><h3 className="text-lg font-extrabold">Nos projets</h3><button type="button" onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:family.members.map(m=>m.id).join(',')})} className="text-xs font-bold text-[#6625DE] flex gap-1 items-center"><Plus size={15}/> Nouveau</button></div>
        {visibleGoals.length===0&&<Panel className="p-6 text-center space-y-3"><div className="text-4xl">✈️</div><h3 className="font-extrabold text-[18px]">Quel projet vous fait rêver ?</h3><p className="text-sm text-[#8B8098]">Un voyage, une fête ou un projet à préparer ensemble.</p><PillButton onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:data.viewerId})}>Créer un objectif</PillButton></Panel>}
-       {visibleGoals.map(g=><button type="button" onClick={()=>navigateToGoal(g.id)} key={g.id}
-         className="block w-full text-left overflow-hidden rounded-[25px] bg-white border border-[#ECE5F6] shadow-sm hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-         <FamilyPhotoCover id={g.id} kind="goal" label={`Illustration du projet ${g.title}`} height={138}/>
-         <div className="p-4 space-y-3">
-           <div className="flex items-start justify-between gap-2">
-             <div className="min-w-0 flex-1">
-               <p className="text-[15px] font-extrabold text-[#281936] truncate">{g.title}</p>
-               <p className="text-[11px] text-[#84758F] mt-1">{goalHomeLabel(g)}</p>
-             </div>
-             <Tag tone={g.status==='closed'?'green':'violet'}>{g.status==='closed'?'Terminé':`${Math.round(g.balance/g.target*100)} %`}</Tag>
-           </div>
-           <Progress value={g.balance} total={g.target}/>
-           <div className="flex justify-between gap-2 items-end text-[12px]">
-             <span className="font-bold text-[#6529DB]">{showBalance(g.balance)}</span>
-             <span className="text-[#837990]">sur {showBalance(g.target)}</span>
-           </div>
-           <p className="text-[11px] text-[#857A95]">Échéance : {dateFor(g.deadline)} · Pour {initialsFor(g.ownerId)}</p>
-         </div>
-       </button>)}
+       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3" aria-label="Tous les projets d’épargne">
+       {visibleGoals.map(g=><FamilyProgressPhotoCard key={g.id} id={g.id} kind="goal" title={g.title}
+         description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} onClick={()=>navigateToGoal(g.id)}/>)}
+       </div>
      </>}
 
      {route==='goal'&&goal&&visibleGoals.some(g=>g.id===goal.id)&&<>
@@ -677,24 +673,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {(admin||goal.creatorId===data.viewerId)&&goal.status==='active'&&<button type="button" className="w-full py-3 text-[#AB5070] font-semibold text-xs" onClick={()=>launch('goal-delete')}>Supprimer l’objectif d’épargne</button>}
      </>}
 
-     {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p>{family.pots.map(p=><button type="button" onClick={()=>navigateToPot(p.id)} key={p.id}
-          className="block w-full overflow-hidden rounded-[25px] bg-white border border-[#ECE5F6] text-left shadow-sm hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-          <FamilyPhotoCover id={p.id} kind="pot" label={`Illustration de la cagnotte ${p.title}`} height={138}/>
-          <div className="p-4 space-y-3">
-            <div className="flex justify-between gap-2 items-start">
-              <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-[15px] text-[#281936] truncate">{p.title}</p>
-                <p className="text-[11px] text-[#847991] mt-1">Cagnotte collective · {p.members.length} participant{p.members.length>1?'s':''}</p>
-              </div>
-              <Tag tone={p.status==='closed'?'green':'violet'}>{p.status==='closed'?'Terminée':`${Math.round(p.balance/p.target*100)} %`}</Tag>
-            </div>
-            <Progress value={p.balance} total={p.target} tone="green"/>
-            <div className="flex justify-between gap-2 text-[12px]">
-              <span className="font-bold text-[#198A66]">{showBalance(p.balance)}</span>
-              <span className="text-[#80748F]">sur {showBalance(p.target)}</span>
-            </div>
-          </div>
-        </button>)}<PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
+     {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3" aria-label="Toutes les cagnottes">
+       {family.pots.map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
+         description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} onClick={()=>navigateToPot(p.id)}/>)}
+       </div><PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
      {route==='pot'&&pot&&<><Panel className="p-5 text-center space-y-4"><div className="text-5xl">🎁</div><h2 className="text-2xl font-extrabold">{pot.title}</h2><p className="text-3xl font-extrabold text-[#6728D9]">{currency(pot.balance)}</p><p className="text-xs text-[#8D8199]">Objectif : {currency(pot.target)}</p><Progress value={pot.balance} total={pot.target} tone="green"/></Panel>{pot.status==='active'&&<PillButton onClick={()=>launch('pot-deposit')}>Participer à la cagnotte <Plus size={16}/></PillButton>}</>}
 
      {route==='services'&&<>
