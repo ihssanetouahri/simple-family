@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, CalendarDays, CalendarClock, Check,
@@ -76,6 +76,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [otpStage,setOtpStage]=useState(1);
  const [chatInput,setChatInput]=useState('');
  const [selectorOpen,setSelectorOpen]=useState(false);
+ const [selectorPosition,setSelectorPosition]=useState({top:0,right:12,width:252});
+ const familySelectorButtonRef=useRef<HTMLButtonElement>(null);
+ const familySelectorMenuRef=useRef<HTMLDivElement>(null);
  const [demoOpen,setDemoOpen]=useState(false);
  const [showAmounts,setShowAmounts]=useState(true);
  const family = data.families.find(f=>f.id===data.activeFamilyId) || null;
@@ -99,6 +102,43 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const mutate=(action:(d:FamilyState,f:Family)=>void)=>{
   setData(prev=>{ const copy:FamilyState=structuredClone(prev);const active=copy.families.find(f=>f.id===copy.activeFamilyId);if(active){action(copy,active);for(const other of copy.families){if(other.id===active.id)continue;for(const member of other.members){const same=active.members.find(m=>m.id===member.id);if(same)member.simpleBalance=same.simpleBalance}}}return copy; });
  };
+ const toggleFamilySelector=()=>{
+  if(selectorOpen){setSelectorOpen(false);return;}
+  const trigger=familySelectorButtonRef.current;
+  const frame=document.getElementById('simple-device-frame');
+  if(!trigger||!frame)return;
+  const triggerRect=trigger.getBoundingClientRect();
+  const frameRect=frame.getBoundingClientRect();
+  setSelectorPosition({
+    top:triggerRect.bottom-frameRect.top-frame.clientTop+8,
+    right:Math.max(12,frameRect.right-triggerRect.right-frame.clientLeft),
+    width:Math.max(180,Math.min(252,frame.clientWidth-24)),
+  });
+  setSelectorOpen(true);
+ };
+ useEffect(()=>{
+  if(!selectorOpen)return;
+  const outside=(event:PointerEvent)=>{
+   const target=event.target as Node;
+   if(familySelectorButtonRef.current?.contains(target)||familySelectorMenuRef.current?.contains(target))return;
+   setSelectorOpen(false);
+  };
+  const escape=(event:KeyboardEvent)=>{
+   if(event.key==='Escape'){setSelectorOpen(false);familySelectorButtonRef.current?.focus();}
+  };
+  const dismiss=()=>setSelectorOpen(false);
+  const scroller=document.getElementById('simple-scroll-area');
+  document.addEventListener('pointerdown',outside);
+  document.addEventListener('keydown',escape);
+  scroller?.addEventListener('scroll',dismiss,{passive:true});
+  window.addEventListener('resize',dismiss);
+  return ()=>{
+   document.removeEventListener('pointerdown',outside);
+   document.removeEventListener('keydown',escape);
+   scroller?.removeEventListener('scroll',dismiss);
+   window.removeEventListener('resize',dismiss);
+  };
+ },[selectorOpen]);
  useEffect(()=>{saveFamilyState(data)},[data]);
  useEffect(()=>{if(route==='dashboard')scrollTop()},[data.activeFamilyId]);
  useEffect(()=>{
@@ -347,7 +387,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
                  <h2 className="mt-2 text-[23px] font-extrabold font-display leading-tight break-words">{family.name}</h2>
                  <p className="text-[12px] text-white/85 mt-1">{family.members.length} membre{family.members.length>1?'s':''} · {roleLabel(viewer?.role||'member')}</p>
                </div>
-               <button type="button" onClick={()=>setSelectorOpen(o=>!o)} aria-expanded={selectorOpen} aria-label="Changer ou ajouter une famille"
+               <button type="button" ref={familySelectorButtonRef} onClick={toggleFamilySelector} aria-haspopup="menu" aria-controls="family-selector-menu" aria-expanded={selectorOpen} aria-label="Changer ou ajouter une famille"
                  className="shrink-0 bg-white/20 backdrop-blur-md border border-white/35 text-white rounded-full px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
                  Mes familles <ChevronDown size={14}/>
                </button>
@@ -362,25 +402,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
              </div>
            </div>
          </section>
-         {selectorOpen&&<Panel className="p-3 space-y-2">
-           <div className="flex justify-between items-center px-2 py-1">
-             <p className="text-[13px] font-extrabold">Mes familles</p>
-             <button type="button" onClick={()=>setSelectorOpen(false)} aria-label="Fermer le sélecteur"><X size={17}/></button>
-           </div>
-           {data.families.map(f=><button type="button" key={f.id} onClick={()=>switchFamily(f.id)}
-             className={'w-full rounded-2xl px-3 py-3 flex items-center gap-3 text-left border '+(f.id===family.id?'border-[#CFB8FA] bg-[#F2EBFF]':'border-transparent bg-[#FAF8FE]')}>
-             <span className="text-xl">{f.emoji}</span>
-             <div className="flex-1 min-w-0"><p className="text-[13px] font-bold truncate">{f.name}</p><p className="text-[11px] text-[#8A7D97]">{f.members.length} membre{f.members.length>1?'s':''}</p></div>
-             {f.id===family.id?<Check size={17} className="text-[#6225DB]"/>:<ChevronRight size={17} className="text-[#998BAE]"/>}
-           </button>)}
-           <button type="button" onClick={()=>{setSelectorOpen(false);launch('new-family',{openAccount:'false',emoji:'💜'})}}
-             className="w-full flex items-center gap-2 px-3 py-3 rounded-2xl text-[13px] font-bold text-[#6428D1] bg-[#F2EAFF]">
-             <Plus size={18}/> Créer une famille
-           </button>
-           <button type="button" onClick={()=>{setSelectorOpen(false);launch('join-family')}} className="w-full flex items-center gap-2 px-3 py-3 rounded-2xl text-[13px] font-bold text-[#6428D1] bg-white border border-[#EDE6F8]">
-             <UserPlus size={18}/> Rejoindre une famille
-           </button>
-         </Panel>}
+         
        </div>
 
        {/* Alertes fictives, actionnables et visibles uniquement quand elles sont en attente. */}
@@ -596,7 +618,32 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
      </>}
    </div>
-   {route==='chat' && document.getElementById('simple-chat-composer-slot') && createPortal(
+   {selectorOpen&&route==='dashboard'&&family&&document.getElementById('simple-device-frame')&&createPortal(
+   <div id="family-selector-menu" ref={familySelectorMenuRef} role="menu" aria-label="Mes familles"
+    style={{top:selectorPosition.top,right:selectorPosition.right,width:selectorPosition.width,maxHeight:'min(430px, 65vh)'}}
+    className="absolute z-[45] overflow-y-auto rounded-[18px] border border-[#EAE0F7] bg-white p-2.5 shadow-[0_16px_38px_rgba(36,16,81,0.24)] text-[#251838]">
+    <p className="px-2.5 pb-2 pt-1 text-[12px] font-extrabold text-[#655674]">Mes familles</p>
+    <div className="space-y-1">
+     {data.families.map(f=><button type="button" role="menuitemradio" aria-checked={f.id===family.id} key={f.id} onClick={()=>switchFamily(f.id)}
+      className={'w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left border transition-colors hover:bg-[#F5EEFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD] '+(f.id===family.id?'border-[#CFB8FA] bg-[#F2EBFF]':'border-transparent bg-white')}>
+      <span className="text-xl shrink-0">{f.emoji}</span>
+      <span className="flex-1 min-w-0"><span className="block text-[12px] font-bold truncate">{f.name}</span><span className="block text-[10px] text-[#817494]">{f.members.length} membre{f.members.length>1?'s':''}</span></span>
+      {f.id===family.id&&<Check size={16} className="text-[#6225DB] shrink-0"/>}
+     </button>)}
+    </div>
+    <div className="my-2 border-t border-[#EDE7F6]"/>
+    <button type="button" role="menuitem" onClick={()=>{setSelectorOpen(false);launch('new-family',{openAccount:'false',emoji:'💜'})}}
+     className="w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left text-[12px] font-bold text-[#6428D1] transition-colors hover:bg-[#F5EEFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD]">
+     <Plus size={17} className="shrink-0"/> Créer une famille
+    </button>
+    <button type="button" role="menuitem" onClick={()=>{setSelectorOpen(false);launch('join-family')}}
+     className="w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left text-[12px] font-bold text-[#6428D1] transition-colors hover:bg-[#F5EEFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD]">
+     <UserPlus size={17} className="shrink-0"/> Rejoindre une famille
+    </button>
+   </div>,
+   document.getElementById('simple-device-frame')!
+  )}
+  {route==='chat' && document.getElementById('simple-chat-composer-slot') && createPortal(
       <div className="bg-white/95 backdrop-blur-md border-t border-[#ECE6F6] shadow-[0_-8px_26px_rgba(35,18,70,0.05)] px-5 pt-3 pb-5">
         <form onSubmit={createMessage} className="flex items-center gap-2.5">
           <input aria-label="Écrire un message" value={chatInput} onChange={e=>setChatInput(e.target.value)}
