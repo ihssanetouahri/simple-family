@@ -368,17 +368,22 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          </Panel>}
        </div>
 
-       {/* Only show outstanding actions if there is genuinely something to review. */}
-       {admin&&family.invites.length>0&&<section>
-         <Panel className="p-4 border-[#E2D2FA] bg-[#FAF7FF]">
-           <div className="flex items-start gap-3">
-             <div className="w-10 h-10 shrink-0 bg-[#EEE3FF] rounded-2xl flex items-center justify-center text-[#762BDC]"><Bell size={19}/></div>
-             <div className="min-w-0 flex-1">
-               <p className="text-[14px] font-extrabold">À traiter</p>
-               <p className="text-[12px] text-[#81748F] mt-1">{family.invites.length} invitation{family.invites.length>1?'s':''} en attente de réponse</p>
-               <button type="button" onClick={()=>mainGo('members')} className="text-[12px] font-bold mt-2 text-[#6824D6] inline-flex items-center gap-1">Suivre les invitations <ArrowRight size={14}/></button>
-             </div>
-           </div>
+       {/* Afficher uniquement les événements familiaux utiles et accessibles à ce profil. */}
+       {hasFamilyFollowUps&&<section>
+         <Heading title="À suivre en famille"/>
+         <Panel className="px-4">
+           {admin&&family.invites.length>0&&<button type="button" onClick={()=>mainGo('members')} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] rounded-lg transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             <span className="w-10 h-10 shrink-0 rounded-2xl bg-[#F1E9FF] text-[#7430DD] flex items-center justify-center"><UserPlus size={19}/></span>
+             <span className="flex-1 min-w-0"><span className="block font-bold text-[13px]">{family.invites.length} invitation{family.invites.length>1?'s':''} en attente</span><span className="block text-[11px] text-[#746884] mt-1">Gérer les invitations des membres</span></span><ChevronRight size={16} className="text-[#9487A4] shrink-0"/>
+           </button>}
+           {upcomingFollowUpGoal&&<button type="button" onClick={()=>navigateToGoal(upcomingFollowUpGoal.id)} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] rounded-lg transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             <span className="w-10 h-10 shrink-0 rounded-2xl bg-[#F2EAFE] text-[#7430DD] flex items-center justify-center"><CalendarDays size={19}/></span>
+             <span className="flex-1 min-w-0"><span className="block font-bold text-[13px] truncate">{upcomingFollowUpGoal.title}</span><span className="block text-[11px] text-[#746884] mt-1">Échéance le {dateFor(upcomingFollowUpGoal.deadline)} · Suivre le projet</span></span><ChevronRight size={16} className="text-[#9487A4] shrink-0"/>
+           </button>}
+           {activeFollowUpPot&&<button type="button" onClick={()=>navigateToPot(activeFollowUpPot.id)} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] rounded-lg transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             <span className="w-10 h-10 shrink-0 rounded-2xl bg-[#E8F8F0] text-[#198A66] flex items-center justify-center"><Gift size={19}/></span>
+             <span className="flex-1 min-w-0"><span className="block font-bold text-[13px] truncate">{activeFollowUpPot.title}</span><span className="block text-[11px] text-[#746884] mt-1">Cagnotte en cours · Contribuer</span></span><ChevronRight size={16} className="text-[#9487A4] shrink-0"/>
+           </button>}
          </Panel>
        </section>}
 
