@@ -519,10 +519,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     <div className="flex items-center justify-between gap-2"><button onClick={()=>navigate('HOME')} type="button" aria-label="Retour accueil" className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><ArrowLeft size={19}/></button>
      <div className="text-center min-w-0 flex-1"><p className="text-[11px] text-[#85769D]">Espace familial</p><h1 className="font-extrabold text-[18px] leading-tight truncate">Ma famille</h1></div>
      <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
-    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
+    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='goal'?'Projet d’épargne familial':route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
-     {route!=='savings'&&route!=='pot'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
-     {route!=='savings'&&route!=='pot'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
+     {route!=='savings'&&route!=='pot'&&route!=='goal'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
+     {route!=='savings'&&route!=='pot'&&route!=='goal'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
        {family?.members.map(m=><button key={m.id} type="button" onClick={()=>switchViewer(m.id)} className="w-full flex items-center gap-2 p-2 bg-[#F8F5FE] rounded-xl text-left"><Avatar member={m} size={29}/><span className="text-xs font-bold flex-1">{m.name}</span><Tag tone={m.id===data.viewerId?'green':'gray'}>{roleLabel(m.role)}</Tag></button>)}
        <button type="button" className="text-xs font-bold text-[#8C4DDA]" onClick={()=>{setData(createDemoState());toDashboard();setDemoOpen(false);show('Scénario initial restauré.')}}><RotateCcw size={13} className="inline mr-1"/> Restaurer les données fictives</button>
      </Panel>}
@@ -803,20 +803,85 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='goal'&&goal&&visibleGoals.some(g=>g.id===goal.id)&&<>
-       <FamilyProgressPhotoCard
-         id={goal.id}
-         kind="goal"
-         title={goal.title}
+       <FamilyProgressPhotoCard id={goal.coverId||goal.id} kind="goal" title={goal.title}
          description={`Échéance : ${dateFor(goal.deadline)} · Pour ${initialsFor(goal.ownerId)}`}
-         current={goal.balance}
-         target={goal.target}
-         status={goal.status}
-         detail
-       />
-       {goal.status==='active'&&<div className="grid grid-cols-2 gap-3"><PillButton onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/>Contribuer</PillButton><PillButton secondary disabled={!(admin||goal.ownerId===data.viewerId)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton></div>}
-       <Panel className="p-4 space-y-3"><div className="flex items-center justify-between"><p className="text-[13px] font-extrabold">Contributeurs habilités</p><Users size={18} className="text-[#7A35E6]"/></div><div className="flex -space-x-2">{goal.contributors.map(id=><Avatar key={id} size={36} member={findMember(family,id)}/>)}</div><p className="text-[11px] text-[#837891]">Versement programmé fictif : {goal.scheduledAmount?currency(goal.scheduledAmount)+'/mois':'non défini'}</p>{(admin||goal.ownerId===data.viewerId)&&goal.status==='active'&&<button type="button" onClick={()=>launch('goal-schedule',{amount:String(goal.scheduledAmount)})} className="text-[#692AD8] text-[12px] font-bold flex items-center gap-1"><CalendarDays size={15}/> Paramétrer une programmation</button>}</Panel>
-       <section><Heading title="Historique des mouvements"/><Panel className="px-4">{goal.history.length?goal.history.map(h=><div key={h.id} className="flex items-center py-3 border-b last:border-none border-[#F0EAF7] gap-3"><div className="bg-[#F0E9FF] p-2 rounded-xl text-[#7A35E0]"><ArrowDownLeft size={18}/></div><div className="flex-1"><p className="text-[12px] font-bold">{h.kind==='deposit'?'Contribution':'Retrait'} · {initialsFor(h.memberId)}</p><p className="text-[10px] text-[#8A8097]">{h.date}</p></div><span className="text-[12px] font-bold">{h.kind==='deposit'?'+':'−'}{currency(h.amount)}</span></div>):<p className="py-4 text-xs text-[#81758F]">Aucun mouvement pour le moment.</p>}</Panel></section>
-       {(admin||goal.creatorId===data.viewerId)&&goal.status==='active'&&<button type="button" className="w-full py-3 text-[#AB5070] font-semibold text-xs" onClick={()=>launch('goal-delete')}>Supprimer l’objectif d’épargne</button>}
+         current={goal.balance} target={goal.target} status={goal.status} detail/>
+
+       {goal.status==='active'&&<div className="grid grid-cols-2 gap-3">
+         <PillButton disabled={!(admin||goal.contributors.includes(data.viewerId))} onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/> Contribuer</PillButton>
+         <PillButton secondary disabled={!(admin||goal.ownerId===data.viewerId)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton>
+       </div>}
+
+       <section>
+         <Heading title="Versements programmés"/>
+         <Panel className="p-4 space-y-3">
+           <div className="flex gap-3 items-start">
+             <div className="w-11 h-11 rounded-2xl bg-[#F3ECFF] text-[#7228D6] flex items-center justify-center shrink-0"><CalendarClock size={20}/></div>
+             <div className="min-w-0 flex-1">
+               <p className="text-[13px] font-extrabold">{goal.scheduledAmount>0?currency(goal.scheduledAmount):'Aucun versement programmé'}</p>
+               <p className="text-[11px] text-[#857795] mt-1">{goal.scheduledAmount>0?`Fréquence : ${goal.scheduledFrequency==='weekly'?'hebdomadaire':'mensuelle'}`:'Planifiez une contribution régulière pour avancer vers votre objectif.'}</p>
+             </div>
+           </div>
+           {goal.scheduledAmount>0&&<div className="flex items-center justify-between gap-2 border-t border-[#F0EAF7] pt-3 text-[12px]">
+             <span className="text-[#82758F]">Prochain versement indicatif</span>
+             <span className="font-bold text-[#443254]">{goal.nextScheduledDate?dateFor(goal.nextScheduledDate):'À définir'}</span>
+           </div>}
+           <p className="text-[10px] text-[#9A8CA8]">Simulation uniquement · aucun débit automatique.</p>
+           {goal.status==='active'&&canScheduleGoal&&<button type="button"
+             onClick={()=>launch('goal-schedule',{amount:goal.scheduledAmount?String(goal.scheduledAmount):'',frequency:goal.scheduledFrequency||'monthly',nextDate:goal.nextScheduledDate||nowDate()})}
+             className="flex items-center gap-1.5 text-[#692AD8] text-[12px] font-bold">
+             {goal.scheduledAmount>0?'Modifier la programmation':'Programmer un versement'} <ArrowRight size={15}/>
+           </button>}
+           {goal.status==='closed'&&<p className="text-[11px] text-[#897A9A]">La programmation est désactivée pour ce projet clôturé.</p>}
+         </Panel>
+       </section>
+
+       <section>
+         <Heading title="Les contributeurs" subtitle="Membres habilités à participer"/>
+         <Panel className="px-4">
+           {goal.contributors.filter(id=>family.members.some(m=>m.id===id)).map(id=>{
+             const member=findMember(family,id);
+             const total=goal.history.filter(h=>h.memberId===id&&h.kind==='deposit').reduce((sum,h)=>sum+h.amount,0);
+             return <div key={id} className="flex items-center gap-3 py-3.5 border-b last:border-none border-[#F0EAF7]">
+               <Avatar size={42} member={member}/>
+               <div className="flex-1 min-w-0"><p className="text-[13px] font-extrabold">{member?.name||'Membre'}</p><p className="text-[11px] text-[#897C96] mt-0.5">{id===goal.ownerId?'Bénéficiaire · ':''}Contributeur habilité</p></div>
+               <div className="shrink-0 text-right"><p className="text-[13px] font-extrabold text-[#5B24BA]">{currency(total)}</p><p className="text-[10px] text-[#9487A1] mt-0.5">Total versé</p></div>
+             </div>;
+           })}
+         </Panel>
+       </section>
+
+       <section>
+         <Heading title="Historique des mouvements" right={goal.history.length>2&&
+           <button type="button" onClick={()=>setShowAllGoalMovements(v=>!v)}
+             className="flex items-center gap-1 text-[#692AD8] text-[12px] font-bold">{showAllGoalMovements?'Réduire':'Voir tout'} <ChevronRight size={15}/></button>}/>
+         <Panel className="px-4">
+           {goal.history.length?(showAllGoalMovements?goal.history:goal.history.slice(0,2)).map(h=>
+             <div key={h.id} className="flex gap-3 items-center py-3.5 border-b last:border-none border-[#F0EAF7]">
+               <div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F0E9FF] text-[#7A35E0] flex items-center justify-center">{h.kind==='deposit'?<ArrowDownLeft size={19}/>:<ArrowUpRight size={19}/>}</div>
+               <div className="min-w-0 flex-1"><p className="text-[12px] font-bold">{h.kind==='deposit'?'Contribution':'Retrait'} · {findMember(family,h.memberId)?.name||'Membre'}</p><p className="text-[10px] text-[#8A8097] mt-0.5">{h.date}</p></div>
+               <p className={'text-[12px] font-bold whitespace-nowrap '+(h.kind==='deposit'?'text-[#4B306D]':'text-[#A24C70]')}>{h.kind==='deposit'?'+':'−'}{currency(h.amount)}</p>
+             </div>
+           ):<p className="py-4 text-[12px] text-[#81758F]">Aucun mouvement pour le moment.</p>}
+         </Panel>
+       </section>
+
+       {canManageGoal&&<section>
+         <button type="button" aria-expanded={goalManageOpen} onClick={()=>setGoalManageOpen(v=>!v)}
+           className="w-full bg-[#F3EDFC] border border-[#E7DCF8] rounded-[22px] px-4 py-4 flex items-center gap-3 text-left">
+           <Settings2 size={20} className="text-[#6929CF] shrink-0"/>
+           <div className="flex-1 min-w-0"><p className="text-[13px] font-extrabold">Gérer le projet</p><p className="text-[11px] text-[#81738E] mt-0.5">Paramètres, contributeurs et clôture</p></div>
+           <ChevronDown size={18} className={'text-[#6B30CF] transition-transform '+(goalManageOpen?'rotate-180':'')}/>
+         </button>
+         {goalManageOpen&&<Panel className="px-4 mt-2">
+           {goal.status==='active'&&<>
+             <ActionLine icon={PenLine} title="Modifier le projet" subtitle="Nom, image, montant, échéance et membres habilités"
+               onClick={()=>launch('goal-edit',{title:goal.title,target:String(goal.target),deadline:goal.deadline,coverId:goal.coverId||(['goal_vac','goal_school','goal_weekend'].includes(goal.id)?goal.id:'goal_vac'),contributors:goal.contributors.join(',')})}/>
+             <ActionLine icon={CheckCircle2} title="Clôturer le projet" subtitle="Arrêter les contributions et la programmation" onClick={()=>launch('goal-close')}/>
+           </>}
+           <ActionLine icon={Trash2} title="Supprimer le projet" subtitle="Suppression simulée, restitution des fonds si le projet est actif" onClick={()=>launch('goal-delete')}/>
+         </Panel>}
+       </section>}
      </>}
 
      {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3" aria-label="Toutes les cagnottes">
