@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, CalendarDays, Check,
+  ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, CalendarDays, CalendarClock, Check,
   CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3, CreditCard, Crown, FileText,
   Gift, HeartHandshake, Home, Landmark, LockKeyhole, MessageCircle, MoreHorizontal, Plus,
   ReceiptText, RotateCcw, Send, Settings2, ShieldCheck, Sparkles, Target, Trash2, Users,
@@ -11,7 +11,7 @@ import {
 import { MobileHeader, SimpleButton, type Navigate } from '../components/SimpleUI';
 import {
   avatarFor, canSeePocket, createDemoState, currency, findMember, isAdmin, loadFamilyState,
-  moneyValid, parseMoney, roleLabel, STORE_KEY, today, uid,
+  moneyValid, parseMoney, roleLabel, saveFamilyState, today, uid,
   type Family, type FamilyState, type Member, type Role
 } from './model';
 import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
@@ -20,13 +20,13 @@ import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
- 'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite';
+ 'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts';
 type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-account'|'open-joint'|'create-card'|
   'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'new-pot'|'pot-deposit'|'new-document'|
   'pay-bill'|'simple-pay'|'new-trip'|'new-credit'|'member-delete'|'family-delete'|'otp'|
   'limit'|'goal-schedule'|null;
 type FormData = Record<string,string>;
-type PendingPayment = { from: string; to:string; amount:number; label:string; category:string };
+type PendingPayment = { from: string; to:string; amount:number; label:string; category:string; alertId?:string };
 const nowDate = () => new Date().toISOString().slice(0,10);
 const cx = 'text-[#171126]';
 const subtle = 'text-[#817895]';
@@ -50,6 +50,16 @@ function Input({label,value,onChange,type='text',placeholder='',min,required=fal
 function SelectInput({label,value,onChange,options}:{label:string;value?:string;onChange:(v:string)=>void;options:{value:string;label:string}[]}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><select value={value??''} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]">{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>}
 function Progress({value,total,tone='violet'}:{value:number;total:number;tone?:'violet'|'green'|'amber'}) { const colors={violet:'bg-[#7926EB]',green:'bg-[#18AB7F]',amber:'bg-[#F4A344]'}; return <div className="h-2.5 rounded-full bg-[#EEEAF4] overflow-hidden"><div className={`h-full rounded-full ${colors[tone]} transition-all`} style={{width:`${Math.min(100,Math.max(0,total?value/total*100:0))}%`}}/></div> }
 const dateFor = (date:string) => date ? new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'À définir';
+const daysUntil = (date:string) => Math.max(0,Math.ceil((new Date(date+'T12:00:00').getTime()-Date.now())/86400000));
+
+function AlertItem({icon:Icon,title,subtitle,badge,onClick,tone='violet'}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle:string;badge?:string;onClick:()=>void;tone?:'violet'|'amber'}) {
+ return <button type="button" onClick={onClick} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+  <span className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center ${tone==='amber'?'bg-[#FFF3E1] text-[#BF7A12]':'bg-[#F1E9FF] text-[#7430DD]'}`}><Icon size={19}/></span>
+  <span className="flex-1 min-w-0"><span className="block text-[13px] font-extrabold text-[#241932] leading-snug truncate">{title}</span><span className="block text-[11px] text-[#746884] mt-1 leading-snug">{subtitle}</span></span>
+  <span className="shrink-0 flex items-center gap-1.5">{badge&&<span className="rounded-full bg-[#FFF0D7] text-[#A56B12] px-2 py-1 text-[10px] font-bold">{badge}</span>}<ChevronRight size={16} className="text-[#9487A4]"/></span>
+ </button>;
+}
+
 
 export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;onChatViewChange?:(active:boolean)=>void}) {
  const [data,setData]=useState<FamilyState>(loadFamilyState);
@@ -89,7 +99,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const mutate=(action:(d:FamilyState,f:Family)=>void)=>{
   setData(prev=>{ const copy:FamilyState=structuredClone(prev);const active=copy.families.find(f=>f.id===copy.activeFamilyId);if(active){action(copy,active);for(const other of copy.families){if(other.id===active.id)continue;for(const member of other.members){const same=active.members.find(m=>m.id===member.id);if(same)member.simpleBalance=same.simpleBalance}}}return copy; });
  };
- useEffect(()=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(data))}catch{}},[data]);
+ useEffect(()=>{saveFamilyState(data)},[data]);
  useEffect(()=>{if(route==='dashboard')scrollTop()},[data.activeFamilyId]);
  useEffect(()=>{
    onChatViewChange?.(route==='chat');
@@ -131,6 +141,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     if(payment.to!=='external')changeBalance(f,payment.to,payment.amount);
     f.transactions.unshift({id:uid('tx'),date:today(),title:payment.label,amount:payment.to==='external'?-payment.amount:payment.amount,category:payment.category,source:payment.from,target:payment.to});
     if(payment.to==='external')f.loyaltyPoints+=Math.floor(payment.amount/50); // illustrative, not a business rule
+    if(payment.alertId){const alert=f.alerts.find(a=>a.id===payment.alertId);if(alert)alert.resolved=true;}
   });
   close();show(`${payment.label} · ${currency(payment.amount)} (simulation)`);
  }
@@ -156,7 +167,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      const name=form.name?.trim();if(!name){setError('Donnez un nom à votre famille.');return;}
      const newId=uid('family');const mainUser={id:'lamia',name:'Lamia',relation:'Moi',role:'leader' as Role,simpleOne:false,simpleBalance:43109,avatar:'lamia'};
      const newFamily:Family={id:newId,name,emoji:form.emoji||'💜',accountViewIds:['lamia'],members:[mainUser],pockets:[{id:uid('pocket'),ownerId:'lamia',balance:0,limit:5000}],
-       account:form.openAccount==='true'?{id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000}:null,joint:null,transactions:[],goals:[],pots:[],cards:[],invites:[],chat:[],documents:[],bookings:[],creditRequests:[],loyaltyPoints:0,otpThreshold:2000,language:'Français'};
+       account:form.openAccount==='true'?{id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000}:null,joint:null,transactions:[],goals:[],pots:[],cards:[],invites:[],alerts:[],chat:[],documents:[],bookings:[],creditRequests:[],loyaltyPoints:0,otpThreshold:2000,language:'Français'};
      setData(prev=>{const prevMember=prev.families.flatMap(f=>f.members).find(m=>m.id==='lamia');if(prevMember)newFamily.members[0].simpleBalance=prevMember.simpleBalance;return {...prev,activeFamilyId:newId,viewerId:'lamia',families:[...prev.families,newFamily]}});close();toDashboard();show('Famille créée, avec un pocket pour le premier membre.');return;
    }
    if(!family)return;
@@ -187,7 +198,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'simple-pay':case 'pay-bill':{
       const amount=parseMoney(form.amount||'0');
-      requestPayment({from:form.from||'account',to:'external',amount,label:modal==='simple-pay'?`Simple Pay · ${form.beneficiary||'Destinataire'}`:`Facture · ${form.beneficiary||'Service'}`,category:modal==='simple-pay'?'Simple Pay':'Factures'});break;
+      const linkedBill=modal==='pay-bill'?family.alerts.find(a=>a.id===form.alertId&&a.beneficiary===form.beneficiary&&a.amount===amount):undefined;
+      requestPayment({from:form.from||'account',to:'external',amount,label:modal==='simple-pay'?`Simple Pay · ${form.beneficiary||'Destinataire'}`:`Facture · ${form.beneficiary||'Service'}`,category:modal==='simple-pay'?'Simple Pay':'Factures',alertId:linkedBill?.id});break;
    }
    case 'create-card':{
      if(!admin){setError('Seul un Leader ou Co-leader peut attribuer une carte familiale.');return;}
@@ -287,7 +299,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const showBalance=(n:number)=>showAmounts?currency(n):'•••• DH';
  const context={}; void context;
 
- const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations'};
+ const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);go('goal')};
