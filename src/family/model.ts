@@ -5,7 +5,12 @@ export type Pocket = { id: string; ownerId: string; balance: number; limit: numb
 export type BankAccount = { id: string; label: string; balance: number; limit: number; };
 export type FamilyTransaction = { id: string; date: string; title: string; amount: number; category: string; source: string; target: string; };
 export type SavingsGoal = { id: string; title: string; creatorId: string; ownerId: string; target: number; balance: number; deadline: string; contributors: string[]; scheduledAmount: number; status: 'active'|'closed'; history: { id:string; memberId: string; amount: number; date:string; kind: 'deposit'|'withdrawal' }[] };
-export type FamilyPot = { id: string; title: string; target: number; balance: number; members: string[]; status: 'active'|'closed'; };
+export type PotContribution = { id: string; memberId: string; amount: number; date: string };
+export type FamilyPot = {
+  id: string; title: string; target: number; balance: number; members: string[]; status: 'active'|'closed';
+  creatorId?: string; description?: string; deadline?: string;
+  contributions?: PotContribution[]; pendingInvites?: string[];
+};
 export type FamilyCard = { id: string; label: string; last4: string; source: string; holderId: string; active: boolean; };
 export type FamilyInvite = { id: string; name: string; relation: string; simpleOne: boolean; role: Role; };
 export type FamilyAlert = { id: string; type: 'bill'; title: string; beneficiary: string; amount: number; dueDate: string; resolved: boolean; };
@@ -63,9 +68,18 @@ export function createDemoState(): FamilyState {
         {id:'goal_weekend',title:'Week-end en famille',creatorId:'karim',ownerId:'karim',target:3500,balance:900,deadline:'2027-04-30',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g5',memberId:'karim',amount:900,date:'19 oct.',kind:'deposit'}]},
       ],
       pots:[
-        {id:'pot1',title:'Anniversaire de Yasmine',target:1500,balance:400,members:['lamia','karim'],status:'active'},
-        {id:'pot2',title:'Cadeau pour Karim',target:2000,balance:650,members:['lamia','yasmine'],status:'active'},
-        {id:'pot3',title:'Sortie en famille',target:1200,balance:300,members:['lamia','karim','yasmine'],status:'active'},
+        {id:'pot1',title:'Anniversaire de Yasmine',creatorId:'lamia',
+          description:'Ensemble, préparons une belle surprise pour Yasmine !',
+          target:1500,balance:400,members:['lamia','karim'],status:'active',pendingInvites:[],
+          contributions:[{id:'pc1',memberId:'lamia',amount:250,date:'20 oct.'},{id:'pc2',memberId:'karim',amount:150,date:'21 oct.'}]},
+        {id:'pot2',title:'Cadeau pour Karim',creatorId:'lamia',
+          description:'Un cadeau choisi ensemble pour faire plaisir à Karim.',
+          target:2000,balance:650,members:['lamia','yasmine'],status:'active',pendingInvites:[],
+          contributions:[{id:'pc3',memberId:'lamia',amount:400,date:'18 oct.'},{id:'pc4',memberId:'yasmine',amount:250,date:'20 oct.'}]},
+        {id:'pot3',title:'Sortie en famille',creatorId:'karim',
+          description:'Organisons notre prochaine sortie en famille.',
+          target:1200,balance:300,members:['lamia','karim','yasmine'],status:'active',pendingInvites:[],
+          contributions:[{id:'pc5',memberId:'karim',amount:200,date:'19 oct.'},{id:'pc6',memberId:'yasmine',amount:100,date:'21 oct.'}]},
       ],
       cards:[{id:'card1',label:'Carte Famille',last4:'4582',source:'family',holderId:'lamia',active:true}, {id:'card2',label:'Carte Pocket Yasmine',last4:'1046',source:'p_yasmine',holderId:'yasmine',active:true}],
       invites:[{id:'invite_amine',name:'Amine',relation:'Fils',simpleOne:true,role:'member'}],
