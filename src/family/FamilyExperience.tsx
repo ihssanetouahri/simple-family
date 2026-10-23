@@ -795,7 +795,101 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {family.pots.map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
          description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} onClick={()=>navigateToPot(p.id)}/>)}
        </div><PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
-     {route==='pot'&&pot&&<><Panel className="p-5 text-center space-y-4"><div className="text-5xl">🎁</div><h2 className="text-2xl font-extrabold">{pot.title}</h2><p className="text-3xl font-extrabold text-[#6728D9]">{currency(pot.balance)}</p><p className="text-xs text-[#8D8199]">Objectif : {currency(pot.target)}</p><Progress value={pot.balance} total={pot.target} tone="green"/></Panel>{pot.status==='active'&&<PillButton onClick={()=>launch('pot-deposit')}>Participer à la cagnotte <Plus size={16}/></PillButton>}</>}
+     {route==='pot'&&pot&&<>
+       <div className="flex items-center justify-between px-1">
+         <div className="flex items-center gap-2 text-[#7A678D] text-[11px] font-semibold"><Gift size={16} className="text-[#189B72]"/> Cagnotte familiale</div>
+         {canManagePot&&<div className="relative">
+           <button type="button" aria-label="Gérer la cagnotte" aria-expanded={potMenuOpen}
+             onClick={()=>setPotMenuOpen(v=>!v)}
+             className="w-9 h-9 rounded-full border border-[#EEE6F6] bg-white flex items-center justify-center text-[#6F28D0]">
+             <MoreHorizontal size={20}/>
+           </button>
+           {potMenuOpen&&<div className="absolute right-0 top-11 z-30 w-[205px] p-2 bg-white rounded-2xl shadow-[0_8px_28px_rgba(39,21,75,0.18)] border border-[#EDE6F4] space-y-1">
+             <button type="button" onClick={()=>{setPotMenuOpen(false);launch('pot-edit',{title:pot.title,description:pot.description||'',target:String(pot.target),deadline:pot.deadline||''})}}
+               disabled={pot.status!=='active'} className="w-full flex items-center gap-2.5 text-[12px] font-bold text-[#402D5B] text-left rounded-xl py-2.5 px-2 hover:bg-[#F5F0FC] disabled:opacity-40"><PenLine size={16}/> Modifier la cagnotte</button>
+             <button type="button" onClick={()=>{setPotMenuOpen(false);launch('pot-close')}} disabled={pot.status!=='active'}
+               className="w-full flex items-center gap-2.5 text-[12px] font-bold text-[#A7496E] text-left rounded-xl py-2.5 px-2 hover:bg-[#FFF1F5] disabled:opacity-40"><CheckCircle2 size={16}/> Clôturer la collecte</button>
+           </div>}
+         </div>}
+       </div>
+
+       <FamilyProgressPhotoCard id={pot.id} kind="pot" title={pot.title}
+         description={pot.description||'Une collecte pour partager un beau moment ensemble.'}
+         current={pot.balance} target={pot.target} status={pot.status} detail/>
+       {pot.deadline&&<p className="text-[11px] text-[#86768F] flex gap-1.5 items-center justify-center"><CalendarDays size={14}/> Fin prévue : {dateFor(pot.deadline)}</p>}
+
+       {(pot.pendingInvites||[]).includes(data.viewerId)&&pot.status==='active'&&<Panel className="p-4 border-[#D8C8F5] bg-[#F7F2FF] space-y-3">
+         <p className="text-[13px] font-bold text-[#3D2459]">Vous êtes invité(e) à participer</p>
+         <p className="text-[11px] text-[#837292]">Acceptez l'invitation pour rejoindre cette cagnotte.</p>
+         <div className="grid grid-cols-2 gap-2">
+           <button type="button" onClick={()=>{
+             mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.pendingInvites=(p.pendingInvites||[]).filter(id=>id!==data.viewerId);if(!p.members.includes(data.viewerId))p.members.push(data.viewerId)});
+             show('Vous avez rejoint la cagnotte (simulation).');
+           }} className="bg-[#6525D4] text-white rounded-full py-2.5 text-[12px] font-bold">Accepter</button>
+           <button type="button" onClick={()=>{
+             mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.pendingInvites=(p.pendingInvites||[]).filter(id=>id!==data.viewerId)});
+             show('Invitation refusée (simulation).');
+           }} className="bg-white border border-[#E2D6F3] text-[#6C4F89] rounded-full py-2.5 text-[12px] font-bold">Refuser</button>
+         </div>
+       </Panel>}
+
+       <section>
+         <Heading title="Les participants" right={canManagePot&&pot.status==='active'&&
+           <button type="button" disabled={potInviteCandidates.length===0}
+             onClick={()=>launch('pot-invite',{memberId:potInviteCandidates[0]?.id||''})}
+             className="flex items-center gap-1 text-[#6426D3] text-[12px] font-bold disabled:opacity-40"><UserPlus size={16}/> Inviter</button>}/>
+         <Panel className="p-4 space-y-3">
+           <div className="flex items-center gap-3">
+             <div className="flex -space-x-2 shrink-0">
+               {pot.members.filter(id=>family.members.some(m=>m.id===id)).slice(0,4).map(id=><Avatar key={id} member={findMember(family,id)} size={41}/>)}
+             </div>
+             <div className="min-w-0 flex-1">
+               <p className="text-[13px] font-extrabold">{pot.members.filter(id=>family.members.some(m=>m.id===id)).length} participant{pot.members.length!==1?'s':''}</p>
+               <p className="text-[11px] text-[#8A7C97] mt-1 leading-snug">{pot.members.map(id=>findMember(family,id)?.name).filter(Boolean).join(', ')||'Aucun participant'}</p>
+             </div>
+           </div>
+           {(pot.pendingInvites||[]).length>0&&canManagePot&&<div className="border-t border-[#F0EAF7] pt-3">
+             <p className="text-[11px] text-[#8A7D98] mb-2">Invitations en attente</p>
+             <div className="flex flex-wrap gap-2">
+               {(pot.pendingInvites||[]).map(id=><span key={id} className="rounded-full px-2.5 py-1.5 bg-[#F3ECFF] text-[#7336BE] text-[11px] font-medium">{findMember(family,id)?.name||'Membre'} · En attente</span>)}
+             </div>
+           </div>}
+         </Panel>
+       </section>
+
+       <section>
+         <Heading title="Contributions récentes" right={canSeePotHistory&&(pot.contributions||[]).length>2&&
+           <button type="button" onClick={()=>setShowAllPotContributions(v=>!v)}
+             className="text-[#6A26D8] text-[12px] font-bold flex items-center gap-1">
+             {showAllPotContributions?'Réduire':'Voir tout'} <ChevronRight size={15}/>
+           </button>}/>
+         <Panel className="px-4">
+           {!canSeePotHistory
+             ?<p className="text-[12px] text-[#847791] py-4">L'historique est réservé aux participants de la cagnotte.</p>
+             :(pot.contributions||[]).length===0
+               ?<p className="text-[12px] text-[#847791] py-4">Aucune contribution enregistrée pour le moment.</p>
+               :(showAllPotContributions?pot.contributions||[]:(pot.contributions||[]).slice(0,2)).map(h=>
+                 <div key={h.id} className="flex items-center gap-3 py-3.5 border-b last:border-b-0 border-[#F1EBF7]">
+                   <Avatar member={findMember(family,h.memberId)} size={39}/>
+                   <div className="min-w-0 flex-1">
+                     <p className="font-bold text-[13px] text-[#31223F]">{findMember(family,h.memberId)?.name||'Membre'}</p>
+                     <p className="text-[11px] text-[#887B97] mt-0.5">Contribution · {h.date}</p>
+                   </div>
+                   <p className="text-[13px] font-extrabold text-[#169C72] shrink-0">+{currency(h.amount)}</p>
+                 </div>)
+           }
+         </Panel>
+       </section>
+
+       {pot.status==='active'&&canParticipateInPot&&<PillButton onClick={()=>launch('pot-deposit',{source:`simple:${data.viewerId}`,amount:''})}>
+         Participer à la cagnotte <Plus size={17}/>
+       </PillButton>}
+       {pot.status==='active'&&!canParticipateInPot&&!(pot.pendingInvites||[]).includes(data.viewerId)&&
+         <Panel className="p-4 text-[12px] text-[#7E728E]">Vous ne participez pas encore à cette cagnotte. Un organisateur peut vous inviter à la rejoindre.</Panel>}
+       {pot.status==='closed'&&<Panel className="p-4 flex items-center gap-2 text-[#158767]">
+         <CheckCircle2 size={19}/><p className="text-[12px] font-bold">Cette collecte est clôturée. Les contributions ne sont plus possibles.</p>
+       </Panel>}
+     </>}
 
      {route==='services'&&<>
        <Panel className="p-5"><p className="text-xs text-[#8738DB] font-bold">Simple Family</p><h2 className="text-[22px] font-extrabold mt-1">Tous vos services</h2><p className="text-xs text-[#84798F] mt-1">Un seul espace pour les usages bancaires et familiaux du quotidien.</p></Panel>
