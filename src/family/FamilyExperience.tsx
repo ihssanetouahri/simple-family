@@ -18,9 +18,10 @@ import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
 import karimAvatar from '../assets/images/karim.jpg';
 import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
+import { AccountJourneys } from './AccountJourneys';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
- 'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts';
+ 'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
 type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-account'|'open-joint'|'create-card'|
   'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'new-pot'|'pot-deposit'|'new-document'|
   'pay-bill'|'simple-pay'|'new-trip'|'new-credit'|'member-delete'|'family-delete'|'otp'|
@@ -207,7 +208,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      const name=form.name?.trim();if(!name){setError('Donnez un nom à votre famille.');return;}
      const newId=uid('family');const mainUser={id:'lamia',name:'Lamia',relation:'Moi',role:'leader' as Role,simpleOne:false,simpleBalance:43109,avatar:'lamia'};
      const newFamily:Family={id:newId,name,emoji:form.emoji||'💜',accountViewIds:['lamia'],members:[mainUser],pockets:[{id:uid('pocket'),ownerId:'lamia',balance:0,limit:5000}],
-       account:form.openAccount==='true'?{id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000}:null,joint:null,transactions:[],goals:[],pots:[],cards:[],invites:[],alerts:[],chat:[],documents:[],bookings:[],creditRequests:[],loyaltyPoints:0,otpThreshold:2000,language:'Français'};
+       account:form.openAccount==='true'?{id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000}:null,joint:null,jointHolderIds:[],jointApplication:null,transactions:[],goals:[],pots:[],cards:[],invites:[],alerts:[],chat:[],documents:[],bookings:[],creditRequests:[],loyaltyPoints:0,otpThreshold:2000,language:'Français'};
      setData(prev=>{const prevMember=prev.families.flatMap(f=>f.members).find(m=>m.id==='lamia');if(prevMember)newFamily.members[0].simpleBalance=prevMember.simpleBalance;return {...prev,activeFamilyId:newId,viewerId:'lamia',families:[...prev.families,newFamily]}});close();toDashboard();show('Famille créée, avec un pocket pour le premier membre.');return;
    }
    if(!family)return;
@@ -339,7 +340,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const showBalance=(n:number)=>showAmounts?currency(n):'•••• DH';
  const context={}; void context;
 
- const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
+ const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);go('goal')};
@@ -418,17 +419,17 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Comptes partagés" right={<button type="button" onClick={()=>mainGo('accounts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <div className="grid grid-cols-2 gap-3">
-           <button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+           <button type="button" onClick={()=>mainGo('sub-account')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><Landmark size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Sous-compte Famille</p><p className="text-[10px] text-[#756785] mt-0.5">Dépenses communes</p>
              <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-auto pt-2">{family.account?(canViewFamilyAccount?showBalance(family.account.balance):'Accès restreint'):'À créer'}</p>
            </button>
-           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
              <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-auto pt-2">{showBalance(family.joint.balance)}</p>
            </button>}
-           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col transition-colors hover:bg-[#EEE5FC] hover:border-[#AB8CD9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col transition-colors hover:bg-[#EEE5FC] hover:border-[#AB8CD9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#8F69C2]"/><Plus size={16} className="text-[#8F69C2]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
              <p className="text-[13px] font-bold text-[#6B35B1] mt-1">À ouvrir</p>
@@ -515,16 +516,36 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='accounts' && <>
-       <section><Heading title="Sous-compte Famille et compte joint"/><div className="space-y-3">
-       {family.account?<Panel className="p-5 bg-gradient-to-br from-white to-[#FAF6FF]"><div className="flex items-center justify-between"><div className="flex gap-2 items-center text-[12px] font-semibold text-[#625674]"><Landmark size={18} className="text-[#6724DC]"/>Sous-compte Famille</div><Tag tone="green">Actif</Tag></div><p className="text-[29px] font-extrabold mt-4 tracking-tight">{canViewFamilyAccount?showBalance(family.account.balance):'Solde masqué'}</p><div className="flex gap-2 mt-4">{admin?<PillButton onClick={()=>launch('transfer',{from:'account',to:`pocket:${family.pockets[0]?.ownerId}`,amount:''})}><Send size={15}/>Virement</PillButton>:<Tag tone="gray">Consultation selon droits</Tag>}<button onClick={()=>setShowAmounts(x=>!x)} type="button" aria-label="Masquer le solde" className="shrink-0 rounded-full w-11 bg-[#F4EDFF] text-[#6630D5] flex items-center justify-center"><Eye size={17}/></button></div></Panel>:<Panel className="p-5 space-y-3"><div className="w-11 h-11 bg-[#F1E9FF] rounded-2xl flex justify-center items-center text-[#6725DA]"><Landmark size={21}/></div><h3 className="text-[17px] font-extrabold">Créer un sous-compte Famille</h3><p className="text-[12px] text-[#81758E]">Facultatif : un sous-compte Famille dédié aux dépenses communes.</p>{admin&&<PillButton onClick={()=>launch('open-account')}>Ouvrir un compte <ArrowRight size={16}/></PillButton>}</Panel>}
-       {family.joint?<Panel className="p-4 flex items-center justify-between"><div><p className="text-xs text-[#81778F]">Compte joint</p><p className="text-xl font-extrabold mt-1">{showBalance(family.joint.balance)}</p><p className="text-[10px] text-[#7F738D] mt-1">Couple Leader / Co-leader</p></div><HeartHandshake size={29} className="text-[#8E46E7]"/></Panel>:<Panel className="p-4"><div className="flex justify-between items-start gap-3"><div><p className="text-[14px] font-bold">Compte joint</p><p className="text-[11px] text-[#857991] mt-1">Réservé au couple Leader / Co-leader.</p></div><HeartHandshake size={22} className="text-[#7930DA]"/></div>{admin&&<button type="button" onClick={()=>launch('open-joint')} className="text-[12px] font-bold mt-3 text-[#6925D8]">Demander l’ouverture <ArrowRight size={14} className="inline"/></button>}</Panel>}
-       </div></section>
-       <Panel className="px-4"><ActionLine icon={WalletCards} title="Pockets des membres" subtitle="Consulter les soldes et alimenter chaque pocket" onClick={()=>mainGo('pockets')}/></Panel>
-       <section><Heading title="Opérations récentes"/><Panel className="px-4">{(canViewFamilyAccount?family.transactions:family.transactions.filter(t=>t.source===`pocket:${data.viewerId}`||t.target===`pocket:${data.viewerId}`)).slice(0,6).map(t=><div key={t.id} className="py-3 border-b last:border-none border-[#EEEAF4] flex gap-3 items-center"><div className="bg-[#F1EBFF] text-[#7427D3] rounded-xl p-2"><ArrowDownLeft size={18}/></div><div className="flex-1 min-w-0"><p className="text-[12px] font-bold truncate">{t.title}</p><p className="text-[10px] text-[#827791]">{t.date} · {t.category}</p></div><span className={`font-bold text-[12px] ${t.amount>=0?'text-[#208A67]':''}`}>{t.amount>0?'+':''}{currency(t.amount)}</span></div>)}</Panel></section>
-       <PillButton secondary onClick={()=>mainGo('cards')}>Gérer les cartes virtuelles <CreditCard size={16}/></PillButton>
-     </>}
+        <section>
+          <Heading title="Choisissez votre compte" subtitle="Deux usages distincts pour votre famille"/>
+          <div className="space-y-3">
+            <button type="button" onClick={()=>mainGo('sub-account')} className="card-simple w-full p-5 text-left hover:bg-[#FBF8FF] transition-colors flex gap-3 items-center">
+              <span className="w-12 h-12 rounded-2xl bg-[#F2EAFE] text-[#7028DB] flex items-center justify-center shrink-0"><Landmark size={23}/></span>
+              <span className="min-w-0 flex-1"><span className="font-extrabold text-[14px] block">Sous-compte Famille</span>
+                <span className="block text-[11px] text-[#81758E] mt-1">Dépenses communes et accès familiaux</span>
+                <span className="block text-[16px] font-extrabold mt-2">{family.account?(canViewFamilyAccount?showBalance(family.account.balance):'Accès restreint'):'À créer'}</span>
+              </span><ChevronRight size={18} className="text-[#8D79AC] shrink-0"/>
+            </button>
+            <button type="button" onClick={()=>mainGo('joint-account')} className="card-simple w-full p-5 text-left hover:bg-[#FBF8FF] transition-colors flex gap-3 items-center">
+              <span className="w-12 h-12 rounded-2xl bg-[#F2EAFE] text-[#7028DB] flex items-center justify-center shrink-0"><HeartHandshake size={23}/></span>
+              <span className="min-w-0 flex-1"><span className="font-extrabold text-[14px] block">Compte joint</span>
+                <span className="block text-[11px] text-[#81758E] mt-1">Compte bancaire détenu par deux cotitulaires</span>
+                <span className="block text-[16px] font-extrabold mt-2">{family.joint?showBalance(family.joint.balance):family.jointApplication?'Ouverture en cours':'À ouvrir'}</span>
+              </span><ChevronRight size={18} className="text-[#8D79AC] shrink-0"/>
+            </button>
+          </div>
+        </section>
+        <Panel className="px-4"><ActionLine icon={WalletCards} title="Pockets des membres" subtitle="Soldes et alimentation de chaque pocket" onClick={()=>mainGo('pockets')}/></Panel>
+      </>}
 
-     {route==='pockets'&&<>
+      {(route==='sub-account'||route==='joint-account')&&<AccountJourneys
+        key={family.id+route} kind={route==='sub-account'?'sub':'joint'} family={family}
+        viewerId={data.viewerId} canViewSub={canViewFamilyAccount}
+        onUpdate={fn=>mutate((_d,f)=>fn(f))}
+        onHome={toDashboard} onToast={show}
+      />}
+
+      {route==='pockets'&&<>
        <Panel className="p-5 space-y-2">
          <div className="w-11 h-11 rounded-2xl bg-[#F1E8FF] text-[#6D2DDB] flex items-center justify-center"><WalletCards size={22}/></div>
          <h2 className="text-[18px] font-extrabold">Les pockets de la famille</h2>
