@@ -308,23 +308,138 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </Panel>}
      {!family ? <div className="space-y-4 pt-7"><Panel className="p-6 text-center space-y-4"><div className="text-5xl">💜</div><h2 className="text-[24px] font-extrabold leading-tight">Votre famille, au même endroit</h2><p className="text-sm text-[#80758D]">Créez un espace pour gérer vos proches, leurs pockets et vos services familiaux.</p><PillButton onClick={()=>launch('new-family',{openAccount:'false',emoji:'💜'})}>Créer ma famille <ArrowRight size={17}/></PillButton></Panel><button className="w-full text-sm font-bold text-[#6C2BCF]" onClick={()=>{setData(createDemoState());toDashboard()}}>Explorer le scénario de démonstration</button></div> : <>
      {route==='dashboard' && <>
+       {/* Family identity and family switcher: one shared entry for changing or adding a family. */}
        <div className="space-y-3">
-       <button type="button" onClick={()=>setSelectorOpen(o=>!o)} className="w-full text-left flex items-center justify-between gap-3"><div className="flex items-center gap-2"><span className="text-[27px]">{family.emoji}</span><div><h2 className="text-[21px] font-extrabold leading-none">{family.name}</h2><p className="text-[#8B80A0] text-[11px] mt-1">{family.members.length} membres · {roleLabel(viewer?.role||'member')}</p></div></div><div className="bg-white rounded-full w-9 h-9 shadow-sm flex items-center justify-center"><ChevronDown size={18}/></div></button>
-       {selectorOpen&&<Panel className="p-3 space-y-1">{data.families.map(f=><button onClick={()=>switchFamily(f.id)} type="button" key={f.id} className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-[#FAF8FE] text-left text-sm font-bold"><span>{f.emoji} {f.name}</span>{f.id===family.id?<Check size={17} className="text-[#6225DB]"/>:<ChevronRight size={17}/>}</button>)}<button type="button" onClick={()=>{setSelectorOpen(false);launch('new-family',{openAccount:'false',emoji:'💜'})}} className="w-full text-sm font-bold text-[#6428D1] py-2"><Plus size={16} className="inline mr-1"/> Créer une autre famille</button></Panel>}
+         <section className="relative min-h-[212px] overflow-hidden rounded-[29px] shadow-[0_12px_34px_rgba(66,20,126,0.18)]">
+           <img src={familyPhoto} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover object-center"/>
+           <div className="absolute inset-0 bg-gradient-to-r from-[#240958]/95 via-[#42147C]/72 to-[#290C5A]/30"/>
+           <div className="relative z-10 min-h-[212px] p-5 flex flex-col justify-between text-white">
+             <div className="flex items-start justify-between gap-2">
+               <div className="min-w-0">
+                 <p className="text-[10px] font-bold text-white/75 uppercase tracking-[0.12em]">Notre espace familial</p>
+                 <h2 className="mt-2 text-[23px] font-extrabold font-display leading-tight break-words">{family.name}</h2>
+                 <p className="text-[12px] text-white/85 mt-1">{family.members.length} membre{family.members.length>1?'s':''} · {roleLabel(viewer?.role||'member')}</p>
+               </div>
+               <button type="button" onClick={()=>setSelectorOpen(o=>!o)} aria-expanded={selectorOpen} aria-label="Changer ou ajouter une famille"
+                 className="shrink-0 bg-white/20 backdrop-blur-md border border-white/35 text-white rounded-full px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
+                 Mes familles <ChevronDown size={14}/>
+               </button>
+             </div>
+             <div className="flex items-end justify-between gap-3">
+               <button type="button" onClick={()=>mainGo('members')} className="text-[12px] font-bold rounded-full px-3.5 py-2.5 bg-white text-[#5120A8] inline-flex items-center gap-2">
+                 Voir les membres <ArrowRight size={15}/>
+               </button>
+               <div className="flex -space-x-2" aria-label="Aperçu des membres">
+                 {family.members.slice(0,3).map(m=><Avatar key={m.id} member={m} size={34}/>)}
+               </div>
+             </div>
+           </div>
+         </section>
+         {selectorOpen&&<Panel className="p-3 space-y-2">
+           <div className="flex justify-between items-center px-2 py-1">
+             <p className="text-[13px] font-extrabold">Mes familles</p>
+             <button type="button" onClick={()=>setSelectorOpen(false)} aria-label="Fermer le sélecteur"><X size={17}/></button>
+           </div>
+           {data.families.map(f=><button type="button" key={f.id} onClick={()=>switchFamily(f.id)}
+             className={'w-full rounded-2xl px-3 py-3 flex items-center gap-3 text-left border '+(f.id===family.id?'border-[#CFB8FA] bg-[#F2EBFF]':'border-transparent bg-[#FAF8FE]')}>
+             <span className="text-xl">{f.emoji}</span>
+             <div className="flex-1 min-w-0"><p className="text-[13px] font-bold truncate">{f.name}</p><p className="text-[11px] text-[#8A7D97]">{f.members.length} membre{f.members.length>1?'s':''}</p></div>
+             {f.id===family.id?<Check size={17} className="text-[#6225DB]"/>:<ChevronRight size={17} className="text-[#998BAE]"/>}
+           </button>)}
+           <button type="button" onClick={()=>{setSelectorOpen(false);launch('new-family',{openAccount:'false',emoji:'💜'})}}
+             className="w-full flex items-center gap-2 px-3 py-3 rounded-2xl text-[13px] font-bold text-[#6428D1] bg-[#F2EAFF]">
+             <Plus size={18}/> Ajouter une famille
+           </button>
+         </Panel>}
        </div>
-       <div className="rounded-[29px] overflow-hidden relative min-h-[192px] shadow-[0_8px_30px_rgba(91,25,163,0.17)]"><img src={familyPhoto} alt="Portrait fictif du foyer" className="absolute inset-0 w-full h-full object-cover object-center"/><div className="absolute inset-0 bg-gradient-to-r from-[#2B0B66]/95 via-[#4D1B8B]/76 to-[#2D0C6B]/18"/><div className="relative p-5 flex flex-col min-h-[192px] text-white"><Tag tone="violet">Simple Family</Tag><h3 className="mt-2.5 font-display font-extrabold text-[21px] leading-tight max-w-[200px]">Tout votre univers familial</h3><p className="text-xs text-white/85 leading-relaxed max-w-[210px] mt-1.5">Vos proches, vos comptes et vos projets réunis.</p><button type="button" onClick={()=>mainGo('members')} className="mt-auto flex items-center gap-1.5 text-xs font-bold">Voir les membres <ArrowRight size={14}/></button></div></div>
-       <div className="grid grid-cols-2 gap-3">
-         <button type="button" onClick={()=>mainGo('accounts')} className="bg-white rounded-[23px] p-4 text-left border border-[#EBE4F4] shadow-sm"><div className="flex justify-between items-center"><Wallet size={20} className="text-[#7833DF]"/><ArrowUpRight size={16} className="text-[#AB9EBB]"/></div><p className="text-[11px] text-[#857D95] mt-3">Compte Famille</p><p className="text-[20px] font-extrabold tracking-tight mt-1">{family.account?(canViewFamilyAccount?showBalance(family.account.balance):'Accès restreint'):'À ouvrir'}</p></button>
-         <button type="button" onClick={()=>mainGo('savings')} className="bg-white rounded-[23px] p-4 text-left border border-[#EBE4F4] shadow-sm"><div className="flex justify-between items-center"><PiggyBank size={20} className="text-[#12A883]"/><ArrowUpRight size={16} className="text-[#AB9EBB]"/></div><p className="text-[11px] text-[#857D95] mt-3">Notre épargne</p><p className="text-[20px] font-extrabold tracking-tight mt-1">{showBalance(visibleGoals.filter(g=>g.status==='active').reduce((a,g)=>a+g.balance,0))}</p></button>
-       </div>
-       <div className="grid grid-cols-3 gap-2.5">
-         {[{icon:Send,title:'Alimenter',action:()=>launch('transfer',{from:admin&&family.account?'account':`simple:${viewer?.id}`,to:`pocket:${visiblePockets[0]?.ownerId||data.viewerId}`})},
-           {icon:Users,title:'Membres',action:()=>mainGo('members')},{icon:Target,title:'Objectifs',action:()=>mainGo('savings')}].map(x=><button type="button" key={x.title} onClick={x.action} className="bg-white rounded-[21px] px-2 py-3 flex flex-col items-center gap-2 border border-[#EEE9F7]"><div className="w-11 h-11 rounded-full bg-[#F2EAFE] flex items-center justify-center text-[#6620D5]"><x.icon size={19}/></div><span className="text-[11px] font-bold">{x.title}</span></button>)}
-       </div>
-       <section><Heading title="Les membres de ma famille" right={<button type="button" onClick={()=>mainGo('members')} className="text-[12px] font-bold text-[#6A22DF] flex items-center">Voir tout <ChevronRight size={15}/></button>}/><Panel className="px-4 py-4"><div className="flex items-start justify-between gap-2">{family.members.slice(0,4).map(m=><button onClick={()=>navigateToMember(m.id)} key={m.id} type="button" className="flex-1 flex flex-col gap-1 items-center min-w-0"><Avatar member={m} size={52}/><span className="text-[12px] font-extrabold truncate max-w-full">{m.name}</span><span className="text-[10px] text-[#887C96]">{m.simpleOne?'Simple One':roleLabel(m.role)}</span></button>)}{admin&&<button type="button" onClick={()=>launch('invite',{relation:'Proche',role:'member',simpleOne:'false'})} className="flex-1 flex flex-col items-center gap-1"><div className="w-[52px] h-[52px] rounded-full border-2 border-dashed border-[#C7ACF8] text-[#7430E2] bg-[#F7F2FF] flex items-center justify-center"><Plus size={21}/></div><span className="text-[12px] font-bold">Inviter</span><span className="text-[10px] text-[#887C96]">Un proche</span></button>}</div></Panel></section>
-       <section><Heading title="Nos pockets" right={<button type="button" className="text-[#6428DF] text-xs font-bold flex items-center" onClick={()=>mainGo('accounts')}>Voir tout <ChevronRight size={15}/></button>}/><div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">{visiblePockets.map(p=>{const m=findMember(family,p.ownerId);return <button key={p.id} type="button" onClick={()=>navigateToMember(p.ownerId)} className="shrink-0 w-[156px] rounded-[23px] p-4 bg-white border border-[#E9E1F5] text-left shadow-sm"><Avatar member={m} size={34}/><p className="mt-3 text-[11px] text-[#82778F]">Pocket {m?.name}</p><p className="font-extrabold text-[16px] mt-1">{showBalance(p.balance)}</p><div className="flex justify-end text-[#6E26D8]"><ArrowUpRight size={15}/></div></button>})}</div></section>
-       <section><Heading title="À découvrir"/><Panel className="px-4">{[{icon:Landmark,title:'Comptes et cartes',desc:'Gérez les produits de la famille',r:'accounts'},{icon:Gift,title:'Cagnottes familiales',desc:'Participer ensemble à un objectif',r:'pots'},{icon:WalletCards,title:'Services familiaux',desc:'Pay, factures, Trip, coffre-fort…',r:'services'}].map(x=><ActionLine key={x.r} icon={x.icon} title={x.title} subtitle={x.desc} onClick={()=>mainGo(x.r as Route)}/>)}</Panel></section>
-       <section className="rounded-[26px] border border-[#E1D4FA] bg-gradient-to-r from-[#F0E8FF] to-[#EDEBFD] p-4 flex items-start gap-3"><div className="bg-white text-[#7731DF] w-11 h-11 rounded-full flex items-center justify-center"><Sparkles size={21}/></div><div className="flex-1"><p className="text-sm font-extrabold">Et les finances du foyer ?</p><p className="text-[11px] text-[#7E7394] mt-1 leading-relaxed">Comprenez les dépenses et suivez vos budgets, sans quitter l’univers Simple.</p><button type="button" onClick={()=>mainGo('pfm')} className="text-[12px] text-[#6024D1] font-bold mt-2 flex items-center gap-1">Découvrir dans le PFM <ArrowRight size={14}/></button></div></section>
+
+       {/* Only show outstanding actions if there is genuinely something to review. */}
+       {admin&&family.invites.length>0&&<section>
+         <Panel className="p-4 border-[#E2D2FA] bg-[#FAF7FF]">
+           <div className="flex items-start gap-3">
+             <div className="w-10 h-10 shrink-0 bg-[#EEE3FF] rounded-2xl flex items-center justify-center text-[#762BDC]"><Bell size={19}/></div>
+             <div className="min-w-0 flex-1">
+               <p className="text-[14px] font-extrabold">À traiter</p>
+               <p className="text-[12px] text-[#81748F] mt-1">{family.invites.length} invitation{family.invites.length>1?'s':''} en attente de réponse</p>
+               <button type="button" onClick={()=>mainGo('members')} className="text-[12px] font-bold mt-2 text-[#6824D6] inline-flex items-center gap-1">Suivre les invitations <ArrowRight size={14}/></button>
+             </div>
+           </div>
+         </Panel>
+       </section>}
+
+       <section>
+         <Heading title="Nos comptes" right={<button type="button" onClick={()=>mainGo('accounts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <div className="grid grid-cols-2 gap-3">
+           <button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm">
+             <div className="flex justify-between items-center"><Landmark size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
+             <p className="text-[11px] text-[#857995] mt-3">Compte Famille</p>
+             <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-1">{family.account?(canViewFamilyAccount?showBalance(family.account.balance):'Accès restreint'):'À ouvrir'}</p>
+           </button>
+           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm">
+             <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
+             <p className="text-[11px] text-[#857995] mt-3">Compte joint</p>
+             <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-1">{showBalance(family.joint.balance)}</p>
+           </button>}
+           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col">
+             <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#8F69C2]"/><Plus size={16} className="text-[#8F69C2]"/></div>
+             <p className="text-[11px] text-[#857995] mt-3">Compte joint</p>
+             <p className="text-[13px] font-bold text-[#6B35B1] mt-1">Découvrir l'offre</p>
+           </button>}
+         </div>
+       </section>
+
+       <section>
+         <Heading title="Nos pockets" right={<button type="button" onClick={()=>mainGo('accounts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+           {visiblePockets.slice(0,3).map(p=>{const m=findMember(family,p.ownerId);return <button key={p.id} type="button" onClick={()=>navigateToMember(p.ownerId)}
+             className="shrink-0 w-[152px] rounded-[23px] p-4 bg-white border border-[#E9E1F5] text-left shadow-sm">
+             <div className="flex items-center justify-between"><Avatar member={m} size={36}/><ArrowUpRight size={16} className="text-[#8D67C9]"/></div>
+             <p className="mt-3 text-[11px] text-[#82778F] truncate">Pocket {m?.name}</p>
+             <p className="font-extrabold text-[16px] mt-1 truncate">{showBalance(p.balance)}</p>
+           </button>})}
+           {visiblePockets.length===0&&<Panel className="p-4 w-full"><p className="text-[12px] text-[#81758E]">Aucun pocket accessible avec votre profil.</p></Panel>}
+         </div>
+       </section>
+
+       <section>
+         <Heading title="Notre épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Panel className="p-4 space-y-3">
+           {visibleGoals.filter(g=>g.status==='active').slice(0,1).map(g=><button key={g.id} type="button" onClick={()=>navigateToGoal(g.id)} className="w-full text-left space-y-2">
+             <div className="flex justify-between items-start gap-3"><div className="flex gap-2.5 items-center min-w-0"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F3EAFF] text-[#7530DC] flex items-center justify-center"><Target size={19}/></div><div className="min-w-0"><p className="text-[13px] font-bold truncate">{g.title}</p><p className="text-[11px] text-[#857990]">Objectif d'épargne · {initialsFor(g.ownerId)}</p></div></div><span className="text-[12px] font-bold text-[#7529DB]">{Math.round(g.balance/g.target*100)} %</span></div>
+             <Progress value={g.balance} total={g.target}/>
+             <p className="text-[11px] text-[#80758E]">{showBalance(g.balance)} sur {showBalance(g.target)}</p>
+           </button>)}
+           {visibleGoals.filter(g=>g.status==='active').length>0&&family.pots.some(p=>p.status==='active')&&<div className="border-t border-[#F0EAF7]"/>}
+           {family.pots.filter(p=>p.status==='active').slice(0,1).map(p=><button type="button" key={p.id} onClick={()=>navigateToPot(p.id)} className="w-full flex items-center gap-3 text-left py-1">
+             <div className="w-10 h-10 shrink-0 bg-[#E8F8F0] rounded-2xl flex items-center justify-center text-[#198A66]"><Gift size={18}/></div>
+             <div className="flex-1 min-w-0"><p className="text-[13px] font-bold truncate">{p.title}</p><p className="text-[11px] text-[#847991]">Cagnotte · {Math.round(p.balance/p.target*100)} % de l'objectif</p></div>
+             <ChevronRight size={16} className="text-[#AAA0B8]"/>
+           </button>)}
+           {visibleGoals.filter(g=>g.status==='active').length===0&&family.pots.filter(p=>p.status==='active').length===0&&
+             <div className="py-3 text-center space-y-2"><PiggyBank size={26} className="mx-auto text-[#7732D9]"/><p className="text-[13px] font-bold">Et si on préparait un projet ensemble ?</p><button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4]">Découvrir l'épargne <ArrowRight size={14} className="inline"/></button></div>}
+         </Panel>
+       </section>
+
+       <section>
+         <Heading title="Services familiaux" right={<button type="button" onClick={()=>mainGo('services')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Tous les services <ChevronRight size={15}/></button>}/>
+         <Panel className="px-3 py-4">
+           <div className="grid grid-cols-4 gap-2">
+             {[{label:'Chat',icon:MessageCircle,screen:'chat'},{label:'Simple Trip',icon:Plane,screen:'trip'},{label:'Documents',icon:LockKeyhole,screen:'vault'},{label:'Autres',icon:MoreHorizontal,screen:'services'}].map(item=>
+               <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="flex flex-col items-center justify-start gap-2 min-w-0">
+                 <span className="w-12 h-12 rounded-[18px] bg-[#F2EAFE] text-[#6E28D7] flex items-center justify-center"><item.icon size={21}/></span>
+                 <span className="text-[10px] font-bold text-center leading-tight text-[#554568]">{item.label}</span>
+               </button>)}
+           </div>
+         </Panel>
+       </section>
+
+       <section className="rounded-[26px] border border-[#E1D4FA] bg-gradient-to-r from-[#F0E8FF] to-[#EDEBFD] p-4 flex items-start gap-3">
+         <div className="bg-white text-[#7731DF] w-11 h-11 rounded-full flex items-center justify-center shrink-0"><Sparkles size={21}/></div>
+         <div className="flex-1"><p className="text-[14px] font-extrabold">Et les finances du foyer ?</p>
+           <p className="text-[12px] text-[#7E7394] mt-1 leading-relaxed">Comprenez les dépenses et suivez les budgets de votre famille dans le PFM.</p>
+           <button type="button" onClick={()=>mainGo('pfm')} className="text-[12px] text-[#6024D1] font-bold mt-2 flex items-center gap-1">Découvrir Mon foyer <ArrowRight size={14}/></button>
+         </div>
+       </section>
      </>}
 
      {route==='members' && <>
