@@ -57,8 +57,16 @@ export function createDemoState(): FamilyState {
         {id:'t3',date:'16 oct.',title:'Alimentation pocket Yasmine',amount:300,category:'Transferts',source:'Compte Simple',target:'Pocket Yasmine'},
         {id:'t4',date:'12 oct.',title:'Activités du week-end',amount:-310,category:'Loisirs',source:'Sous-compte Famille',target:'Sorties'},
       ],
-      goals:[{id:'goal_vac',title:'Vacances en famille',creatorId:'lamia',ownerId:'lamia',target:10000,balance:4500,deadline:'2027-07-15',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g1',memberId:'lamia',amount:2500,date:'10 oct.',kind:'deposit'},{id:'g2',memberId:'karim',amount:2000,date:'15 oct.',kind:'deposit'}]}],
-      pots:[{id:'pot1',title:'Anniversaire de Yasmine',target:1500,balance:400,members:['lamia','karim'],status:'active'}],
+      goals:[
+        {id:'goal_vac',title:'Vacances en famille',creatorId:'lamia',ownerId:'lamia',target:10000,balance:4500,deadline:'2027-07-15',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g1',memberId:'lamia',amount:2500,date:'10 oct.',kind:'deposit'},{id:'g2',memberId:'karim',amount:2000,date:'15 oct.',kind:'deposit'}]},
+        {id:'goal_school',title:'Études de Yasmine',creatorId:'lamia',ownerId:'yasmine',target:8000,balance:2400,deadline:'2027-09-01',contributors:['lamia','karim'],scheduledAmount:200,status:'active',history:[{id:'g3',memberId:'lamia',amount:1500,date:'08 oct.',kind:'deposit'},{id:'g4',memberId:'karim',amount:900,date:'17 oct.',kind:'deposit'}]},
+        {id:'goal_weekend',title:'Week-end en famille',creatorId:'karim',ownerId:'karim',target:3500,balance:900,deadline:'2027-04-30',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g5',memberId:'karim',amount:900,date:'19 oct.',kind:'deposit'}]},
+      ],
+      pots:[
+        {id:'pot1',title:'Anniversaire de Yasmine',target:1500,balance:400,members:['lamia','karim'],status:'active'},
+        {id:'pot2',title:'Cadeau pour Karim',target:2000,balance:650,members:['lamia','yasmine'],status:'active'},
+        {id:'pot3',title:'Sortie en famille',target:1200,balance:300,members:['lamia','karim','yasmine'],status:'active'},
+      ],
       cards:[{id:'card1',label:'Carte Famille',last4:'4582',source:'family',holderId:'lamia',active:true}, {id:'card2',label:'Carte Pocket Yasmine',last4:'1046',source:'p_yasmine',holderId:'yasmine',active:true}],
       invites:[{id:'invite_amine',name:'Amine',relation:'Fils',simpleOne:true,role:'member'}],
       alerts:[{id:'bill_internet',type:'bill',title:'Facture Internet à régler',beneficiary:'Internet',amount:390,dueDate:dateInDays(3),resolved:false}],
