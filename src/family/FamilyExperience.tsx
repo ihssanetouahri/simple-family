@@ -287,12 +287,24 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const showBalance=(n:number)=>showAmounts?currency(n):'•••• DH';
  const context={}; void context;
 
- const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Notre argent',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations'};
+ const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);go('goal')};
  const navigateToPot=(id:string)=>{setSelectedPot(id);go('pot')};
  const balances={family:family?.account?.balance||0,joint:family?.joint?.balance||0};void balances;
+ const goalHomeLabel=(g:Family['goals'][number])=>{
+   if(g.contributors.length<=1)return `Objectif d’épargne · ${initialsFor(g.ownerId)}`;
+   const n=new Set(g.history.filter(h=>h.kind==='deposit').map(h=>h.memberId)).size;
+   return n?`Projet familial · ${n} contributeur${n>1?'s':''}`:'Projet familial · Contributions ouvertes';
+ };
+ const activeFollowUpPot=family?.pots.find(p=>p.status==='active'&&p.balance<p.target&&(admin||p.members.includes(data.viewerId)))||null;
+ const upcomingFollowUpGoal=visibleGoals.find(g=>{
+   if(g.status!=='active'||g.balance>=g.target||!g.deadline)return false;
+   const days=(new Date(g.deadline+'T12:00:00').getTime()-Date.now())/86400000;
+   return days>=0&&days<=30;
+ })||null;
+ const hasFamilyFollowUps=Boolean((admin&&family?.invites.length)||upcomingFollowUpGoal||activeFollowUpPot);
 
  return <div className="min-h-full flex flex-col bg-simple-canvas relative">
    {route==='dashboard' ? <div className="sticky top-0 z-30 bg-[#F6F3FE]/85 backdrop-blur-md px-5 pt-3 pb-3">
@@ -371,31 +383,31 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>}
 
        <section>
-         <Heading title="Notre argent" right={<button type="button" onClick={()=>mainGo('accounts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Heading title="Comptes partagés" right={<button type="button" onClick={()=>mainGo('accounts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <div className="grid grid-cols-2 gap-3">
-           <button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm">
+           <button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><Landmark size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
-             <p className="text-[11px] text-[#857995] mt-3">Caisse familiale</p><p className="text-[10px] text-[#978AA6] mt-0.5">Dépenses communes</p>
+             <p className="text-[11px] text-[#857995] mt-3">Caisse familiale</p><p className="text-[10px] text-[#756785] mt-0.5">Dépenses communes</p>
              <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-1">{family.account?(canViewFamilyAccount?showBalance(family.account.balance):'Accès restreint'):'À créer'}</p>
            </button>
-           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm">
+           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
-             <p className="text-[11px] text-[#857995] mt-3">Compte joint</p><p className="text-[10px] text-[#978AA6] mt-0.5">Cotitulaires</p>
+             <p className="text-[11px] text-[#857995] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
              <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-1">{showBalance(family.joint.balance)}</p>
            </button>}
-           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col">
+           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('accounts')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col transition-colors hover:bg-[#EEE5FC] hover:border-[#AB8CD9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#8F69C2]"/><Plus size={16} className="text-[#8F69C2]"/></div>
-             <p className="text-[11px] text-[#857995] mt-3">Compte joint</p><p className="text-[10px] text-[#978AA6] mt-0.5">Cotitulaires</p>
-             <p className="text-[13px] font-bold text-[#6B35B1] mt-1">Découvrir l'offre</p>
+             <p className="text-[11px] text-[#857995] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
+             <p className="text-[13px] font-bold text-[#6B35B1] mt-1">À ouvrir</p>
            </button>}
          </div>
        </section>
 
        <section>
          <Heading title="Pockets des membres" right={<button type="button" onClick={()=>mainGo('pockets')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-3 scroll-smooth snap-x snap-mandatory scroll-px-1">
            {visiblePockets.slice(0,3).map(p=>{const m=findMember(family,p.ownerId);return <button key={p.id} type="button" onClick={()=>navigateToMember(p.ownerId)}
-             className="shrink-0 w-[152px] rounded-[23px] p-4 bg-white border border-[#E9E1F5] text-left shadow-sm">
+             className="shrink-0 snap-start w-[152px] rounded-[23px] p-4 bg-white border border-[#E9E1F5] text-left shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex items-center justify-between"><Avatar member={m} size={36}/><ArrowUpRight size={16} className="text-[#8D67C9]"/></div>
              <p className="mt-3 text-[11px] text-[#82778F] truncate">Pocket {m?.name}</p>
              <p className="font-extrabold text-[16px] mt-1 truncate">{showBalance(p.balance)}</p>
@@ -407,15 +419,15 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Nos projets & cagnottes" right={<button type="button" onClick={()=>mainGo('savings')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <Panel className="p-4 space-y-3">
-           {visibleGoals.filter(g=>g.status==='active').slice(0,1).map(g=><button key={g.id} type="button" onClick={()=>navigateToGoal(g.id)} className="w-full text-left space-y-2">
-             <div className="flex justify-between items-start gap-3"><div className="flex gap-2.5 items-center min-w-0"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F3EAFF] text-[#7530DC] flex items-center justify-center"><Target size={19}/></div><div className="min-w-0"><p className="text-[13px] font-bold truncate">{g.title}</p><p className="text-[11px] text-[#857990]">Objectif d'épargne · {initialsFor(g.ownerId)}</p></div></div><span className="text-[12px] font-bold text-[#7529DB]">{Math.round(g.balance/g.target*100)} %</span></div>
+           {visibleGoals.filter(g=>g.status==='active').slice(0,1).map(g=><button key={g.id} type="button" onClick={()=>navigateToGoal(g.id)} className="w-full text-left space-y-2 rounded-xl transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             <div className="flex justify-between items-start gap-3"><div className="flex gap-2.5 items-center min-w-0"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F3EAFF] text-[#7530DC] flex items-center justify-center"><Target size={19}/></div><div className="min-w-0"><p className="text-[13px] font-bold truncate">{g.title}</p><p className="text-[11px] text-[#776A86]">{goalHomeLabel(g)}</p></div></div><span className="text-[12px] font-bold text-[#7529DB]">{Math.round(g.balance/g.target*100)} %</span></div>
              <Progress value={g.balance} total={g.target}/>
              <p className="text-[11px] text-[#80758E]">{showBalance(g.balance)} sur {showBalance(g.target)}</p>
            </button>)}
            {visibleGoals.filter(g=>g.status==='active').length>0&&family.pots.some(p=>p.status==='active')&&<div className="border-t border-[#F0EAF7]"/>}
-           {family.pots.filter(p=>p.status==='active').slice(0,1).map(p=><button type="button" key={p.id} onClick={()=>navigateToPot(p.id)} className="w-full flex items-center gap-3 text-left py-1">
+           {family.pots.filter(p=>p.status==='active').slice(0,1).map(p=><button type="button" key={p.id} onClick={()=>navigateToPot(p.id)} className="w-full flex items-center gap-3 text-left py-1 rounded-xl transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="w-10 h-10 shrink-0 bg-[#E8F8F0] rounded-2xl flex items-center justify-center text-[#198A66]"><Gift size={18}/></div>
-             <div className="flex-1 min-w-0"><p className="text-[13px] font-bold truncate">{p.title}</p><p className="text-[11px] text-[#847991]">Cagnotte · {Math.round(p.balance/p.target*100)} % de l'objectif</p></div>
+             <div className="flex-1 min-w-0"><p className="text-[13px] font-bold truncate">{p.title}</p><p className="text-[11px] text-[#847991]">Cagnotte collective · {Math.round(p.balance/p.target*100)} % de l’objectif</p></div>
              <ChevronRight size={16} className="text-[#AAA0B8]"/>
            </button>)}
            {visibleGoals.filter(g=>g.status==='active').length===0&&family.pots.filter(p=>p.status==='active').length===0&&
@@ -426,9 +438,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Services familiaux" right={<button type="button" onClick={()=>mainGo('services')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Tous les services <ChevronRight size={15}/></button>}/>
          <Panel className="px-3 py-4">
-           <div className="grid grid-cols-3 gap-2">
+           <div className="flex items-center justify-center gap-5">
              {[{label:'Chat familial',icon:MessageCircle,screen:'chat'},{label:'Simple Trip',icon:Plane,screen:'trip'},{label:'Documents',icon:LockKeyhole,screen:'vault'}].map(item=>
-               <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="flex flex-col items-center justify-start gap-2 min-w-0">
+               <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="w-[78px] min-h-[74px] rounded-2xl px-1 py-1 flex flex-col items-center justify-start gap-1.5 transition-colors hover:bg-[#F7F1FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
                  <span className="w-12 h-12 rounded-[18px] bg-[#F2EAFE] text-[#6E28D7] flex items-center justify-center"><item.icon size={21}/></span>
                  <span className="text-[10px] font-bold text-center leading-tight text-[#554568]">{item.label}</span>
                </button>)}
@@ -438,8 +450,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
        <section className="rounded-[26px] border border-[#E1D4FA] bg-gradient-to-r from-[#F0E8FF] to-[#EDEBFD] p-4 flex items-start gap-3">
          <div className="bg-white text-[#7731DF] w-11 h-11 rounded-full flex items-center justify-center shrink-0"><Sparkles size={21}/></div>
-         <div className="flex-1"><p className="text-[14px] font-extrabold">Et les finances du foyer ?</p>
-           <p className="text-[12px] text-[#7E7394] mt-1 leading-relaxed">Comprenez les dépenses du foyer, suivez vos budgets et découvrez des recommandations dans le PFM.</p>
+         <div className="flex-1"><p className="text-[14px] font-extrabold">Pilotez les finances de votre foyer</p>
+           <p className="text-[12px] text-[#7E7394] mt-1 leading-relaxed">Analysez vos dépenses familiales, suivez vos budgets et recevez des conseils adaptés.</p>
            <button type="button" onClick={()=>mainGo('pfm')} className="text-[12px] text-[#6024D1] font-bold mt-2 flex items-center gap-1">Découvrir Mon foyer <ArrowRight size={14}/></button>
          </div>
        </section>
@@ -483,7 +495,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      {route==='pocket'&&pocket&&owner&&<>
        <Panel className="p-5 bg-gradient-to-br from-[#3B117A] to-[#6F2EE3] text-white border-none"><div className="flex items-center gap-2"><Avatar member={owner} size={49}/><div><p className="text-[11px] text-white/75">Pocket personnel</p><h2 className="text-lg font-bold">{owner.name}</h2></div></div><p className="text-white/60 text-xs mt-6">Solde disponible</p><p className="text-[29px] font-extrabold mt-1">{showBalance(pocket.balance)}</p><p className="text-xs text-white/70 mt-4">Plafond indicatif : {currency(pocket.limit)}</p><div className="mt-2 h-2 rounded-full bg-white/20 overflow-hidden"><div className="bg-white h-full rounded-full" style={{width:`${Math.min(100,pocket.balance/pocket.limit*100)}%`}}/></div></Panel>
        <div className="grid grid-cols-2 gap-3"><PillButton onClick={()=>launch('transfer',{from:admin&&family.account?'account':`simple:${data.viewerId}`,to:`pocket:${owner.id}`})}>Alimenter <Plus size={16}/></PillButton><PillButton secondary onClick={()=>launch('transfer',{from:`pocket:${owner.id}`,to:`simple:${data.viewerId}`})}>Transférer <ArrowRight size={16}/></PillButton></div>
-       <Panel className="px-4"><ActionLine icon={CreditCard} title="Cartes virtuelles associées" subtitle={`${family.cards.filter(c=>c.source===`pocket:${owner.id}`||c.source===pocket.id).length} carte(s)`} onClick={()=>mainGo('cards')}/>{admin&&<ActionLine icon={Settings2} title="Adapter le plafond" subtitle="Simulation de paramétrage" onClick={()=>launch('limit',{amount:String(pocket.limit)})}/>}<ActionLine icon={ShieldCheck} title="Droits d'accès" subtitle={owner.simpleOne?'Compte Simple One : restrictions particulières':'Leader, Co-leader et propriétaire'} onClick={()=>show('Les règles d’autorisation sont appliquées dans le prototype selon le profil.')}/></Panel>
+       <Panel className="px-4"><ActionLine icon={CreditCard} title="Cartes virtuelles associées" subtitle={`${family.cards.filter(c=>c.source===`pocket:${owner.id}`||c.source===pocket.id).length} carte(s)`} onClick={()=>mainGo('cards')}/>{admin&&<ActionLine icon={Settings2} title="Adapter le plafond" subtitle="Simulation de paramétrage" onClick={()=>launch('limit',{amount:String(pocket.limit)})}/>}<ActionLine icon={ShieldCheck} title="Droits d'accès" subtitle={owner.simpleOne?'Compte Simple One : règles spécifiques':'Visibilité : titulaire, Leader et Co-leader'} onClick={()=>show('Les règles d’autorisation sont appliquées dans le prototype selon le profil.')}/></Panel>
        <Panel className="p-4"><p className="text-[12px] text-[#7E738C]">Les opérations et cartes présentées sont des exemples. Aucun RIB réel ni service bancaire n’est connecté.</p></Panel>
      </>}
 
