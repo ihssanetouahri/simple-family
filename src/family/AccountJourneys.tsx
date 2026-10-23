@@ -14,7 +14,7 @@ type View = 'overview' | 'intro' | 'sub-config' | 'approval' | 'coholder' | 'ide
 type Props = {
   kind: Kind; family: Family; viewerId: string; canViewSub: boolean;
   onUpdate: (fn:(family:Family)=>void)=>void;
-  onHome:()=>void; onToast:(message:string)=>void;
+  onHome:()=>void; onToast:(message:string)=>void; onOpenMembers:()=>void;
 };
 const Button = ({children,onClick,secondary=false,disabled=false}:{
   children:React.ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean;
@@ -53,7 +53,7 @@ function adjustBalance(f:Family,source:string,delta:number) {
  else if(source.startsWith('simple:')){const m=findMember(f,source.slice(7));if(m)m.simpleBalance+=delta;}
  else if(source.startsWith('pocket:')){const p=f.pockets.find(item=>item.ownerId===source.slice(7));if(p)p.balance+=delta;}
 }
-export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome,onToast}:Props){
+export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome,onToast,onOpenMembers}:Props){
  const viewer=findMember(family,viewerId);
  const admin=isAdmin(family,viewerId);
  const coholders=family.jointHolderIds||[];
@@ -80,6 +80,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const [approvalFirst,setApprovalFirst]=useState(false);
  const [approvalSecond,setApprovalSecond]=useState(false);
  const [closureAccepted,setClosureAccepted]=useState(false);
+ const [closureSecondAccepted,setClosureSecondAccepted]=useState(false);
  const [notice,setNotice]=useState('');
  const [notifications,setNotifications]=useState(true);
  const scrollTop=()=>{const el=document.getElementById('simple-scroll-area');if(el)el.scrollTop=0;};
@@ -356,6 +357,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
       onClick={()=>{setSelectedMember(m.id);jump('person');}}/>)}
    </Card>
    <Notes>{kind==='sub'?'La consultation et l’opération sont deux permissions distinctes. Le rôle familial seul ne constitue pas un droit bancaire.':'Les cotitulaires possèdent les droits et obligations définis par la convention du compte joint. Ils ne sont pas de simples membres invités.'}</Notes>
+   {kind==='sub'&&admin&&<Button secondary onClick={onOpenMembers}>Invitations et gestion des membres <Users size={16}/></Button>}
   </>}
   {view==='person'&&<>
    <MiniHead heading={findMember(family,selectedMember)?.name||'Membre'}/>
@@ -411,7 +413,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
     <Field label="Plafond (DH)" value={limit} onChange={setLimit}/>
     <Button secondary disabled={!authorized||!moneyValid(Number(limit))} onClick={()=>{onUpdate(f=>{const a=kind==='sub'?f.account:f.joint;if(a)a.limit=Number(limit);});onToast('Plafond fictif actualisé.');}}>Enregistrer</Button>
    </Card>
-   {kind==='joint'&&authorized&&<Button secondary onClick={()=>{setClosureAccepted(false);jump('closure');}}>Demander la clôture du compte <ArrowRight size={15}/></Button>}
+   {kind==='joint'&&authorized&&<Button secondary onClick={()=>{setClosureAccepted(false);setClosureSecondAccepted(false);jump('closure');}}>Demander la clôture du compte <ArrowRight size={15}/></Button>}
    <Notes>Les règles opérationnelles, plafonds et demandes réelles dépendent des conventions bancaires applicables.</Notes>
   </>}
   {view==='closure'&&<>
@@ -422,9 +424,10 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
     <Notes>Cartes actives : {linkedCards.filter(c=>c.active).length}</Notes>
     {hasPendingClosure?<p className="text-[#B14C61] text-[12px] font-bold">Videz le compte et suspendez les cartes avant de poursuivre.</p>:
       <p className="text-[#19865F] text-[12px] font-bold">Conditions de démonstration satisfaites.</p>}
-    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#752DDB] mt-1" checked={closureAccepted} onChange={e=>setClosureAccepted(e.target.checked)}/>Je confirme les deux accords fictifs pour la clôture de ce compte.</label>
+    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#752DDB] mt-1" checked={closureAccepted} onChange={e=>setClosureAccepted(e.target.checked)}/>Confirmation fictive de {findMember(family,coholders[0]||'')?.name||'premier cotitulaire'}</label>
+    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#752DDB] mt-1" checked={closureSecondAccepted} onChange={e=>setClosureSecondAccepted(e.target.checked)}/>Confirmation fictive de {findMember(family,coholders[1]||'')?.name||'deuxième cotitulaire'}</label>
    </Card>
-   <Button disabled={hasPendingClosure||!closureAccepted} onClick={()=>{onUpdate(f=>{f.joint=null;f.jointHolderIds=[];f.jointApplication=null;});onToast('Compte joint clôturé (simulation).');onHome();}}>Simuler la clôture <Check size={16}/></Button>
+   <Button disabled={hasPendingClosure||!closureAccepted||!closureSecondAccepted} onClick={()=>{onUpdate(f=>{f.joint=null;f.jointHolderIds=[];f.jointApplication=null;});onToast('Compte joint clôturé (simulation).');onHome();}}>Simuler la clôture <Check size={16}/></Button>
   </>}
  </div>;
 }
