@@ -8,6 +8,7 @@ export type SavingsGoal = { id: string; title: string; creatorId: string; ownerI
 export type FamilyPot = { id: string; title: string; target: number; balance: number; members: string[]; status: 'active'|'closed'; };
 export type FamilyCard = { id: string; label: string; last4: string; source: string; holderId: string; active: boolean; };
 export type FamilyInvite = { id: string; name: string; relation: string; simpleOne: boolean; role: Role; };
+export type FamilyAlert = { id: string; type: 'bill'; title: string; beneficiary: string; amount: number; dueDate: string; resolved: boolean; };
 export type ChatMsg = { id: string; authorId: string; text: string; date: string; };
 export type VaultDoc = { id: string; title: string; type: string; expiry: string; ownerId: string; visibleTo: string[]; };
 export type FamilyBooking = { id: string; travelerId: string; destination: string; date: string; amount: number; };
@@ -16,7 +17,7 @@ export type Family = {
   id: string; name: string; emoji: string; members: Member[]; pockets: Pocket[]; accountViewIds: string[];
   account: BankAccount | null; joint: BankAccount | null;
   transactions: FamilyTransaction[]; goals: SavingsGoal[]; pots: FamilyPot[]; cards: FamilyCard[];
-  invites: FamilyInvite[]; chat: ChatMsg[]; documents: VaultDoc[];
+  invites: FamilyInvite[]; alerts: FamilyAlert[]; chat: ChatMsg[]; documents: VaultDoc[];
   bookings: FamilyBooking[]; creditRequests: CreditRequest[];
   loyaltyPoints: number; otpThreshold: number; language: 'Français'|'العربية'|'English';
 };
@@ -27,6 +28,12 @@ export const currency = (n: number) => new Intl.NumberFormat('fr-FR',{maximumFra
 export const parseMoney = (value: string) => Number(value.replace(',','.'));
 export const avatarFor = (memberId: string) => memberId === 'lamia' ? 'lamia' : memberId === 'karim' ? 'karim' : memberId === 'yasmine' ? 'yasmine' : '';
 export const roleLabel = (role:Role) => role === 'leader' ? 'Leader' : role === 'coleader' ? 'Co-leader' : 'Membre';
+const dateInDays = (days: number) => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+};
 export function createDemoState(): FamilyState {
   return { version: 2, activeFamilyId: 'family_main', viewerId: 'lamia', families: [
     { id:'family_main', name:'Notre famille', emoji:'💜',accountViewIds:['lamia','karim'], language:'Français', otpThreshold:2000,
@@ -51,7 +58,8 @@ export function createDemoState(): FamilyState {
       goals:[{id:'goal_vac',title:'Vacances en famille',creatorId:'lamia',ownerId:'lamia',target:10000,balance:4500,deadline:'2027-07-15',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g1',memberId:'lamia',amount:2500,date:'10 oct.',kind:'deposit'},{id:'g2',memberId:'karim',amount:2000,date:'15 oct.',kind:'deposit'}]}],
       pots:[{id:'pot1',title:'Anniversaire de Yasmine',target:1500,balance:400,members:['lamia','karim'],status:'active'}],
       cards:[{id:'card1',label:'Carte Famille',last4:'4582',source:'family',holderId:'lamia',active:true}, {id:'card2',label:'Carte Pocket Yasmine',last4:'1046',source:'p_yasmine',holderId:'yasmine',active:true}],
-      invites:[],
+      invites:[{id:'invite_amine',name:'Amine',relation:'Fils',simpleOne:true,role:'member'}],
+      alerts:[{id:'bill_internet',type:'bill',title:'Facture Internet à régler',beneficiary:'Internet',amount:390,dueDate:dateInDays(3),resolved:false}],
       chat:[{id:'msg1',authorId:'karim',text:'On prévoit les courses samedi ?',date:'18:20'},{id:'msg2',authorId:'lamia',text:'Oui, je prépare la liste 😊',date:'18:21'}],
       documents:[{id:'doc1',title:'Assurance familiale',type:'Assurance',expiry:'2027-05-31',ownerId:'lamia',visibleTo:['lamia','karim']}],
       bookings:[],creditRequests:[],loyaltyPoints:720
@@ -59,9 +67,18 @@ export function createDemoState(): FamilyState {
   ]};
 }
 export const STORE_KEY='simple-family-prototype-v2';
-export function loadFamilyState():FamilyState {
-  try { const raw = localStorage.getItem(STORE_KEY); if(raw) { const state=JSON.parse(raw) as FamilyState; if(state.version===2 && Array.isArray(state.families)) return state; } } catch {/* demo reset */}
-  return createDemoState();
+// Session-only demo state: navigation preserves edits, refreshing the page resets everything.
+let demoSessionState: FamilyState | null = null;
+export function loadFamilyState(): FamilyState {
+  if (!demoSessionState) {
+    // Remove legacy persisted edits so previous prototypes cannot restore stale data.
+    try { localStorage.removeItem(STORE_KEY); } catch { /* storage disabled */ }
+    demoSessionState = createDemoState();
+  }
+  return structuredClone(demoSessionState);
+}
+export function saveFamilyState(state: FamilyState): void {
+  demoSessionState = structuredClone(state);
 }
 export function findMember(family:Family, id:string) { return family.members.find(m=>m.id===id); }
 export function isAdmin(family:Family, viewerId:string) { return ['leader','coleader'].includes(findMember(family,viewerId)?.role||''); }
