@@ -48,15 +48,15 @@ function FamilyPhotoCover({id, kind, label}: {id:string;kind:'goal'|'pot';label:
 }
 
 // Compact, swipeable circular-progress card shared by goals and cagnottes.
-function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick}:{
-  id:string;kind:'goal'|'pot';title:string;description:string;current:number;target:number;onClick:()=>void
+function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick,detail=false,status}:{
+  id:string;kind:'goal'|'pot';title:string;description:string;current:number;target:number;
+  onClick?:()=>void;detail?:boolean;status?:'active'|'closed'
 }) {
   const progress=target>0?Math.max(0,Math.min(100,Math.round(current/target*100))):0;
   const isPot=kind==='pot';
   const accent=isPot?'#169C72':'#8000EB';
   const remaining=Math.max(0,target-current);
-  return <button type="button" onClick={onClick}
-    className="shrink-0 w-[264px] snap-start group rounded-[27px] bg-white border border-[#EDE5F7] p-4 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)] hover:shadow-[0_9px_23px_rgba(72,30,132,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+  const cardContent = <>
     <div className="relative mx-auto w-[134px] h-[140px] flex items-start justify-center">
       <svg viewBox="0 0 134 134" className="absolute inset-0 w-[134px] h-[134px]" aria-hidden="true">
         <circle cx="67" cy="67" r="58" fill="none" stroke="#EEE8F8" strokeWidth="7"/>
@@ -81,7 +81,18 @@ function FamilyProgressPhotoCard({id,kind,title,description,current,target,onCli
         <p className="text-[13px] font-extrabold mt-1 whitespace-nowrap" style={{color:accent}}>{currency(remaining)}</p>
       </div>
     </div>
-  </button>;
+  </>;
+  // The dashboard card stays clickable and swipeable; detail uses the same
+  // visual content in a full-width, non-interactive summary above the actions.
+  return detail
+    ? <section aria-label={title} className="relative w-full rounded-[27px] bg-white border border-[#EDE5F7] p-5 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)]">
+        {status&&<div className="absolute right-4 top-4"><Tag tone={status==='closed'?'green':'violet'}>{status==='closed'?'Clôturé':'En cours'}</Tag></div>}
+        {cardContent}
+      </section>
+    : <button type="button" onClick={onClick}
+        className="shrink-0 w-[264px] snap-start group rounded-[27px] bg-white border border-[#EDE5F7] p-4 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)] hover:shadow-[0_9px_23px_rgba(72,30,132,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+        {cardContent}
+      </button>;
 }
 
 function Avatar({member, size=42}: {member?:Member;size?:number}) {
@@ -718,7 +729,16 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='goal'&&goal&&visibleGoals.some(g=>g.id===goal.id)&&<>
-       <div className="card-simple p-5 space-y-4"><div className="flex justify-between items-center"><span className="text-4xl">{goal.title.toLowerCase().includes('vacan')?'✈️':'🎯'}</span><Tag tone={goal.status==='closed'?'green':'violet'}>{goal.status==='closed'?'Clôturé':'En cours'}</Tag></div><div><h2 className="text-[21px] font-extrabold">{goal.title}</h2><p className="text-[11px] text-[#8A7D96] mt-1">Bénéficiaire : {initialsFor(goal.ownerId)} · {dateFor(goal.deadline)}</p></div><div className="flex justify-between items-end"><p className="text-[28px] font-extrabold">{currency(goal.balance)}</p><p className="text-[13px] text-[#857990]">/ {currency(goal.target)}</p></div><Progress value={goal.balance} total={goal.target}/><p className="text-[12px] text-[#806F99]">Encore {currency(Math.max(0,goal.target-goal.balance))} à atteindre</p></div>
+       <FamilyProgressPhotoCard
+         id={goal.id}
+         kind="goal"
+         title={goal.title}
+         description={`Échéance : ${dateFor(goal.deadline)} · Pour ${initialsFor(goal.ownerId)}`}
+         current={goal.balance}
+         target={goal.target}
+         status={goal.status}
+         detail
+       />
        {goal.status==='active'&&<div className="grid grid-cols-2 gap-3"><PillButton onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/>Contribuer</PillButton><PillButton secondary disabled={!(admin||goal.ownerId===data.viewerId)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton></div>}
        <Panel className="p-4 space-y-3"><div className="flex items-center justify-between"><p className="text-[13px] font-extrabold">Contributeurs habilités</p><Users size={18} className="text-[#7A35E6]"/></div><div className="flex -space-x-2">{goal.contributors.map(id=><Avatar key={id} size={36} member={findMember(family,id)}/>)}</div><p className="text-[11px] text-[#837891]">Versement programmé fictif : {goal.scheduledAmount?currency(goal.scheduledAmount)+'/mois':'non défini'}</p>{(admin||goal.ownerId===data.viewerId)&&goal.status==='active'&&<button type="button" onClick={()=>launch('goal-schedule',{amount:String(goal.scheduledAmount)})} className="text-[#692AD8] text-[12px] font-bold flex items-center gap-1"><CalendarDays size={15}/> Paramétrer une programmation</button>}</Panel>
        <section><Heading title="Historique des mouvements"/><Panel className="px-4">{goal.history.length?goal.history.map(h=><div key={h.id} className="flex items-center py-3 border-b last:border-none border-[#F0EAF7] gap-3"><div className="bg-[#F0E9FF] p-2 rounded-xl text-[#7A35E0]"><ArrowDownLeft size={18}/></div><div className="flex-1"><p className="text-[12px] font-bold">{h.kind==='deposit'?'Contribution':'Retrait'} · {initialsFor(h.memberId)}</p><p className="text-[10px] text-[#8A8097]">{h.date}</p></div><span className="text-[12px] font-bold">{h.kind==='deposit'?'+':'−'}{currency(h.amount)}</span></div>):<p className="py-4 text-xs text-[#81758F]">Aucun mouvement pour le moment.</p>}</Panel></section>
