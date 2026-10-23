@@ -276,68 +276,104 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
    <Notes>{kind==='joint'&&!canRequestJoint?'L’ouverture n’est pas accessible à ce profil dans le scénario. ':''}Offre, éligibilité, tarifs et conventions bancaires à valider. L'ouverture ici est uniquement simulée.</Notes>
   </>}
   {view==='sub-config'&&<>
-   <MiniHead heading="Configurer votre sous-compte" desc="Définissez les membres autorisés à consulter le solde. Les droits de paiement restent distincts."/>
-   <Card className="space-y-3">
-    <p className="font-bold text-[13px]">Consultation du solde</p>
-    {family.members.map(m=>{
-     const locked=m.role==='leader'||m.role==='coleader';
-     return <label key={m.id} className="flex items-center gap-3 py-2 border-b last:border-none border-[#EEE7F8] text-[12px]">
-      <input type="checkbox" disabled={locked} checked={locked||subAccess.includes(m.id)}
-       onChange={e=>setSubAccess(prev=>e.target.checked?[...new Set([...prev,m.id])]:prev.filter(id=>id!==m.id))}
-       className="accent-[#772DDD]"/>
-      <span className="flex-1"><strong>{m.name}</strong><span className="block text-[#81758D] text-[11px]">{locked?'Accès de gestion':'Consultation facultative'}</span></span>
-     </label>;
-    })}
+   <MiniHead heading="Configurer votre sous-compte" desc="Choisissez qui pourra consulter le solde et l'historique du compte familial."/>
+   <Card className="p-4">
+    <SectionHead title="Accès des membres"/>
+    <div className="space-y-2">
+     {family.members.map(m=>{
+      const locked=m.role==='leader'||m.role==='coleader';
+      return <label key={m.id} className="flex items-center gap-3 p-3 rounded-[18px] border border-[#EEE7F8] bg-[#FCFAFF] cursor-pointer">
+       <PersonAvatar member={m} size={43}/>
+       <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-bold truncate">{m.name}</span>
+        <span className="block text-[11px] mt-0.5 text-[#81758D]">{locked?'Accès de gestion':m.simpleOne?'Compte Simple One':'Consultation facultative'}</span>
+       </span>
+       <input aria-label={`Autoriser la consultation à ${m.name}`} type="checkbox" disabled={locked} checked={locked||subAccess.includes(m.id)}
+        onChange={e=>setSubAccess(prev=>e.target.checked?[...new Set([...prev,m.id])]:prev.filter(id=>id!==m.id))}
+        className="w-4 h-4 accent-[#772DDD] shrink-0"/>
+      </label>;
+     })}
+    </div>
    </Card>
-   <Button disabled={!admin} onClick={createSub}>Confirmer la création fictive <Check size={16}/></Button>
-   <Notes>La création et les droits sont simulés ; les règles bancaires définitives restent à valider.</Notes>
+   <Card className="flex items-start gap-3 bg-[#F1EBFD] border-[#E1D2FA]">
+    <ShieldCheck size={21} className="text-[#7230DA] shrink-0"/>
+    <Notes>Autoriser la consultation ne donne pas le droit d'effectuer des paiements. Les opérations restent soumises aux droits de gestion.</Notes>
+   </Card>
+   <Button disabled={!admin} onClick={createSub}>Confirmer la création fictive <ArrowRight size={17}/></Button>
   </>}
   {view==='coholder'&&<>
-   <MiniHead heading="Choisir le deuxième cotitulaire" desc="Sélectionnez un membre adulte éligible dans la famille. Le rôle familial ne confère pas automatiquement de droits bancaires."/>
-   {membersEligible.length?<Card className="space-y-2">
-    {membersEligible.map(m=><button key={m.id} type="button" onClick={()=>setOpeningHolder(m.id)}
-      className={'w-full border rounded-2xl text-left p-4 flex gap-3 items-center '+(openingHolder===m.id?'border-[#8B56E5] bg-[#F6F0FF]':'border-[#E9E1F4]')}>
-      <div className="w-10 h-10 bg-[#EAE0FE] text-[#6F2CD7] rounded-full flex items-center justify-center"><Users size={19}/></div>
-      <div className="flex-1"><p className="text-[13px] font-bold">{m.name}</p><Notes>{m.relation} · Compte Simple</Notes></div>
-      {openingHolder===m.id&&<Check size={19} className="text-[#6A28D4]"/>}
-    </button>)}
-   </Card>:<Card><Notes>Aucun conjoint éligible dans la famille. Ajoutez un membre adulte avant de poursuivre.</Notes></Card>}
+   <MiniHead heading="Choisir votre cotitulaire" desc="Sélectionnez le membre adulte avec qui vous souhaitez ouvrir ce compte."/>
+   <Card className="p-4 space-y-3">
+    <SectionHead title="Membre éligible"/>
+    {membersEligible.length?membersEligible.map(m=><PersonTile key={m.id} member={m}
+      selected={openingHolder===m.id} label={m.relation+' · Compte Simple'}
+      onClick={()=>setOpeningHolder(m.id)}/>):
+     <div className="py-4 text-center"><Users size={23} className="text-[#7430D8] mx-auto mb-2"/><Notes>Aucun conjoint adulte éligible dans la famille.</Notes></div>}
+   </Card>
+   <Card className="flex items-start gap-3 bg-[#F3ECFF] border-[#E7DBFC]">
+    <Users size={21} className="text-[#712BDA] shrink-0"/>
+    <Notes>Le rôle de Leader ou Co-leader dans « Ma famille » ne remplace pas le statut bancaire de cotitulaire.</Notes>
+   </Card>
    <Button disabled={!openingHolder} onClick={()=>jump('identity')}>Continuer <ArrowRight size={16}/></Button>
   </>}
   {view==='identity'&&<>
-   <MiniHead heading="Vérifier les informations" desc="Les informations affichées sont fictives ; aucune identification réglementaire n'est réalisée."/>
-   <Card className="space-y-3">
-    <div><Notes>Premier cotitulaire</Notes><p className="font-bold text-[14px]">{viewer?.name}</p></div>
-    <div className="border-t border-[#F0EAF7] pt-3"><Notes>Deuxième cotitulaire</Notes><p className="font-bold text-[14px]">{findMember(family,openingHolder)?.name}</p></div>
-    <div className="bg-[#F6F2FF] rounded-xl p-3"><Notes>Dans une banque réelle, identité, éligibilité et informations requises seraient contrôlées.</Notes></div>
+   <MiniHead heading="Vérifier les informations" desc="Retrouvez les deux personnes associées à la demande."/>
+   <Card className="p-4 space-y-3">
+    <div><p className="text-[11px] font-bold text-[#82718F] mb-2">Premier cotitulaire</p><PersonTile member={viewer} label="Demandeur · Vous"/></div>
+    <div><p className="text-[11px] font-bold text-[#82718F] mb-2">Deuxième cotitulaire</p>
+     <PersonTile member={findMember(family,openingHolder)} label="Conjoint · À confirmer"/></div>
+   </Card>
+   <Card className="flex gap-3 bg-[#F1EBFD] border-[#E1D2FA] items-start">
+    <ShieldCheck size={20} className="text-[#742ADA] shrink-0"/>
+    <Notes>Les informations sont fictives. Dans un parcours réel, l'identification et l'éligibilité des deux cotitulaires seront vérifiées par la banque.</Notes>
    </Card>
    <Button onClick={()=>jump('terms')}>Continuer <ArrowRight size={16}/></Button>
   </>}
   {view==='terms'&&<>
-   <MiniHead heading="Conditions du compte joint" desc="Chaque cotitulaire doit prendre connaissance des conditions et exprimer son accord."/>
-   <Card className="space-y-3">
-    {['Titularité et droits des deux parties','Modalités de fonctionnement du compte','Responsabilités contractuelles','Frais et documents selon la convention'].map(t=>
-     <div key={t} className="text-[12px] flex gap-2 items-start"><CheckCircle2 size={16} className="text-[#742CDC] shrink-0"/>{t}</div>)}
-    <div className="rounded-xl bg-[#FFF7E8] p-3"><Notes>Ces textes sont une illustration UX, pas les véritables conditions contractuelles de Simple.</Notes></div>
-    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#712BDA] mt-1" checked={termsAccepted} onChange={e=>setTermsAccepted(e.target.checked)}/>J'ai consulté la présentation fictive des conditions.</label>
-    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#712BDA] mt-1" checked={firstSignature} onChange={e=>setFirstSignature(e.target.checked)}/>Je confirme ma demande en tant que premier cotitulaire (simulation).</label>
+   <MiniHead heading="Conditions du compte joint" desc="Prenez connaissance des règles de fonctionnement avant de poursuivre."/>
+   <Card className="p-4 space-y-4">
+    <div className="flex items-center gap-3">
+     <span className="w-11 h-11 flex items-center justify-center rounded-2xl bg-[#F1E8FF] text-[#6F2BD7]"><FileText size={21}/></span>
+     <div className="flex-1"><p className="font-extrabold text-[13px]">Convention du compte</p><Notes>Conditions illustratives à confirmer</Notes></div>
+    </div>
+    <div className="space-y-3 border-t border-[#F0EBF6] pt-4">
+     {['Titularité et droits des deux parties','Modalités de fonctionnement du compte','Responsabilités contractuelles','Frais et documents selon la convention'].map(t=>
+      <div key={t} className="flex items-start gap-2.5 text-[12px]"><CheckCircle2 size={17} className="text-[#7430DD] shrink-0"/><span>{t}</span></div>)}
+    </div>
+    <div className="rounded-[17px] bg-[#FFF7E8] p-3"><Notes>Ce contenu est une simulation UX et ne constitue pas une convention bancaire.</Notes></div>
+   </Card>
+   <Card className="p-4 space-y-3">
+    <label className="flex items-start gap-3 text-[12px] leading-relaxed"><input type="checkbox" className="accent-[#712BDA] mt-1 w-4 h-4 shrink-0" checked={termsAccepted} onChange={e=>setTermsAccepted(e.target.checked)}/>J'ai consulté la présentation fictive des conditions.</label>
+    <div className="border-t border-[#EFE9F7]"/>
+    <label className="flex items-start gap-3 text-[12px] leading-relaxed"><input type="checkbox" className="accent-[#712BDA] mt-1 w-4 h-4 shrink-0" checked={firstSignature} onChange={e=>setFirstSignature(e.target.checked)}/>Je confirme ma demande comme premier cotitulaire (simulation).</label>
    </Card>
    <Button disabled={!termsAccepted||!firstSignature} onClick={requestJoint}>Envoyer la demande à {findMember(family,openingHolder)?.name||'mon conjoint'} <Send size={16}/></Button>
   </>}
   {view==='opening'&&<>
-   <MiniHead heading="Suivi de l'ouverture" desc="L'avancement est simulé. Le deuxième cotitulaire ne reçoit aucune véritable notification."/>
-   <Card className="space-y-3">
-    <div className="flex gap-3 items-center"><HeartHandshake size={24} className="text-[#732ADD]"/>
-     <div><p className="font-bold text-[14px]">Compte joint</p><Notes>{findMember(family,application?.requesterId||'')?.name} & {findMember(family,application?.coHolderId||'')?.name}</Notes></div></div>
-    <div className="border-t border-[#EAE2F3] pt-3"><p className="font-bold text-[13px]">{application?.status==='awaiting'?'En attente du deuxième cotitulaire':application?.status==='review'?'En cours de vérification':application?.status==='rejected'?'Demande refusée':'Aucune demande en cours'}</p></div>
+   <MiniHead heading="Suivi de l'ouverture" desc="Suivez la demande et simulez les validations de chaque cotitulaire."/>
+   <Card className="p-5 space-y-4">
+    <div className="flex items-center justify-between gap-3">
+     <div><p className="text-[11px] text-[#80738D]">Compte joint</p><h3 className="font-extrabold text-[17px] mt-1">Ouverture à deux</h3></div>
+     <span className="w-11 h-11 rounded-2xl bg-[#F1E9FF] flex justify-center items-center text-[#7231D6]"><HeartHandshake size={22}/></span>
+    </div>
+    <div className="flex items-center gap-3 rounded-[18px] bg-[#F9F5FF] p-3">
+     <AvatarStack members={family.members.filter(m=>m.id===application?.requesterId||m.id===application?.coHolderId)}/>
+     <div className="min-w-0"><p className="font-bold text-[12px]">{findMember(family,application?.requesterId||'')?.name} & {findMember(family,application?.coHolderId||'')?.name}</p><Notes>Deux futurs cotitulaires</Notes></div>
+    </div>
+    <div className="border-t border-[#EFE9F7] pt-3 flex items-start gap-3">
+     <span className={'w-9 h-9 rounded-full flex items-center justify-center shrink-0 '+(application?.status==='review'?'bg-[#E6F8EE] text-[#208965]':application?.status==='rejected'?'bg-[#FFF0F3] text-[#B34B6C]':'bg-[#FFF3E1] text-[#B77E22]')}>
+      {application?.status==='review'?<Check size={18}/>:application?.status==='rejected'?<XCircle size={18}/>:<CalendarDays size={18}/>}</span>
+     <div><p className="font-extrabold text-[13px]">{application?.status==='awaiting'?'En attente de confirmation':application?.status==='review'?'Les deux accords ont été simulés':application?.status==='rejected'?'Demande refusée':'Demande indisponible'}</p>
+      <Notes>{application?.status==='awaiting'?'Le deuxième cotitulaire doit donner son accord.':application?.status==='review'?'La validation bancaire reste à simuler.':'Vous pouvez recommencer avec une nouvelle demande.'}</Notes></div>
+    </div>
    </Card>
-   {application?.status==='awaiting'&&<Card className="space-y-3">
-    <p className="text-[13px] font-bold">Simuler la réponse de {findMember(family,application.coHolderId)?.name}</p>
+   {application?.status==='awaiting'&&<Card className="p-4 space-y-3">
+    <PersonTile member={findMember(family,application.coHolderId)} label="Confirmation du deuxième cotitulaire"/>
     <Button onClick={()=>respondJoint(true)}>Simuler son accord <Check size={16}/></Button>
     <Button secondary onClick={()=>respondJoint(false)}>Simuler un refus <XCircle size={16}/></Button>
    </Card>}
-   {application?.status==='review'&&<Card className="space-y-3">
-    <Notes>Les deux accords fictifs sont obtenus. La vérification réglementaire serait réalisée par la banque.</Notes>
+   {application?.status==='review'&&<Card className="p-4 space-y-3">
+    <Notes>Les deux accords fictifs sont obtenus. Les vérifications bancaires sont uniquement illustrées.</Notes>
     <Button onClick={activateJoint}>Simuler la validation bancaire <CheckCircle2 size={16}/></Button>
    </Card>}
    {application?.status==='rejected'&&<Button onClick={()=>{onUpdate(f=>{f.jointApplication=null;});setOpeningHolder('');setTermsAccepted(false);setFirstSignature(false);jump('coholder');}}>Nouvelle demande <ArrowRight size={16}/></Button>}
