@@ -38,7 +38,7 @@ const Button = ({children,onClick,secondary=false,disabled=false}:{
  ' w-full rounded-full min-h-[46px] px-4 text-[13px] font-bold inline-flex justify-center items-center gap-2 transition hover:brightness-105 active:scale-[0.985] disabled:opacity-40 disabled:cursor-not-allowed'
 }>{children}</button>;
 const Card=({children,className=''}:{children:React.ReactNode;className?:string})=>
- <section className={'card-simple '+className}>{children}</section>;
+ <section className={'card-simple p-4 '+className}>{children}</section>;
 const SectionHead=({title,action}:{title:string;action?:React.ReactNode})=>
  <div className="flex justify-between items-center gap-2 px-1 mb-3">
   <h3 className="text-[17px] font-extrabold leading-tight text-[#211535]">{title}</h3>{action}
@@ -199,52 +199,81 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const jointPeople=coholders.map(id=>findMember(family,id)?.name||'Cotitulaire').join(' & ');
  return <div className="space-y-4 pb-5 text-[#251635]">
   {view==='overview'&&account&&<>
-   <Card className="bg-gradient-to-br from-[#FAF7FF] to-white">
-    <div className="flex items-center justify-between"><div className="inline-flex items-center gap-2 text-[#6830D2] font-extrabold text-[13px]">
-     {kind==='sub'?<Landmark size={19}/>:<HeartHandshake size={19}/>} {title}</div>
-     <span className="text-[10px] font-bold px-2.5 py-1 bg-[#E7F8ED] text-[#16875B] rounded-full">Actif</span></div>
-    <p className="text-[11px] mt-5 text-[#80728F]">Solde disponible</p>
-    <p className="text-[30px] font-extrabold mt-1">{readable?currency(account.balance):'Solde masqué'}</p>
-    <p className="text-[11px] text-[#83758F] mt-2">{kind==='sub'?'Dépenses communes · '+family.name:'Cotitulaires · '+jointPeople}</p>
-   </Card>
-   <div className="grid grid-cols-3 gap-2">
-    {[{type:'add' as Action,label:'Alimenter',Icon:Plus},{type:'transfer' as Action,label:'Transférer',Icon:Send},{type:'pay' as Action,label:'Payer',Icon:ReceiptText}].map(item=>
+   <div className="relative overflow-hidden rounded-[28px] p-5 bg-gradient-to-br from-[#32106E] via-[#5416A9] to-[#7837E5] text-white shadow-[0_12px_30px_rgba(74,26,148,0.20)]">
+    <div className="flex items-start justify-between gap-3">
+     <div className="flex items-center gap-2 text-white/90 font-bold text-[12px]">
+      {kind==='sub'?<Landmark size={19}/>:<HeartHandshake size={19}/>} {title}
+     </div>
+     <span className="rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[10px] font-bold">Actif</span>
+    </div>
+    <p className="mt-7 text-[11px] text-white/70">Solde disponible</p>
+    <p className="mt-1 text-[31px] tracking-tight font-extrabold tabular-nums">{readable?currency(account.balance):'Solde masqué'}</p>
+    <div className="flex items-center justify-between gap-3 mt-6">
+     <div className="min-w-0">
+      <p className="text-[12px] font-bold">{kind==='sub'?'Dépenses communes':'Compte partagé à deux'}</p>
+      <p className="text-[11px] text-white/70 mt-1">{kind==='sub'?family.name:jointPeople}</p>
+     </div>
+     <AvatarStack members={kind==='sub'?family.members:family.members.filter(m=>coholders.includes(m.id))}/>
+    </div>
+   </div>
+   <div className="grid grid-cols-3 gap-2.5">
+    {[{type:'add' as Action,label:'Alimenter',Icon:Plus},{type:'transfer' as Action,label:'Transférer',Icon:ArrowLeftRight},{type:'pay' as Action,label:'Payer',Icon:ReceiptText}].map(item=>
      <button key={item.type} type="button" disabled={!authorized} onClick={()=>begin(item.type)}
-      className="card-simple flex flex-col gap-2 items-center justify-center py-3 min-h-[86px] rounded-[18px] text-[#6C28DB] hover:bg-[#F8F2FF] disabled:opacity-40">
-      <item.Icon size={21}/><span className="text-[11px] font-bold text-[#46345D]">{item.label}</span>
+      className="card-simple min-h-[90px] flex flex-col gap-2 items-center justify-center p-3 text-[#732ADC] hover:border-[#CBB8EE] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
+      <span className="rounded-2xl p-2.5 bg-[#F1E8FF] flex items-center justify-center"><item.Icon size={20}/></span>
+      <span className="text-[11px] font-bold text-[#45365C]">{item.label}</span>
      </button>)}
    </div>
    {!authorized&&<Notes>{kind==='sub'?'Les opérations sont réservées aux membres disposant des droits de gestion.':'Seuls les cotitulaires peuvent effectuer les opérations sur ce compte.'}</Notes>}
-   <section><div className="flex justify-between items-center mb-2"><h3 className="font-extrabold text-[16px]">Opérations récentes</h3>
-    <button type="button" onClick={()=>jump('history')} className="text-[12px] font-bold text-[#6C2BD6]">Voir tout →</button></div>
+   <section>
+    <SectionHead title="Opérations récentes" action={<button type="button" onClick={()=>jump('history')} className="text-[12px] text-[#6D28DB] font-bold inline-flex items-center gap-1">Voir tout <ChevronRight size={15}/></button>}/>
     <Card className="px-4 py-1">
-     {readable&&transactions.length?transactions.slice(0,3).map(t=><Row key={t.id} icon={ArrowDownLeft} title={t.title}
-      caption={t.date+' · '+t.category} onClick={()=>{setSelectedTransaction(t.id);jump('transaction');}}/>):
-      <p className="text-[12px] text-[#80768F] py-4">{readable?'Aucune opération sur ce compte.':'Historique non accessible avec ce profil.'}</p>}
+     {readable&&transactions.length?transactions.slice(0,3).map(t=><Row key={t.id} icon={t.amount>=0?ArrowDownLeft:ReceiptText} title={t.title} caption={t.date+' · '+t.category}
+      trailing={<span className={'font-extrabold text-[12px] shrink-0 '+(t.amount>=0?'text-[#1F966D]':'text-[#302040]')}>{t.amount>0?'+':''}{currency(t.amount)}</span>}
+      onClick={()=>{setSelectedTransaction(t.id);jump('transaction');}}/>):
+      <div className="py-4 text-center"><ReceiptText size={23} className="mx-auto text-[#9F80CF] mb-2"/><Notes>{readable?'Aucune opération sur ce compte.':'Historique non accessible avec ce profil.'}</Notes></div>}
     </Card>
    </section>
-   <Card className="py-1">
-    <Row icon={Users} title={kind==='sub'?'Membres & accès':'Cotitulaires & droits'} onClick={()=>jump('members')}/>
-    <Row icon={CreditCard} title="Cartes associées" onClick={()=>jump('cards')}/>
-    {kind==='joint'&&<Row icon={FileText} title="RIB & documents" onClick={()=>jump('documents')}/>}
-    <Row icon={Settings2} title="Paramètres du compte" onClick={()=>jump('settings')}/>
-   </Card>
-   <Notes>Parcours fictif Simple. Aucune transaction réelle, signature bancaire ou création de compte n'est exécutée.</Notes>
+   <section>
+    <SectionHead title={kind==='sub'?'Espace de gestion':'Gérer le compte joint'}/>
+    <Card className="px-4 py-1">
+     <Row icon={Users} title={kind==='sub'?'Membres & accès':'Cotitulaires & droits'}
+      caption={kind==='sub'?family.members.length+' membres de la famille':jointPeople} onClick={()=>jump('members')}
+      trailing={<span className="flex items-center gap-2"><AvatarStack members={kind==='sub'?family.members:family.members.filter(m=>coholders.includes(m.id))}/><ChevronRight size={16} className="text-[#9D91AB]"/></span>}/>
+     <Row icon={CreditCard} title="Cartes associées" caption={linkedCards.length+' carte'+(linkedCards.length>1?'s':'')} onClick={()=>jump('cards')}/>
+     {kind==='joint'&&<Row icon={FileText} title="RIB & documents" onClick={()=>jump('documents')}/>}
+     <Row icon={Settings2} title="Paramètres du compte" onClick={()=>jump('settings')}/>
+    </Card>
+   </section>
+   <Notes>Parcours de démonstration : aucune opération réelle ni ouverture bancaire n'est exécutée.</Notes>
   </>}
   {view==='intro'&&<>
-   <Card className="p-6 text-center space-y-3 bg-gradient-to-br from-[#F2EBFF] to-white">
-    <div className="rounded-full bg-white text-[#742CD8] w-14 h-14 flex items-center justify-center mx-auto">{kind==='sub'?<Landmark size={27}/>:<HeartHandshake size={27}/>}</div>
-    <h2 className="text-[20px] font-extrabold">{kind==='sub'?'Un espace pour vos dépenses communes':'Un compte à deux, pour vos projets communs'}</h2>
-    <p className="text-[13px] text-[#7E708F] leading-relaxed">{kind==='sub'?'Un sous-compte rattaché à votre espace familial pour organiser les dépenses partagées.':'Deux cotitulaires, un même compte bancaire, avec des droits et responsabilités définis par la convention.'}</p>
-   </Card>
-   <Card className="py-1">
+   <div className="relative overflow-hidden min-h-[225px] rounded-[28px] shadow-[0_12px_34px_rgba(66,20,126,0.16)]">
+    <img src={familyPhoto} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover object-center"/>
+    <div className="absolute inset-0 bg-gradient-to-r from-[#25095D]/95 via-[#45117A]/85 to-[#38116F]/55"/>
+    <div className="relative min-h-[225px] p-5 flex flex-col justify-between text-white">
+     <div className="w-11 h-11 rounded-2xl border border-white/25 bg-white/15 flex items-center justify-center">
+      {kind==='sub'?<Landmark size={23}/>:<HeartHandshake size={23}/>}
+     </div>
+     <div className="mt-7">
+      <h2 className="text-[21px] font-extrabold leading-tight">{kind==='sub'?'Un espace pour vos dépenses communes':'Un compte à deux, pour vos projets communs'}</h2>
+      <p className="text-[12px] text-white/80 leading-relaxed mt-2">{kind==='sub'?'Organisez vos dépenses familiales et adaptez les accès de vos proches.':'Partagez un compte bancaire avec votre conjoint, selon les droits et conditions de la banque.'}</p>
+     </div>
+    </div>
+   </div>
+   <Card className="p-4 space-y-3">
+    <div className="flex items-center justify-between gap-3">
+     <div><p className="font-extrabold text-[13px]">Votre famille</p><Notes>{family.members.length} membres · {family.name}</Notes></div>
+     <AvatarStack members={family.members}/>
+    </div>
+    <div className="border-t border-[#F0EBF6]"/>
     <Row icon={Users} title={kind==='sub'?'Accès adaptés aux membres':'Deux cotitulaires distincts'} onClick={()=>onToast('Les droits seront définis lors de la configuration.')} />
     <Row icon={ShieldCheck} title="Autorisations et sécurité" onClick={()=>onToast('Les modalités bancaires restent à confirmer.')} />
     <Row icon={CreditCard} title="Cartes et paiements selon l'offre" onClick={()=>onToast('Fonctionnalité simulée, sous réserve des conditions bancaires.')} />
    </Card>
    {kind==='sub'?<Button disabled={!admin} onClick={()=>jump('sub-config')}>Créer mon sous-compte <ArrowRight size={16}/></Button>:
     <Button disabled={!canRequestJoint} onClick={()=>jump('coholder')}>Ouvrir un compte joint <ArrowRight size={16}/></Button>}
-   <Notes>{kind==='joint'&&!canRequestJoint?'L’ouverture n’est pas accessible à ce profil dans le scénario. ':' '}Offre, éligibilité, tarifs et conventions bancaires à valider. L'ouverture ici est uniquement simulée.</Notes>
+   <Notes>{kind==='joint'&&!canRequestJoint?'L’ouverture n’est pas accessible à ce profil dans le scénario. ':''}Offre, éligibilité, tarifs et conventions bancaires à valider. L'ouverture ici est uniquement simulée.</Notes>
   </>}
   {view==='sub-config'&&<>
    <MiniHead heading="Configurer votre sous-compte" desc="Définissez les membres autorisés à consulter le solde. Les droits de paiement restent distincts."/>
