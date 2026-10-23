@@ -19,8 +19,9 @@ type View = 'overview' | 'intro' | 'sub-config' | 'approval' | 'coholder' | 'ide
 type Props = {
   kind: Kind; family: Family; viewerId: string; canViewSub: boolean;
   onUpdate: (fn:(family:Family)=>void)=>void;
-  onHome:()=>void; onToast:(message:string)=>void; onOpenMembers:()=>void;
+  onHome:()=>void; onBack:()=>void; onToast:(message:string)=>void; onOpenMembers:()=>void;
 };
+export type AccountJourneyHandle = { goBack: () => boolean };
 // Same tokens and avatar treatment as the other Ma famille screens.
 const PersonAvatar = ({member,size=44}:{member?:Member;size?:number})=>{
  const src=member?({lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar} as Record<string,string>)[avatarFor(member.id)]:undefined;
@@ -88,7 +89,7 @@ function adjustBalance(f:Family,source:string,delta:number) {
  else if(source.startsWith('simple:')){const m=findMember(f,source.slice(7));if(m)m.simpleBalance+=delta;}
  else if(source.startsWith('pocket:')){const p=f.pockets.find(item=>item.ownerId===source.slice(7));if(p)p.balance+=delta;}
 }
-export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome,onToast,onOpenMembers}:Props){
+export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome,onBack,onToast,onOpenMembers},ref){
  const viewer=findMember(family,viewerId);
  const admin=isAdmin(family,viewerId);
  const coholders=family.jointHolderIds||[];
@@ -121,7 +122,18 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const [notifications,setNotifications]=useState(true);
  const scrollTop=()=>{const el=document.getElementById('simple-scroll-area');if(el)el.scrollTop=0;};
  const jump=(next:View)=>{setTrail(prev=>[...prev,view]);setView(next);setNotice('');scrollTop();};
- const previous=()=>{if(trail.length){setView(trail[trail.length-1]);setTrail(t=>t.slice(0,-1));setNotice('');scrollTop();}else onHome();};
+ // The inner breadcrumb is authoritative while navigating through account steps.
+ // Returning false lets the parent go back to the screen that opened this account.
+ const goBack=():boolean=>{
+  if(!trail.length)return false;
+  setView(trail[trail.length-1]);
+  setTrail(current=>current.slice(0,-1));
+  setNotice('');
+  scrollTop();
+  return true;
+ };
+ React.useImperativeHandle(ref,()=>({goBack}));
+ const previous=()=>{if(!goBack())onBack();};
  const root=()=>{setTrail([]);setView('overview');setNotice('');scrollTop();};
  const begin=(type:Action)=>{setAction(type);setAmount('');setBeneficiary('Facture familiale');setDestination('');setApprovalFirst(false);setApprovalSecond(false);jump('money');};
  const membersEligible=family.members.filter(m=>m.id!==viewerId&&!m.simpleOne&&m.relation==='Conjoint');
@@ -602,4 +614,4 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
    <Notes>Aucune demande réelle de clôture n'est envoyée. Les conditions bancaires restent à confirmer.</Notes>
   </>}
  </div>;
-}
+});
