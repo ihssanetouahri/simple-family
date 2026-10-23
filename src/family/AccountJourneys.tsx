@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import {
-  ArrowDownLeft, ArrowLeft, ArrowRight, Bell, Check, CheckCircle2, ChevronRight,
-  CreditCard, FileText, HeartHandshake, Info, Landmark, LockKeyhole, Plus,
-  ReceiptText, Send, Settings2, ShieldCheck, Users, WalletCards, XCircle
+  ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight,
+  CreditCard, FileText, HeartHandshake, Landmark, LockKeyhole, Plus,
+  ReceiptText, Send, Settings2, ShieldCheck, Users, WalletCards, XCircle, Eye,
+  ArrowLeftRight, PiggyBank
 } from 'lucide-react';
-import { currency, findMember, isAdmin, moneyValid, today, uid, type Family, type FamilyCard, type FamilyTransaction } from './model';
+import { avatarFor, currency, findMember, isAdmin, moneyValid, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
+import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
+import karimAvatar from '../assets/images/karim.jpg';
+import yasmineAvatar from '../assets/images/yasmine.jpg';
+import familyPhoto from '../assets/images/family_photo.jpg';
 
 type Kind = 'sub' | 'joint';
 type Action = 'add' | 'transfer' | 'pay';
@@ -16,22 +21,52 @@ type Props = {
   onUpdate: (fn:(family:Family)=>void)=>void;
   onHome:()=>void; onToast:(message:string)=>void; onOpenMembers:()=>void;
 };
+// Same tokens and avatar treatment as the other Ma famille screens.
+const PersonAvatar = ({member,size=44}:{member?:Member;size?:number})=>{
+ const src=member?({lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar} as Record<string,string>)[avatarFor(member.id)]:undefined;
+ return <span style={{width:size,height:size}} className="rounded-full border-2 border-white shadow-sm shrink-0 overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#DFCCFF] to-[#A68BEB] text-[#482096] font-extrabold">
+   {src?<img src={src} alt="" className="w-full h-full object-cover"/>:<span style={{fontSize:Math.max(13,size*.32)}}>{member?.name?.slice(0,1)||'+'}</span>}
+ </span>;
+};
+const AvatarStack=({members}:{members:Member[]})=><div className="flex -space-x-2.5 shrink-0">
+ {members.slice(0,3).map(m=><PersonAvatar key={m.id} member={m} size={35}/>)}
+ </div>;
 const Button = ({children,onClick,secondary=false,disabled=false}:{
-  children:React.ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean;
-}) => <button type="button" disabled={disabled} onClick={onClick} className={
-  (secondary?'bg-[#F1EAFE] text-[#6427CC] border border-[#E1D4F6]':'bg-[#6C26DC] text-white')+
-  ' w-full rounded-full min-h-[46px] px-4 text-[13px] font-bold inline-flex justify-center items-center gap-2 transition hover:brightness-95 active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed'
+ children:React.ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean;
+})=><button type="button" disabled={disabled} onClick={onClick} className={
+ (secondary?'bg-[#F0EAFC] text-[#6225CE] border border-[#E5D8FA]':'btn-simple-primary text-white')+
+ ' w-full rounded-full min-h-[46px] px-4 text-[13px] font-bold inline-flex justify-center items-center gap-2 transition hover:brightness-105 active:scale-[0.985] disabled:opacity-40 disabled:cursor-not-allowed'
 }>{children}</button>;
-const Card = ({children,className=''}:{children:React.ReactNode;className?:string}) =>
-  <div className={'card-simple p-4 '+className}>{children}</div>;
-const Row = ({icon:Icon,title,caption,onClick}:{
-  icon:React.ComponentType<{size?:number;className?:string}>;title:string;caption?:string;onClick:()=>void;
-}) => <button type="button" onClick={onClick} className="flex w-full gap-3 py-3.5 items-center text-left border-b border-[#F1EDF7] last:border-b-0 rounded-lg transition hover:bg-[#FAF7FF]">
-  <span className="w-10 h-10 shrink-0 bg-[#F2EAFE] text-[#702CD6] rounded-2xl flex items-center justify-center"><Icon size={19}/></span>
-  <span className="flex-1 min-w-0"><span className="text-[13px] block font-bold text-[#261737]">{title}</span>
-  {caption&&<span className="text-[11px] text-[#81758D] mt-1 block">{caption}</span>}</span>
-  <ChevronRight size={16} className="text-[#9D91AB]"/>
-</button>;
+const Card=({children,className=''}:{children:React.ReactNode;className?:string})=>
+ <section className={'card-simple '+className}>{children}</section>;
+const SectionHead=({title,action}:{title:string;action?:React.ReactNode})=>
+ <div className="flex justify-between items-center gap-2 px-1 mb-3">
+  <h3 className="text-[17px] font-extrabold leading-tight text-[#211535]">{title}</h3>{action}
+ </div>;
+const Row=({icon:Icon,title,caption,onClick,avatar,trailing}:{
+ icon:React.ComponentType<{size?:number;className?:string}>;title:string;caption?:string;onClick:()=>void;avatar?:Member;trailing?:React.ReactNode;
+})=><button type="button" onClick={onClick} className="flex w-full gap-3 py-3.5 items-center text-left border-b border-[#F1EDF7] last:border-b-0 rounded-xl transition hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7C36DA]">
+ {avatar?<PersonAvatar member={avatar} size={42}/>:<span className="w-10 h-10 shrink-0 bg-[#F2EAFE] text-[#702CD6] rounded-2xl flex items-center justify-center"><Icon size={19}/></span>}
+ <span className="flex-1 min-w-0"><span className="text-[13px] block font-bold text-[#261737] truncate">{title}</span>
+ {caption&&<span className="text-[11px] text-[#81758D] mt-1 block leading-snug">{caption}</span>}</span>
+ {trailing||<ChevronRight size={16} className="text-[#9D91AB] shrink-0"/>}
+ </button>;
+const PersonTile=({member,label,onClick,selected=false}:{
+ member?:Member;label:string;onClick?:()=>void;selected?:boolean;
+})=>{
+ const cls='flex items-center gap-3 p-3.5 w-full rounded-[19px] text-left border transition-colors '+(selected?'border-[#B990F9] bg-[#F3EBFF]':'border-[#EFE8F7] bg-white')+(onClick?' hover:border-[#B990F9] hover:bg-[#F9F5FF]':'');
+ const inside=<><PersonAvatar member={member} size={46}/><span className="flex-1 min-w-0"><span className="text-[13px] font-extrabold block truncate">{member?.name||'Membre'}</span><span className="text-[11px] text-[#81758D] block mt-1">{label}</span></span>{selected?<Check size={18} className="text-[#702DD5] shrink-0"/>:onClick?<ChevronRight size={17} className="text-[#9D91AB] shrink-0"/>:null}</>;
+ return onClick?<button type="button" onClick={onClick} className={cls}>{inside}</button>:<div className={cls}>{inside}</div>;
+};
+const BankCard=({card,holder,label}:{card:FamilyCard;holder?:Member;label:string})=>
+ <div className="rounded-[23px] p-5 min-h-[177px] text-white bg-gradient-to-br from-[#2E0B69] via-[#5016A5] to-[#7436E4] shadow-[0_11px_24px_rgba(85,30,173,0.19)]">
+  <div className="flex items-center justify-between text-[12px] font-bold"><span>Simple <span className="text-white/75 font-medium">{label}</span></span><CreditCard size={22} className="text-white/85"/></div>
+  <p className="mt-8 text-[17px] font-mono tracking-[.12em]">•••• •••• •••• {card.last4}</p>
+  <div className="flex items-center justify-between mt-4 gap-2 text-[11px]">
+   <div className="flex items-center gap-2 min-w-0"><PersonAvatar member={holder} size={29}/><span className="font-bold truncate">{holder?.name||'Membre'}</span></div>
+   <span className="rounded-full bg-white/15 border border-white/25 px-2 py-1 shrink-0">{card.active?'Active':'Suspendue'}</span>
+  </div>
+ </div>;
 const Field = ({label,value,onChange,children}:{
   label:string;value:string;onChange:(v:string)=>void;children?:React.ReactNode;
 })=><label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#514365]">{label}</span>
@@ -157,8 +192,8 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
    source:bankKey,holderId:viewerId,active:true}));
   onToast('Carte fictive ajoutée. Aucun moyen de paiement réel créé.');
  }
- const MiniHead=({heading,desc}:{heading:string;desc?:string})=><div className="space-y-2">
-  <LinkBack onClick={previous}/><h2 className="font-extrabold text-[19px] text-[#251635]">{heading}</h2>
+ const MiniHead=({heading,desc}:{heading:string;desc?:string})=><div className="space-y-2 px-1">
+  <LinkBack onClick={previous}/><h2 className="font-extrabold text-[19px] text-[#251635] leading-tight">{heading}</h2>
   {desc&&<Notes>{desc}</Notes>}</div>;
  const nextLabel=action==='add'?'Alimenter':action==='transfer'?'Transférer':'Payer';
  const jointPeople=coholders.map(id=>findMember(family,id)?.name||'Cotitulaire').join(' & ');
