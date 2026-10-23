@@ -879,7 +879,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
                onClick={()=>launch('goal-edit',{title:goal.title,target:String(goal.target),deadline:goal.deadline,coverId:goal.coverId||(['goal_vac','goal_school','goal_weekend'].includes(goal.id)?goal.id:'goal_vac'),contributors:goal.contributors.join(',')})}/>
              <ActionLine icon={CheckCircle2} title="Clôturer le projet" subtitle="Arrêter les contributions et la programmation" onClick={()=>launch('goal-close')}/>
            </>}
-           <ActionLine icon={Trash2} title="Supprimer le projet" subtitle="Suppression simulée, restitution des fonds si le projet est actif" onClick={()=>launch('goal-delete')}/>
+           {goal.status==='active'
+             ?<ActionLine icon={Trash2} title="Supprimer le projet" subtitle="Suppression simulée avec restitution du solde" onClick={()=>launch('goal-delete')}/>
+             :<p className="text-[12px] text-[#81758F] py-3">Ce projet est clôturé et conservé pour consultation.</p>}
          </Panel>}
        </section>}
      </>}
@@ -1076,7 +1078,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        'new-family':'Créer ma famille','join-family':'Rejoindre une famille','invite':'Inviter un membre','rename':'Personnaliser ma famille','open-account':'Créer un sous-compte Famille',
        'open-joint':'Ouvrir un compte joint','transfer':'Effectuer un virement','simple-pay':'Simple Pay Famille','pay-bill':'Payer une facture','create-card':'Nouvelle carte virtuelle',
        'new-goal':'Nouvel objectif d’épargne','goal-deposit':'Contribuer à l’objectif','goal-withdraw':'Retirer de l’épargne','goal-delete':'Supprimer l’objectif',
-       'goal-schedule':'Programmer une contribution','new-pot':'Créer une cagnotte','pot-deposit':'Participer à la cagnotte','pot-invite':'Inviter à la cagnotte','pot-edit':'Modifier la cagnotte','pot-close':'Clôturer la cagnotte','new-document':'Ajouter un document',
+       'goal-schedule':'Programmer une contribution','goal-edit':'Modifier le projet','goal-close':'Clôturer le projet','new-pot':'Créer une cagnotte','pot-deposit':'Participer à la cagnotte','pot-invite':'Inviter à la cagnotte','pot-edit':'Modifier la cagnotte','pot-close':'Clôturer la cagnotte','new-document':'Ajouter un document',
        'new-trip':'Réserver pour un membre','new-credit':'Demande de crédit digitale','member-delete':'Retirer ce membre','family-delete':'Supprimer la famille',
        'limit':'Modifier le plafond','otp':'Double validation (simulation)'
       } as Record<string,string>)[modal]}</h3><p className="text-[11px] text-[#887B95] mt-1">Parcours de démonstration · données fictives</p></div><button type="button" aria-label="Fermer" onClick={close} className="w-8 h-8 shrink-0 bg-[#F6F2FB] rounded-full flex items-center justify-center"><X size={17}/></button></div>
@@ -1091,7 +1093,37 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {(modal==='pay-bill'||modal==='simple-pay')&&<><SelectInput label="Compte à débiter" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions.filter(o=>modal==='pay-bill'||o.value==='account')}/><Input label={modal==='simple-pay'?'Destinataire':'Organisme / facture'} value={form.beneficiary} onChange={v=>setField('beneficiary',v)} placeholder={modal==='simple-pay'?'Bénéficiaire':'Électricité, Internet…'}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)}/></>}
        {modal==='create-card'&&<><Input label="Nom de la carte" value={form.label} onChange={v=>setField('label',v)} placeholder="Carte courses"/><SelectInput label="Compte ou pocket associé" value={form.source} onChange={v=>setField('source',v)} options={[...(family?.account?[{value:'family',label:'Sous-compte Famille'}]:[]),...(family?.joint?[{value:'joint',label:'Compte joint'}]:[]),...(family?.pockets||[]).map(p=>({value:`pocket:${p.ownerId}`,label:`Pocket ${initialsFor(p.ownerId)}`}))]}/><SelectInput label="Titulaire de la carte" value={form.holder} onChange={v=>setField('holder',v)} options={memberOptions}/></>}
        {modal==='new-goal'&&<><Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/><Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)}/><Input label="Date de fin" type="date" min={nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)}/><SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/><div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p><div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]"><input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)s.add(m.id);else s.delete(m.id);setField('contributors',[...s].join(','))}}/>{m.name}</label>)}</div></div></>}
-       {(modal==='goal-deposit'||modal==='goal-withdraw'||modal==='goal-schedule'||modal==='limit')&&<><Input label={modal==='goal-schedule'?'Montant mensuel (DH)':modal==='limit'?'Nouveau plafond (DH)':'Montant (DH)'} type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 500"/><p className="text-xs text-[#847992]">{modal==='goal-schedule'?'Paramètre indicatif uniquement : pas de virement programmé réel.':modal==='limit'?'Plafond indicatif de démonstration.':`Disponible sur votre compte Simple fictif : ${currency(viewer?.simpleBalance||0)}.`}</p></>}
+       {(modal==='goal-deposit'||modal==='goal-withdraw'||modal==='limit')&&<>
+          <Input label={modal==='limit'?'Nouveau plafond (DH)':'Montant (DH)'} type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 500"/>
+          <p className="text-xs text-[#847992]">{modal==='limit'?'Plafond indicatif de démonstration.':`Disponible sur votre compte Simple fictif : ${currency(viewer?.simpleBalance||0)}.`}</p>
+        </>}
+        {modal==='goal-schedule'&&<>
+          <Input label="Montant par versement (DH)" type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 250"/>
+          <SelectInput label="Fréquence" value={form.frequency||'monthly'} onChange={v=>setField('frequency',v)}
+            options={[{value:'monthly',label:'Chaque mois'},{value:'weekly',label:'Chaque semaine'}]}/>
+          <Input label="Date du prochain versement" type="date" min={nowDate()} value={form.nextDate||nowDate()} onChange={v=>setField('nextDate',v)}/>
+          <p className="text-[11px] text-[#847992]">Programmation indicative uniquement : aucun virement automatique n'est exécuté. Pour arrêter les versements, indiquez 0 DH.</p>
+        </>}
+        {modal==='goal-edit'&&<>
+          <Input label="Nom du projet" value={form.title} onChange={v=>setField('title',v)} required placeholder="Vacances en famille"/>
+          <SelectInput label="Image du projet" value={form.coverId||'goal_vac'} onChange={v=>setField('coverId',v)}
+            options={[{value:'goal_vac',label:'Voyage en famille'},{value:'goal_school',label:'Études'},{value:'goal_weekend',label:'Week-end en famille'}]}/>
+          <Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)} required/>
+          <Input label="Date d'échéance" type="date" min={nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)} required/>
+          <p className="text-[11px] text-[#847992]">Bénéficiaire : {goal?initialsFor(goal.ownerId):'—'}. Il reste inchangé.</p>
+          <div className="space-y-2">
+            <p className="text-[12px] font-bold text-[#554967]">Membres habilités à contribuer</p>
+            {family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-[#F9F6FE] text-[12px]">
+              <input type="checkbox" disabled={m.id===goal?.ownerId} checked={(form.contributors||'').split(',').includes(m.id)}
+                onChange={e=>{const selected=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)selected.add(m.id);else selected.delete(m.id);setField('contributors',[...selected].join(','))}} className="accent-[#762ADC]"/>
+              <span>{m.name}{m.id===goal?.ownerId?' · bénéficiaire':''}</span>
+            </label>)}
+          </div>
+        </>}
+        {modal==='goal-close'&&<div className="bg-[#FFF4F7] p-4 rounded-[20px] space-y-2">
+          <p className="text-[13px] font-extrabold text-[#944260]">Clôturer ce projet ?</p>
+          <p className="text-[12px] text-[#87687A]">Les contributions et les versements programmés seront arrêtés. Le solde restera affiché dans le projet clôturé, sans transfert ni remboursement automatique dans ce prototype.</p>
+        </div>}
        {(modal==='new-pot'||modal==='pot-edit')&&<>
           <Input label="Nom de la cagnotte" value={form.title} onChange={v=>setField('title',v)} placeholder="Anniversaire, sortie…" required/>
           <Input label="Montant à collecter (DH)" value={form.target} onChange={v=>setField('target',v)} type="number" min="1" required/>
@@ -1129,7 +1161,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='new-credit'&&<><Input label="Montant souhaité (DH)" value={form.amount} onChange={v=>setField('amount',v)} type="number" min="1"/><SelectInput label="Compte associé" value={form.account||`simple:${data.viewerId}`} onChange={v=>setField('account',v)} options={[{value:`simple:${data.viewerId}`,label:'Mon compte Simple'},...(admin&&family?.account?[{value:'account',label:'Sous-compte Famille'}]:[]),...(admin&&family?.joint?[{value:'joint',label:'Compte joint'}]:[])]}/><p className="text-xs text-[#867991]">Aucune demande bancaire réelle ne sera transmise.</p></>}
        {(modal==='goal-delete'||modal==='member-delete'||modal==='family-delete')&&<div className="bg-[#FFF4F7] p-4 rounded-2xl"><p className="text-[13px] text-[#A13F66] font-semibold">Cette action modifie les données locales du prototype.</p><p className="text-[11px] text-[#94667B] mt-1">{modal==='member-delete'?'Le pocket du membre sera clôturé.':modal==='goal-delete'?'Le solde de l’épargne active sera simulé comme reversé au propriétaire.':'La famille disparaîtra de cette démonstration.'}</p></div>}
        {error&&<p role="alert" className="text-xs text-[#BE3463] bg-[#FFF0F4] rounded-xl px-3 py-2">{error}</p>}
-       <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='pot-close'?'Clôturer la collecte':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
+       <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='goal-close'?'Clôturer le projet':modal==='goal-edit'?'Enregistrer les modifications':modal==='goal-schedule'?'Enregistrer la programmation':modal==='pot-close'?'Clôturer la collecte':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
        <button type="button" onClick={close} className="w-full text-xs font-bold py-2 text-[#8B7F98]">Annuler</button>
       </form>}
     </div>
