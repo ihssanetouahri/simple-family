@@ -18,7 +18,7 @@ import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
 import karimAvatar from '../assets/images/karim.jpg';
 import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
-import { AccountJourneys } from './AccountJourneys';
+import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
  'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
@@ -66,6 +66,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [data,setData]=useState<FamilyState>(loadFamilyState);
  const [route,setRoute]=useState<Route>('dashboard');
  const [stack,setStack]=useState<Route[]>([]);
+ const accountJourneyRef=useRef<AccountJourneyHandle>(null);
  const [modal,setModal]=useState<ModalKind>(null);
  const [form,setForm]=useState<FormData>({});
  const [error,setError]=useState('');
@@ -95,7 +96,15 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const show=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(''),3500)};
  const scrollTop=()=>{const el=document.getElementById('simple-scroll-area');if(el)el.scrollTop=0};
  const go=(next:Route)=>{setStack(prev=>[...prev,route]);setRoute(next);setSelectorOpen(false);setDemoOpen(false);scrollTop()};
- const back=()=>{if(stack.length){setRoute(stack[stack.length-1]);setStack(prev=>prev.slice(0,-1));scrollTop()} else navigate('HOME')};
+ const back=()=>{
+  if(stack.length){setRoute(stack[stack.length-1]);setStack(prev=>prev.slice(0,-1));scrollTop();}
+  else if(route!=='dashboard'){setRoute('dashboard');scrollTop();}
+  else navigate('HOME');
+ };
+ const handleBack=()=>{
+  if((route==='sub-account'||route==='joint-account')&&accountJourneyRef.current?.goBack())return;
+  back();
+ };
  const toDashboard=()=>{setStack([]);setRoute('dashboard');scrollTop()};
  const launch=(kind:ModalKind,initial:FormData={})=>{setModal(kind);setForm(initial);setError('')};
  const close=()=>{setModal(null);setError('');setPendingPayment(null)};
@@ -342,6 +351,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
  const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets & cagnottes',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
+ const isAccountRoute=(value:Route|undefined):value is 'sub-account'|'joint-account'=>value==='sub-account'||value==='joint-account';
+ // Keep the journey mounted when visiting family member management, so the back arrow
+ // restores the exact account screen rather than resetting to account overview.
+ const previousFamilyRoute=stack[stack.length-1];
+ const mountedAccountRoute=isAccountRoute(route)?route:(route==='members'&&isAccountRoute(previousFamilyRoute)?previousFamilyRoute:null);
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);go('goal')};
  const navigateToPot=(id:string)=>{setSelectedPot(id);go('pot')};
@@ -367,7 +381,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     <div className="flex items-center justify-between gap-2"><button onClick={()=>navigate('HOME')} type="button" aria-label="Retour accueil" className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><ArrowLeft size={19}/></button>
      <div className="text-center min-w-0 flex-1"><p className="text-[11px] text-[#85769D]">Espace familial</p><h1 className="font-extrabold text-[18px] leading-tight truncate">Ma famille</h1></div>
      <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
-    </div></div> : <MobileHeader title={pageTitles[route]} onBack={back} subtitle={route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
+    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
      <div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>
      {demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
@@ -538,12 +552,17 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
         <Panel className="px-4"><ActionLine icon={WalletCards} title="Pockets des membres" subtitle="Soldes et alimentation de chaque pocket" onClick={()=>mainGo('pockets')}/></Panel>
       </>}
 
-      {(route==='sub-account'||route==='joint-account')&&<AccountJourneys
-        key={family.id+route} kind={route==='sub-account'?'sub':'joint'} family={family}
-        viewerId={data.viewerId} canViewSub={canViewFamilyAccount}
-        onUpdate={fn=>mutate((_d,f)=>fn(f))}
-        onHome={toDashboard} onToast={show} onOpenMembers={()=>mainGo('members')}
-      />}
+      {mountedAccountRoute&&<div className={route==='members'?'hidden':''}>
+        <AccountJourneys
+          ref={accountJourneyRef}
+          key={family.id+mountedAccountRoute}
+          kind={mountedAccountRoute==='sub-account'?'sub':'joint'} family={family}
+          viewerId={data.viewerId} canViewSub={canViewFamilyAccount}
+          onUpdate={fn=>mutate((_d,f)=>fn(f))}
+          onBack={back} onHome={toDashboard} onToast={show}
+          onOpenMembers={()=>mainGo('members')}
+        />
+      </div>}
 
       {route==='pockets'&&<>
        <Panel className="p-5 space-y-2">
