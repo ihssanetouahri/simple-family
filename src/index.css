@@ -158,6 +158,12 @@
     filter: none;
   }
 
+  /* Neutralize the old generic shadow on any family button with border/shadow utilities.
+     Named card and control styles below then apply only a controlled soft shadow. */
+  .simple-family-interactions :where(button[class*="shadow"], button[class*="border"]):not(:disabled):hover {
+    box-shadow: none;
+  }
+
   /* Alert and action rows stay inside their parent card: no floating rectangle. */
   .simple-family-interactions :where(.family-hover-row):not(:disabled):hover {
     background-color: #F7F2FF;
@@ -209,11 +215,6 @@
     box-shadow: 0 6px 16px rgba(94, 29, 240, 0.20);
   }
 
-  /* Do not inflate shadows on cards containing "shadow" Tailwind classes. */
-  .simple-family-interactions :where(.family-hover-row):not(:disabled):hover,
-  .simple-family-interactions :where(.family-hover-control):not(:disabled):hover {
-    border-color: inherit;
-  }
 }
 
 .simple-family-interactions :where(.family-hover-row) {
