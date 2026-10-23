@@ -133,6 +133,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const familySelectorButtonRef=useRef<HTMLButtonElement>(null);
  const familySelectorMenuRef=useRef<HTMLDivElement>(null);
  const [demoOpen,setDemoOpen]=useState(false);
+ const [projectFilter,setProjectFilter]=useState<'all'|'active'|'closed'>('all');
  const [showAmounts,setShowAmounts]=useState(true);
  const family = data.families.find(f=>f.id===data.activeFamilyId) || null;
  const viewer = family?.members.find(m=>m.id===data.viewerId) || null;
@@ -140,6 +141,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const leader = viewer?.role==='leader';
  const canViewFamilyAccount = family ? admin || family.accountViewIds.includes(data.viewerId) : false;
  const visibleGoals=family?.goals.filter(g=>admin||g.ownerId===data.viewerId||g.contributors.includes(data.viewerId)||g.history.some(h=>h.memberId===data.viewerId))||[];
+ const filteredGoals=visibleGoals.filter(g=>projectFilter==='all'||g.status===projectFilter);
  const goal=family?.goals.find(g=>g.id===selectedGoal);
  const pocket = family?.pockets.find(p=>p.ownerId===selectedMember);
  const owner=family?.members.find(m=>m.id===selectedMember);
@@ -432,10 +434,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     <div className="flex items-center justify-between gap-2"><button onClick={()=>navigate('HOME')} type="button" aria-label="Retour accueil" className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><ArrowLeft size={19}/></button>
      <div className="text-center min-w-0 flex-1"><p className="text-[11px] text-[#85769D]">Espace familial</p><h1 className="font-extrabold text-[18px] leading-tight truncate">Ma famille</h1></div>
      <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
-    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
+    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
-     <div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>
-     {demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
+     {route!=='savings'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
+     {route!=='savings'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
        {family?.members.map(m=><button key={m.id} type="button" onClick={()=>switchViewer(m.id)} className="w-full flex items-center gap-2 p-2 bg-[#F8F5FE] rounded-xl text-left"><Avatar member={m} size={29}/><span className="text-xs font-bold flex-1">{m.name}</span><Tag tone={m.id===data.viewerId?'green':'gray'}>{roleLabel(m.role)}</Tag></button>)}
        <button type="button" className="text-xs font-bold text-[#8C4DDA]" onClick={()=>{setData(createDemoState());toDashboard();setDemoOpen(false);show('Scénario initial restauré.')}}><RotateCcw size={13} className="inline mr-1"/> Restaurer les données fictives</button>
      </Panel>}
@@ -656,13 +658,63 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='savings'&&<>
-       <Panel className="p-5 bg-gradient-to-br from-[#4F178F] to-[#8C43E6] text-white border-none"><div className="flex items-center gap-2 text-white/80 text-xs"><PiggyBank size={18}/> Objectifs d’épargne</div><p className="text-[29px] font-extrabold mt-4">{showBalance(visibleGoals.filter(g=>g.status==='active').reduce((s,g)=>s+g.balance,0))}</p><p className="text-[11px] text-white/75 mt-1">Épargne active de cette famille</p></Panel>
-       <div className="flex justify-between items-center"><h3 className="text-lg font-extrabold">Nos projets</h3><button type="button" onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:family.members.map(m=>m.id).join(',')})} className="text-xs font-bold text-[#6625DE] flex gap-1 items-center"><Plus size={15}/> Nouveau</button></div>
-       {visibleGoals.length===0&&<Panel className="p-6 text-center space-y-3"><div className="text-4xl">✈️</div><h3 className="font-extrabold text-[18px]">Quel projet vous fait rêver ?</h3><p className="text-sm text-[#8B8098]">Un voyage, une fête ou un projet à préparer ensemble.</p><PillButton onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:data.viewerId})}>Créer un objectif</PillButton></Panel>}
-       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3" aria-label="Tous les projets d’épargne">
-       {visibleGoals.map(g=><FamilyProgressPhotoCard key={g.id} id={g.id} kind="goal" title={g.title}
-         description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} onClick={()=>navigateToGoal(g.id)}/>)}
-       </div>
+       <Panel className="p-4 bg-[#F1EAFC] border border-[#E1D5F5] shadow-none">
+         <div className="flex items-center gap-2 text-[#6730BE]"><PiggyBank size={18}/><p className="text-[12px] font-semibold">Total épargné dans nos projets</p></div>
+         <p className="text-[28px] font-extrabold text-[#361753] mt-2">{showBalance(visibleGoals.filter(g=>g.status==='active').reduce((sum,g)=>sum+g.balance,0))}</p>
+         <div className="flex items-center gap-2 mt-1 text-[#806D99]"><Target size={14}/><p className="text-[11px]">{visibleGoals.filter(g=>g.status==='active').length} projet{visibleGoals.filter(g=>g.status==='active').length!==1?'s':''} en cours{admin?'':' · Selon vos accès'}</p></div>
+       </Panel>
+       <section>
+         <Heading title="Tous nos projets" right={
+           <button type="button" aria-label="Créer un nouveau projet d'épargne"
+             onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:admin?family.members.map(m=>m.id).join(','):data.viewerId})}
+             className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-white bg-[#6B26D8] text-[12px] font-bold shadow-sm">
+             <Plus size={15}/> Nouveau
+           </button>
+         }/>
+         <div role="group" aria-label="Filtrer les projets" className="grid grid-cols-3 bg-[#EDE6F8] p-1 rounded-[17px] gap-1 mb-3">
+           {([{value:'all',label:'Tous'},{value:'active',label:'En cours'},{value:'closed',label:'Terminés'}] as const).map(option=>
+             <button type="button" key={option.value} aria-pressed={projectFilter===option.value}
+               onClick={()=>setProjectFilter(option.value)}
+               className={'rounded-[13px] py-2 px-1 text-[11px] font-bold transition-colors '+(projectFilter===option.value?'bg-white text-[#6D24DA] shadow-sm':'text-[#827391] hover:bg-white/65')}>
+               {option.label}
+             </button>)}
+         </div>
+         <p className="text-[11px] text-[#887A98] px-1 mb-3">{filteredGoals.length} projet{filteredGoals.length!==1?'s':''} affiché{filteredGoals.length!==1?'s':''}</p>
+         <div className="space-y-3">
+           {filteredGoals.map(g=><button key={g.id} type="button" onClick={()=>navigateToGoal(g.id)}
+             className="block w-full rounded-[23px] bg-white border border-[#EBE3F5] p-3 text-left shadow-sm hover:shadow-[0_6px_20px_rgba(85,35,135,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+             <div className="flex gap-3 items-center">
+               <div className="w-[83px] h-[83px] shrink-0 rounded-[18px] overflow-hidden bg-[#F0E9F9]">
+                 <FamilyPhotoCover id={g.id} kind="goal" label={`Photo du projet ${g.title}`}/>
+               </div>
+               <div className="min-w-0 flex-1">
+                 <div className="flex items-start gap-1 justify-between">
+                   <h3 className="text-[13px] font-extrabold leading-snug text-[#2D1D40] line-clamp-2">{g.title}</h3>
+                   <ChevronRight size={16} className="text-[#AA99BA] shrink-0"/>
+                 </div>
+                 <p className="text-[10px] text-[#887A99] mt-1">{g.deadline?`Échéance : ${dateFor(g.deadline)}`:'Sans échéance'}</p>
+                 <div className="mt-2"><Progress value={g.balance} total={g.target}/></div>
+                 <div className="flex justify-between items-center mt-1.5 gap-2">
+                   <span className="text-[11px] font-extrabold text-[#6627D5]">{showBalance(g.balance)}</span>
+                   <span className="text-[11px] font-bold text-[#83748F]">{g.target>0?Math.round(g.balance/g.target*100):0} %</span>
+                 </div>
+               </div>
+             </div>
+             <div className="flex justify-between gap-2 mt-2 pt-2 border-t border-[#F1ECF8] px-1">
+               <span className="text-[10px] text-[#827590]">{g.status==='closed'?'Projet terminé':'Objectif : '+showBalance(g.target)}</span>
+               <span className="text-[10px] text-[#827590] truncate">{goalHomeLabel(g)}</span>
+             </div>
+           </button>)}
+           {filteredGoals.length===0&&<Panel className="p-6 text-center space-y-3">
+             <div className="w-12 h-12 rounded-full bg-[#F1E9FF] text-[#772DDC] mx-auto flex justify-center items-center">{projectFilter==='closed'?<CheckCircle2 size={24}/>:<Target size={24}/>}</div>
+             <p className="font-extrabold text-[14px]">{projectFilter==='closed'?'Aucun projet terminé':projectFilter==='active'?'Aucun projet en cours':'Aucun projet pour le moment'}</p>
+             <p className="text-[12px] text-[#817690]">{projectFilter==='closed'?'Vos projets clôturés apparaîtront ici.':'Créez un projet pour commencer à épargner ensemble.'}</p>
+             {projectFilter==='closed'
+               ?<button type="button" onClick={()=>setProjectFilter('active')} className="text-[#6C28D4] text-[12px] font-bold">Voir les projets en cours <ArrowRight size={14} className="inline"/></button>
+               :<PillButton onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:data.viewerId})}>Créer un projet <Plus size={16}/></PillButton>}
+           </Panel>}
+         </div>
+       </section>
      </>}
 
      {route==='goal'&&goal&&visibleGoals.some(g=>g.id===goal.id)&&<>
