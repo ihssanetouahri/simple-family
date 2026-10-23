@@ -141,3 +141,114 @@
     transition-duration: 0.01ms;
   }
 }
+
+
+/* Simple Family refined interaction states
+   Override the old global "lift + brighten + violet glow" only inside
+   the Family experience. Other banking screens keep their current styling. */
+.simple-family-interactions :where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"])) {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 170ms;
+  transition-timing-function: ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .simple-family-interactions :where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"])):hover {
+    transform: none;
+    filter: none;
+  }
+
+  /* Alert and action rows stay inside their parent card: no floating rectangle. */
+  .simple-family-interactions :where(.family-hover-row):not(:disabled):hover {
+    background-color: #F7F2FF;
+    box-shadow: none;
+  }
+
+  /* Larger cards retain a delicate border and shadow; no scaling or lifting. */
+  .simple-family-interactions :where(.family-hover-card):not(:disabled):hover {
+    background-color: #FBF9FF;
+    border-color: #DDC9FA;
+    box-shadow: 0 4px 12px rgba(74, 32, 125, 0.075);
+  }
+
+  .simple-family-interactions :where(.family-hover-control):not(:disabled):hover {
+    background-color: #F7F2FF;
+    box-shadow: 0 2px 8px rgba(74, 32, 125, 0.055);
+  }
+
+  .simple-family-interactions :where(.family-hover-hero):not(:disabled):hover {
+    background-color: #F6F0FF;
+    box-shadow: 0 2px 8px rgba(34, 12, 66, 0.08);
+  }
+
+  .simple-family-interactions :where(.family-hover-glass):not(:disabled):hover {
+    background-color: rgba(255, 255, 255, 0.32);
+    border-color: rgba(255, 255, 255, 0.55);
+    box-shadow: none;
+  }
+
+  .simple-family-interactions :where(.family-hover-link):not(:disabled):hover {
+    color: #4813A3;
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .simple-family-interactions .family-hover-link:hover :where(svg) {
+    transform: translateX(2px);
+  }
+
+  .simple-family-interactions :where(.family-hover-service):not(:disabled):hover,
+  .simple-family-interactions :where(.family-hover-nav):not(:disabled):hover {
+    background-color: #F7F2FF;
+    box-shadow: none;
+  }
+
+  /* Primary purple actions keep their identity with restrained feedback. */
+  .simple-family-interactions :where(.btn-simple-primary):not(:disabled):hover {
+    filter: brightness(1.025);
+    box-shadow: 0 6px 16px rgba(94, 29, 240, 0.20);
+  }
+
+  /* Do not inflate shadows on cards containing "shadow" Tailwind classes. */
+  .simple-family-interactions :where(.family-hover-row):not(:disabled):hover,
+  .simple-family-interactions :where(.family-hover-control):not(:disabled):hover {
+    border-color: inherit;
+  }
+}
+
+.simple-family-interactions :where(.family-hover-row) {
+  border-radius: 16px;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-left: -10px;
+  margin-right: -10px;
+  width: calc(100% + 20px);
+}
+
+.simple-family-interactions :where(.family-hover-link) :where(svg) {
+  transition: transform 170ms ease-out;
+}
+
+.simple-family-interactions :where(.family-hover-service, .family-hover-nav) {
+  border-radius: 16px;
+}
+
+.simple-family-interactions :where(.family-hover-row, .family-hover-card, .family-hover-control, .family-hover-service, .family-hover-nav):not(:disabled):active {
+  transform: none;
+  filter: none;
+  background-color: #F0E7FB;
+  box-shadow: none;
+}
+
+/* The Family modal and selector use the same accessible keyboard feedback. */
+.simple-family-interactions :where(button, a[href], [role="button"]):focus-visible {
+  outline: 2px solid #7828E8;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .simple-family-interactions :where(button, a[href], [role="button"]),
+  .simple-family-interactions .family-hover-link :where(svg) {
+    transition-duration: 0.01ms;
+  }
+}
