@@ -458,68 +458,88 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
    </Card>}
   {view==='history'&&<>
    <MiniHead heading="Historique des opérations" desc="Mouvements associés uniquement à ce compte."/>
-   <label className="block text-[12px]">Filtrer par catégorie
-    <select value={historyFilter} onChange={e=>setHistoryFilter(e.target.value)} className="block w-full mt-2 h-11 bg-white border border-[#E7DFF0] rounded-xl px-3">
-     <option value="all">Toutes les opérations</option>
-     {[...new Set(transactions.map(t=>t.category))].map(c=><option key={c} value={c}>{c}</option>)}
-    </select></label>
-   <Card className="py-1">{readable&&filteredTransactions.length?filteredTransactions.map(t=><Row key={t.id} icon={ReceiptText} title={t.title} caption={t.date+' · '+currency(t.amount)}
-     onClick={()=>{setSelectedTransaction(t.id);jump('transaction');}}/>):<Notes>Aucune opération disponible avec ces filtres et autorisations.</Notes>}</Card>
+   <Card className="p-4">
+    <label className="block text-[12px] font-bold text-[#504365]">Filtrer par catégorie
+     <select value={historyFilter} onChange={e=>setHistoryFilter(e.target.value)} className="block w-full mt-2 h-11 bg-[#F9F6FF] border border-[#E7DFF0] rounded-2xl px-3 outline-none focus:ring-2 focus:ring-[#C7ABFA]">
+      <option value="all">Toutes les opérations</option>
+      {[...new Set(transactions.map(t=>t.category))].map(c=><option key={c} value={c}>{c}</option>)}
+     </select>
+    </label>
+   </Card>
+   <section><SectionHead title="Mouvements"/>
+    <Card className="px-4 py-1">{readable&&filteredTransactions.length?filteredTransactions.map(t=><Row key={t.id}
+     icon={t.amount>=0?ArrowDownLeft:ReceiptText} title={t.title} caption={t.date+' · '+t.category}
+     trailing={<span className={'text-[12px] font-extrabold shrink-0 '+(t.amount>=0?'text-[#178A65]':'text-[#302040]')}>{t.amount>0?'+':''}{currency(t.amount)}</span>}
+     onClick={()=>{setSelectedTransaction(t.id);jump('transaction');}}/>):
+     <div className="py-5 text-center"><ReceiptText size={25} className="mx-auto text-[#9D79D5] mb-2"/><Notes>Aucune opération disponible avec ces filtres ou ces autorisations.</Notes></div>}</Card>
+   </section>
   </>}
   {view==='transaction'&&tx&&<>
    <MiniHead heading="Détail de l'opération"/>
-   <Card className="space-y-3">
-    <p className="text-[24px] font-extrabold">{currency(tx.amount)}</p>
-    {[['Libellé',tx.title],['Date',tx.date],['Catégorie',tx.category],['Source',tx.source],['Destination',tx.target]].map(([k,v])=>
-     <div key={k} className="flex justify-between gap-2 text-[12px] border-b border-[#F0EAF7] py-2"><span className="text-[#81758F]">{k}</span><span className="font-bold text-right">{v}</span></div>)}
-    <Notes>Justificatif bancaire non disponible dans ce prototype fictif.</Notes>
+   <Card className="p-5 space-y-4">
+    <div className="text-center"><span className="w-12 h-12 bg-[#F2EAFF] text-[#7530D8] flex items-center justify-center rounded-2xl mx-auto"><ReceiptText size={23}/></span>
+     <p className="text-[28px] font-extrabold mt-3">{currency(tx.amount)}</p><Notes>{tx.title}</Notes></div>
+    <div className="border-t border-[#EEE6F7] pt-3 space-y-1">
+     {[['Libellé',tx.title],['Date',tx.date],['Catégorie',tx.category],['Source',tx.source],['Destination',tx.target]].map(([k,v])=>
+      <div key={k} className="flex justify-between items-center gap-3 text-[12px] border-b last:border-0 border-[#F0EAF7] py-2.5">
+       <span className="text-[#81758F]">{k}</span><span className="font-bold text-right break-words">{v}</span>
+      </div>)}
+    </div>
    </Card>
+   <Notes>Le justificatif bancaire officiel n'est pas disponible dans cette simulation.</Notes>
   </>}
   {view==='members'&&<>
-   <MiniHead heading={kind==='sub'?'Membres & accès':'Cotitulaires & droits'}/>
-   <Card className="py-1">
+   <MiniHead heading={kind==='sub'?'Membres & accès':'Cotitulaires & droits'} desc={kind==='sub'?'Qui peut consulter et gérer le sous-compte ?':'Les deux titulaires de ce compte bancaire.'}/>
+   <Card className="p-4 space-y-2">
     {(kind==='sub'?family.members:family.members.filter(m=>coholders.includes(m.id))).map(m=>
-     <Row key={m.id} icon={Users} title={m.name}
-      caption={kind==='joint'?'Cotitulaire':m.role+' · '+(admin||family.accountViewIds.includes(m.id)?'Consultation autorisée':'Consultation restreinte')}
+     <PersonTile key={m.id} member={m} selected={m.id===viewerId}
+      label={kind==='joint'?'Cotitulaire':(m.simpleOne?'Simple One · ':roleLabel(m.role)+' · ')+(admin||family.accountViewIds.includes(m.id)?'Consultation autorisée':'Consultation restreinte')}
       onClick={()=>{setSelectedMember(m.id);jump('person');}}/>)}
    </Card>
-   <Notes>{kind==='sub'?'La consultation et l’opération sont deux permissions distinctes. Le rôle familial seul ne constitue pas un droit bancaire.':'Les cotitulaires possèdent les droits et obligations définis par la convention du compte joint. Ils ne sont pas de simples membres invités.'}</Notes>
+   <Card className="bg-[#F3ECFE] border-[#E5D9FA] flex items-start gap-3">
+    <ShieldCheck size={20} className="text-[#7230DA] shrink-0"/>
+    <Notes>{kind==='sub'?'La consultation et les opérations nécessitent des droits distincts.':'Les cotitulaires ont les droits et obligations prévus par la convention bancaire.'}</Notes>
+   </Card>
    {kind==='sub'&&admin&&<Button secondary onClick={onOpenMembers}>Invitations et gestion des membres <Users size={16}/></Button>}
   </>}
   {view==='person'&&<>
-   <MiniHead heading={findMember(family,selectedMember)?.name||'Membre'}/>
-   <Card className="space-y-3">
-    <p className="text-[13px] font-bold">{kind==='joint'?'Cotitulaire':'Membre de la famille'}</p>
+   <MiniHead heading="Droits et accès"/>
+   <Card className="p-4 space-y-4">
+    <PersonTile member={findMember(family,selectedMember)} label={kind==='joint'?'Cotitulaire · Compte joint':(findMember(family,selectedMember)?.simpleOne?'Compte Simple One':roleLabel(findMember(family,selectedMember)?.role||'member'))}/>
     {kind==='sub'&&<>
-     <p className="text-[12px]">Consultation du sous-compte : {admin||family.accountViewIds.includes(selectedMember)?'Autorisée':'Restreinte'}</p>
-     {admin&&selectedMember!==viewerId&&<label className="flex gap-2 items-center text-[12px]"><input type="checkbox" checked={family.accountViewIds.includes(selectedMember)}
-      onChange={e=>onUpdate(f=>{f.accountViewIds=e.target.checked?[...new Set([...f.accountViewIds,selectedMember])]:f.accountViewIds.filter(id=>id!==selectedMember);})} className="accent-[#7030DC]"/>
-      Autoriser la consultation du solde et de l’historique</label>}
-     <Notes>Le droit de dépenser ou de transférer est géré séparément et ne peut pas être attribué par ce seul réglage.</Notes>
+     <div className="rounded-[18px] bg-[#F8F5FF] p-4">
+      <p className="text-[12px] font-bold">Consultation du sous-compte</p>
+      <p className="text-[11px] text-[#81758D] mt-1">{admin||family.accountViewIds.includes(selectedMember)?'Autorisée':'Restreinte'}</p>
+     </div>
+     {admin&&selectedMember!==viewerId&&<label className="flex gap-3 items-center p-3 border border-[#EBE4F5] rounded-2xl text-[12px]">
+      <span className="flex-1">Autoriser la consultation du solde et de l'historique</span>
+      <input type="checkbox" checked={family.accountViewIds.includes(selectedMember)}
+       onChange={e=>onUpdate(f=>{f.accountViewIds=e.target.checked?[...new Set([...f.accountViewIds,selectedMember])]:f.accountViewIds.filter(id=>id!==selectedMember);})} className="accent-[#7030DC] w-4 h-4"/>
+     </label>}
+     <Notes>Le droit de dépenser ou de transférer est séparé et ne peut pas être attribué par ce réglage.</Notes>
     </>}
-    {kind==='joint'&&<Notes>La modification des cotitulaires et des droits bancaires requiert un parcours contractuel, non simulé ici.</Notes>}
+    {kind==='joint'&&<Notes>La modification des cotitulaires nécessite des formalités contractuelles non simulées ici.</Notes>}
    </Card>
   </>}
   {view==='cards'&&<>
-   <MiniHead heading="Cartes associées" desc="Cartes fictives liées à ce compte."/>
-   <Card className="py-1">
-    {linkedCards.length?linkedCards.map(c=><Row key={c.id} icon={CreditCard} title={c.label} caption={'•••• '+c.last4+' · '+(c.active?'Active':'Suspendue')}
-     onClick={()=>{setSelectedCard(c.id);jump('card');}}/>):<Notes>Aucune carte associée.</Notes>}
-   </Card>
+   <MiniHead heading="Cartes associées" desc="Cartes fictives rattachées à ce compte."/>
+   {linkedCards.length?linkedCards.map(c=><button key={c.id} type="button" className="w-full text-left space-y-2 hover:brightness-105" onClick={()=>{setSelectedCard(c.id);jump('card');}}>
+    <BankCard card={c} holder={findMember(family,c.holderId)} label={kind==='sub'?'Famille':'Joint'}/>
+    <div className="flex justify-between items-center px-1 text-[12px] font-bold"><span>{c.label}</span><span className="text-[#722AD5] flex items-center gap-1">Gérer <ChevronRight size={15}/></span></div>
+   </button>):
+    <Card className="p-6 text-center space-y-3"><CreditCard size={31} className="mx-auto text-[#7630DA]"/><h3 className="font-bold text-[14px]">Aucune carte associée</h3><Notes>Ajoutez une carte fictive pour découvrir sa gestion et ses paramètres.</Notes></Card>}
    {authorized&&<Button secondary onClick={newCard}>Ajouter une carte fictive <Plus size={16}/></Button>}
-   <Notes>Les cartes n'ont aucune valeur de paiement. Les plafonds et droits réels restent à confirmer avec la banque.</Notes>
+   <Notes>Les cartes n'ont aucune valeur de paiement. Plafonds et droits réels restent à confirmer.</Notes>
   </>}
   {view==='card'&&selectedCardItem&&<>
    <MiniHead heading={selectedCardItem.label}/>
-   <Card className="space-y-3">
-    <div className="rounded-2xl p-5 text-white bg-gradient-to-br from-[#391079] to-[#7A37E9]">
-      <div className="flex justify-between items-center"><span className="font-bold text-[13px]">Simple Famille</span><CreditCard size={20}/></div>
-      <p className="mt-7 font-mono text-[16px]">•••• •••• •••• {selectedCardItem.last4}</p>
-      <p className="mt-3 text-[11px]">{findMember(family,selectedCardItem.holderId)?.name}</p>
-    </div>
-    <Notes>Statut : {selectedCardItem.active?'Active':'Suspendue'}</Notes>
-    {authorized&&<Button secondary onClick={()=>{onUpdate(f=>{const card=f.cards.find(c=>c.id===selectedCardItem.id);if(card)card.active=!card.active;});onToast('État fictif de la carte mis à jour.');}}>
-      {selectedCardItem.active?'Suspendre la carte':'Réactiver la carte'}</Button>}
+   <BankCard card={selectedCardItem} holder={findMember(family,selectedCardItem.holderId)} label={kind==='sub'?'Famille':'Joint'}/>
+   <Card className="p-4 space-y-3">
+    <PersonTile member={findMember(family,selectedCardItem.holderId)} label="Titulaire de la carte"/>
+    <div className="flex justify-between items-center px-1 pt-1"><p className="text-[12px] font-bold">Statut de la carte</p>
+     <span className={'text-[11px] px-3 py-1 rounded-full font-bold '+(selectedCardItem.active?'bg-[#E6F8EF] text-[#16885D]':'bg-[#FFF1D9] text-[#A86E17]')}>{selectedCardItem.active?'Active':'Suspendue'}</span></div>
+    {authorized&&<Button secondary onClick={()=>{onUpdate(f=>{const card=f.cards.find(c=>c.id===selectedCardItem.id);if(card)card.active=!card.active;});onToast('Statut fictif actualisé.');}}>
+     {selectedCardItem.active?'Suspendre la carte':'Réactiver la carte'}</Button>}
    </Card>
   </>}
   {view==='documents'&&<>
