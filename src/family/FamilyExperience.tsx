@@ -432,7 +432,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
            {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col transition-colors hover:bg-[#EEE5FC] hover:border-[#AB8CD9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#8F69C2]"/><Plus size={16} className="text-[#8F69C2]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
-             <p className="text-[13px] font-bold text-[#6B35B1] mt-1">À ouvrir</p>
+             <p className="text-[13px] font-bold text-[#6B35B1] mt-1">{family.jointApplication?(family.jointApplication.status==='awaiting'?'Accord en attente':family.jointApplication.status==='review'?'En cours de validation':'Demande refusée'):'À ouvrir'}</p>
            </button>}
          </div>
        </section>
