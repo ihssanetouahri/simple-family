@@ -16,6 +16,8 @@ export type CreditRequest = { id: string; applicantId: string; amount: number; a
 export type Family = {
   id: string; name: string; emoji: string; members: Member[]; pockets: Pocket[]; accountViewIds: string[];
   account: BankAccount | null; joint: BankAccount | null;
+  jointHolderIds?: string[];
+  jointApplication?: { status:'awaiting'|'review'|'rejected'; requesterId:string; coHolderId:string } | null;
   transactions: FamilyTransaction[]; goals: SavingsGoal[]; pots: FamilyPot[]; cards: FamilyCard[];
   invites: FamilyInvite[]; alerts: FamilyAlert[]; chat: ChatMsg[]; documents: VaultDoc[];
   bookings: FamilyBooking[]; creditRequests: CreditRequest[];
@@ -48,7 +50,7 @@ export function createDemoState(): FamilyState {
         {id:'p_yasmine',ownerId:'yasmine',balance:180,limit:600},
       ],
       account:{id:'account_family',label:'Sous-compte Famille',balance:6450,limit:9000},
-      joint:null,
+      joint:null,jointHolderIds:[],jointApplication:null,
       transactions:[
         {id:'t1',date:'21 oct.',title:'Courses familiales',amount:-520,category:'Courses',source:'Sous-compte Famille',target:'Marjane'},
         {id:'t2',date:'18 oct.',title:'Facture électricité',amount:-420,category:'Factures',source:'Sous-compte Famille',target:'Lydec'},
