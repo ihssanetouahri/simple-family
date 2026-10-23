@@ -154,7 +154,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
   <LinkBack onClick={previous}/><h2 className="font-extrabold text-[19px] text-[#251635]">{heading}</h2>
   {desc&&<Notes>{desc}</Notes>}</div>;
  const nextLabel=action==='add'?'Alimenter':action==='transfer'?'Transférer':'Payer';
- const jointPeople=family.jointHolderIds.map(id=>findMember(family,id)?.name||'Cotitulaire').join(' & ');
+ const jointPeople=coholders.map(id=>findMember(family,id)?.name||'Cotitulaire').join(' & ');
  return <div className="space-y-4 pb-5 text-[#251635]">
   {view==='overview'&&account&&<>
    <Card className="bg-gradient-to-br from-[#FAF7FF] to-white">
