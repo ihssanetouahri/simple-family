@@ -315,7 +315,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    const days=(new Date(g.deadline+'T12:00:00').getTime()-Date.now())/86400000;
    return days>=0&&days<=30;
  })||null;
- const hasFamilyFollowUps=Boolean((admin&&family?.invites.length)||upcomingFollowUpGoal);
+ const dueBill=admin?family?.alerts.find(a=>a.type==='bill'&&!a.resolved)||null:null;
+ const pendingInvite=admin?family?.invites[0]||null:null;
+ const displayUpcomingGoal=Boolean(upcomingFollowUpGoal&&(Number(Boolean(dueBill))+Number(Boolean(pendingInvite))<2));
+ const hasFamilyFollowUps=Boolean(dueBill||pendingInvite||displayUpcomingGoal);
+ const openDueBill=(bill:Family['alerts'][number])=>launch('pay-bill',{from:'account',beneficiary:bill.beneficiary,amount:String(bill.amount),alertId:bill.id});
 
  return <div className="min-h-full flex flex-col bg-simple-canvas relative">
    {route==='dashboard' ? <div className="sticky top-0 z-30 bg-[#F6F3FE]/85 backdrop-blur-md px-5 pt-3 pb-3">
@@ -379,19 +383,13 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          </Panel>}
        </div>
 
-       {/* Afficher uniquement les événements familiaux utiles et accessibles à ce profil. */}
+       {/* Alertes fictives, actionnables et visibles uniquement quand elles sont en attente. */}
        {hasFamilyFollowUps&&<section>
-         <Heading title="À suivre en famille"/>
+         <Heading title="À suivre en famille" right={<button type="button" onClick={()=>mainGo('alerts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <Panel className="px-4">
-           {admin&&family.invites.length>0&&<button type="button" onClick={()=>mainGo('members')} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] rounded-lg transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-             <span className="w-10 h-10 shrink-0 rounded-2xl bg-[#F1E9FF] text-[#7430DD] flex items-center justify-center"><UserPlus size={19}/></span>
-             <span className="flex-1 min-w-0"><span className="block font-bold text-[13px]">{family.invites.length} invitation{family.invites.length>1?'s':''} en attente</span><span className="block text-[11px] text-[#746884] mt-1">Gérer les invitations des membres</span></span><ChevronRight size={16} className="text-[#9487A4] shrink-0"/>
-           </button>}
-           {upcomingFollowUpGoal&&<button type="button" onClick={()=>navigateToGoal(upcomingFollowUpGoal.id)} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] rounded-lg transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-             <span className="w-10 h-10 shrink-0 rounded-2xl bg-[#F2EAFE] text-[#7430DD] flex items-center justify-center"><CalendarDays size={19}/></span>
-             <span className="flex-1 min-w-0"><span className="block font-bold text-[13px] truncate">{upcomingFollowUpGoal.title}</span><span className="block text-[11px] text-[#746884] mt-1">Échéance le {dateFor(upcomingFollowUpGoal.deadline)} · Suivre le projet</span></span><ChevronRight size={16} className="text-[#9487A4] shrink-0"/>
-           </button>}
-           
+           {dueBill&&<AlertItem icon={CalendarClock} title={dueBill.title} subtitle={`${currency(dueBill.amount)} · Échéance le ${dateFor(dueBill.dueDate)}`} badge={`J-${daysUntil(dueBill.dueDate)}`} tone="amber" onClick={()=>openDueBill(dueBill)}/>}
+           {pendingInvite&&<AlertItem icon={UserPlus} title="Invitation en attente" subtitle={`${pendingInvite.name} · Gérer son invitation`} onClick={()=>mainGo('members')}/>}
+           {displayUpcomingGoal&&upcomingFollowUpGoal&&<AlertItem icon={CalendarDays} title={upcomingFollowUpGoal.title} subtitle={`Échéance le ${dateFor(upcomingFollowUpGoal.deadline)} · Suivre le projet`} onClick={()=>navigateToGoal(upcomingFollowUpGoal.id)}/>}
          </Panel>
        </section>}
 
@@ -470,7 +468,24 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
      </>}
 
-     {route==='members' && <>
+     {route==='alerts'&&<>
+        <Panel className="p-5 space-y-1">
+          <h2 className="text-[18px] font-extrabold">Les alertes de ma famille</h2>
+          <p className="text-[12px] text-[#81758F] leading-relaxed">Retrouvez les actions importantes à suivre avec votre famille.</p>
+        </Panel>
+        {hasFamilyFollowUps?<Panel className="px-4">
+          {admin&&family.alerts.filter(a=>a.type==='bill'&&!a.resolved).map(a=><AlertItem key={a.id} icon={CalendarClock} title={a.title} subtitle={`${currency(a.amount)} · Échéance le ${dateFor(a.dueDate)}`} badge={`J-${daysUntil(a.dueDate)}`} tone="amber" onClick={()=>openDueBill(a)}/>)}
+          {admin&&family.invites.map(inv=><AlertItem key={inv.id} icon={UserPlus} title="Invitation en attente" subtitle={`${inv.name} · Gérer son invitation`} onClick={()=>mainGo('members')}/>)}
+          {upcomingFollowUpGoal&&<AlertItem icon={CalendarDays} title={upcomingFollowUpGoal.title} subtitle={`Échéance le ${dateFor(upcomingFollowUpGoal.deadline)}`} onClick={()=>navigateToGoal(upcomingFollowUpGoal.id)}/>}
+        </Panel>:<Panel className="p-6 space-y-2 text-center">
+          <CheckCircle2 size={26} className="mx-auto text-[#20A475]"/>
+          <h3 className="text-[14px] font-extrabold">Tout est à jour !</h3>
+          <p className="text-[12px] text-[#81758F]">Aucune action urgente pour votre famille actuellement.</p>
+        </Panel>}
+        <p className="px-1 text-[11px] text-[#897B9A]">Scénario de démonstration : ces alertes et leurs échéances sont fictives.</p>
+      </>}
+
+      {route==='members' && <>
        <Panel className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-[#887C97]">Composition de la famille</p><h2 className="font-extrabold text-[22px] mt-1">{family.members.length} membres</h2></div><div className="text-3xl">👨‍👩‍👧</div></div></Panel>
        <section><Heading title="Membres" right={admin&&<button type="button" onClick={()=>launch('invite',{relation:'Proche',role:'member',simpleOne:'false'})} className="text-xs font-bold text-[#6725D8] flex items-center gap-1"><Plus size={15}/>Inviter</button>}/><Panel className="px-4">{family.members.map(m=>{const p=family.pockets.find(x=>x.ownerId===m.id);return <div key={m.id} className="py-3.5 flex items-center gap-3 border-b last:border-none border-[#F0EBF6]"><Avatar member={m} size={46}/><button type="button" onClick={()=>navigateToMember(m.id)} className="text-left flex-1 min-w-0"><p className="text-[14px] font-extrabold">{m.name} {m.id===data.viewerId&&<span className="text-[#9359DA] text-[10px]">(vous)</span>}</p><p className="text-[11px] text-[#80758E]">{m.relation} · Pocket {p?showBalance(p.balance):'—'}</p><div className="mt-1"><Tag tone={m.role==='leader'?'violet':m.simpleOne?'amber':'gray'}>{m.simpleOne?'Simple One':roleLabel(m.role)}</Tag></div></button>{leader&&m.role!=='leader'&&!m.simpleOne&&<select aria-label={`Rôle de ${m.name}`} className="text-[10px] w-[93px] bg-[#F8F4FF] rounded-xl px-1 py-2" value={m.role} onChange={e=>updateMemberRole(m.id,e.target.value as Role)}><option value="member">Membre</option><option value="coleader">Co-leader</option></select>}{admin&&m.role!=='leader'&&(m.role!=='coleader'||leader)&&<button type="button" aria-label={`Retirer ${m.name}`} onClick={()=>{setSelectedMember(m.id);launch('member-delete')}} className="text-[#B68BAF] p-1.5"><Trash2 size={16}/></button>}</div>})}</Panel></section>
        <section><Heading title="Invitations en attente"/><Panel className="p-4 space-y-2">{family.invites.length?family.invites.map(inv=><div key={inv.id} className="flex items-center justify-between gap-2 p-2 bg-[#FAF7FF] rounded-xl"><div><p className="text-[13px] font-bold">{inv.name}</p><p className="text-[11px] text-[#887D98]">{inv.relation} · Invitation en attente</p></div>{admin&&<button type="button" className="text-[11px] rounded-full px-3 py-2 bg-[#E7FAEF] text-[#168253] font-bold" onClick={()=>acceptInvite(inv.id)}>Simuler acceptation</button>}</div>):<p className="text-[12px] text-[#81768F]">Aucune invitation en attente.</p>}</Panel></section>
