@@ -542,7 +542,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
         key={family.id+route} kind={route==='sub-account'?'sub':'joint'} family={family}
         viewerId={data.viewerId} canViewSub={canViewFamilyAccount}
         onUpdate={fn=>mutate((_d,f)=>fn(f))}
-        onHome={toDashboard} onToast={show}
+        onHome={toDashboard} onToast={show} onOpenMembers={()=>mainGo('members')}
       />}
 
       {route==='pockets'&&<>
