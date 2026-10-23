@@ -24,7 +24,7 @@ import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
  'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
 type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-account'|'open-joint'|'create-card'|
-  'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'new-pot'|'pot-deposit'|'new-document'|
+  'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'new-pot'|'pot-deposit'|'pot-invite'|'pot-edit'|'pot-close'|'new-document'|
   'pay-bill'|'simple-pay'|'new-trip'|'new-credit'|'member-delete'|'family-delete'|'otp'|
   'limit'|'goal-schedule'|null;
 type FormData = Record<string,string>;
@@ -136,6 +136,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [selectedMember,setSelectedMember]=useState('yasmine');
  const [selectedGoal,setSelectedGoal]=useState('goal_vac');
  const [selectedPot,setSelectedPot]=useState('pot1');
+ const [potMenuOpen,setPotMenuOpen]=useState(false);
+ const [showAllPotContributions,setShowAllPotContributions]=useState(false);
  const [pendingPayment,setPendingPayment]=useState<PendingPayment|null>(null);
  const [otpStage,setOtpStage]=useState(1);
  const [chatInput,setChatInput]=useState('');
@@ -157,6 +159,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const pocket = family?.pockets.find(p=>p.ownerId===selectedMember);
  const owner=family?.members.find(m=>m.id===selectedMember);
  const pot=family?.pots.find(p=>p.id===selectedPot);
+ const canManagePot=Boolean(pot&&(admin||pot.creatorId===data.viewerId));
+ const canParticipateInPot=Boolean(pot?.members.includes(data.viewerId));
+ const canSeePotHistory=Boolean(pot&&(admin||canParticipateInPot));
+ const potInviteCandidates=family?.members.filter(m=>pot&&!pot.members.includes(m.id)&&!(pot.pendingInvites||[]).includes(m.id))||[];
+ const potFundingOptions=family&&viewer?[
+  {value:`simple:${data.viewerId}`,label:`Mon compte Simple · ${currency(viewer.simpleBalance)}`},
+  ...family.pockets.filter(p=>p.ownerId===data.viewerId).map(p=>({value:`pocket:${data.viewerId}`,label:`Mon pocket · ${currency(p.balance)}`}))
+ ]:[];
  const show=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(''),3500)};
  const scrollTop=()=>{const el=document.getElementById('simple-scroll-area');if(el)el.scrollTop=0};
  const go=(next:Route)=>{setStack(prev=>[...prev,route]);setRoute(next);setSelectorOpen(false);setDemoOpen(false);scrollTop()};
@@ -422,7 +432,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const mountedAccountRoute=isAccountRoute(route)?route:(route==='members'&&isAccountRoute(previousFamilyRoute)?previousFamilyRoute:null);
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);go('goal')};
- const navigateToPot=(id:string)=>{setSelectedPot(id);go('pot')};
+ const navigateToPot=(id:string)=>{setSelectedPot(id);setPotMenuOpen(false);setShowAllPotContributions(false);go('pot')};
  const balances={family:family?.account?.balance||0,joint:family?.joint?.balance||0};void balances;
  const goalHomeLabel=(g:Family['goals'][number])=>{
    if(g.contributors.length<=1)return `Objectif d’épargne · ${initialsFor(g.ownerId)}`;
@@ -445,10 +455,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     <div className="flex items-center justify-between gap-2"><button onClick={()=>navigate('HOME')} type="button" aria-label="Retour accueil" className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><ArrowLeft size={19}/></button>
      <div className="text-center min-w-0 flex-1"><p className="text-[11px] text-[#85769D]">Espace familial</p><h1 className="font-extrabold text-[18px] leading-tight truncate">Ma famille</h1></div>
      <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
-    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
+    </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
-     {route!=='savings'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
-     {route!=='savings'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
+     {route!=='savings'&&route!=='pot'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
+     {route!=='savings'&&route!=='pot'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
        {family?.members.map(m=><button key={m.id} type="button" onClick={()=>switchViewer(m.id)} className="w-full flex items-center gap-2 p-2 bg-[#F8F5FE] rounded-xl text-left"><Avatar member={m} size={29}/><span className="text-xs font-bold flex-1">{m.name}</span><Tag tone={m.id===data.viewerId?'green':'gray'}>{roleLabel(m.role)}</Tag></button>)}
        <button type="button" className="text-xs font-bold text-[#8C4DDA]" onClick={()=>{setData(createDemoState());toDashboard();setDemoOpen(false);show('Scénario initial restauré.')}}><RotateCcw size={13} className="inline mr-1"/> Restaurer les données fictives</button>
      </Panel>}
