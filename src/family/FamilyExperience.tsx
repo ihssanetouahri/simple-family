@@ -24,7 +24,7 @@ import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
  'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
 type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-account'|'open-joint'|'create-card'|
-  'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'new-pot'|'pot-deposit'|'pot-invite'|'pot-edit'|'pot-close'|'new-document'|
+  'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'goal-edit'|'goal-close'|'new-pot'|'pot-deposit'|'pot-invite'|'pot-edit'|'pot-close'|'new-document'|
   'pay-bill'|'simple-pay'|'new-trip'|'new-credit'|'member-delete'|'family-delete'|'otp'|
   'limit'|'goal-schedule'|null;
 type FormData = Record<string,string>;
@@ -135,6 +135,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [toast,setToast]=useState('');
  const [selectedMember,setSelectedMember]=useState('yasmine');
  const [selectedGoal,setSelectedGoal]=useState('goal_vac');
+ const [goalManageOpen,setGoalManageOpen]=useState(false);
+ const [showAllGoalMovements,setShowAllGoalMovements]=useState(false);
  const [selectedPot,setSelectedPot]=useState('pot1');
  const [potMenuOpen,setPotMenuOpen]=useState(false);
  const [showAllPotContributions,setShowAllPotContributions]=useState(false);
@@ -156,6 +158,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const visibleGoals=family?.goals.filter(g=>admin||g.ownerId===data.viewerId||g.contributors.includes(data.viewerId)||g.history.some(h=>h.memberId===data.viewerId))||[];
  const filteredGoals=visibleGoals.filter(g=>projectFilter==='all'||g.status===projectFilter);
  const goal=family?.goals.find(g=>g.id===selectedGoal);
+ const canManageGoal=Boolean(goal&&(admin||goal.creatorId===data.viewerId));
+ const canScheduleGoal=Boolean(goal&&(admin||goal.ownerId===data.viewerId));
  const pocket = family?.pockets.find(p=>p.ownerId===selectedMember);
  const owner=family?.members.find(m=>m.id===selectedMember);
  const pot=family?.pots.find(p=>p.id===selectedPot);
@@ -363,9 +367,33 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;const own=findMember(f,g.ownerId);if(own&&g.status==='active')own.simpleBalance+=g.balance;f.goals=f.goals.filter(x=>x.id!==selectedGoal)});close();back();show('Objectif supprimé et fonds restitués (simulation).');break;
    }
    case 'goal-schedule':{
-     if(!goal||!(admin||goal.ownerId===data.viewerId)){setError('Modification non autorisée.');return;}
-     const amount=parseMoney(form.amount||'0');if(amount<0||!Number.isFinite(amount)){setError('Montant invalide.');return;}
-     mutate((_d,f)=>{f.goals.find(x=>x.id===selectedGoal)!.scheduledAmount=amount});close();show('Programmation illustrative enregistrée, sans virement automatique.');break;
+     if(!goal||goal.status!=='active'||!canScheduleGoal){setError('Modification non autorisée.');return;}
+     const amount=parseMoney(form.amount||'0');
+     if(amount<0||!Number.isFinite(amount)){setError('Montant invalide.');return;}
+     const freq=form.frequency==='weekly'?'weekly':'monthly';
+     const nextDate=form.nextDate||nowDate();
+     if(amount>0&&nextDate<nowDate()){setError('Choisissez une prochaine date à venir.');return;}
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.scheduledAmount=amount;g.scheduledFrequency=amount>0?freq:undefined;g.nextScheduledDate=amount>0?nextDate:undefined});
+     close();show(amount>0?'Programmation indicative enregistrée, sans débit automatique.':'Programmation désactivée.');break;
+   }
+   case 'goal-edit':{
+     if(!goal||goal.status!=='active'||!canManageGoal){setError('Modification non autorisée.');return;}
+     const target=parseMoney(form.target||'0');
+     if(!form.title?.trim()||!moneyValid(target)||target<goal.balance){setError('Saisissez un titre et une cible au moins égale au solde épargné.');return;}
+     if(!form.deadline||form.deadline<nowDate()){setError('Choisissez une date future.');return;}
+     const contributors=(form.contributors||'').split(',').filter(id=>family.members.some(m=>m.id===id));
+     const allowed=[...new Set([...contributors,goal.ownerId])];
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;
+       g.title=form.title.trim();g.target=target;g.deadline=form.deadline;
+       g.coverId=['goal_vac','goal_school','goal_weekend'].includes(form.coverId||'')?form.coverId:undefined;
+       g.contributors=allowed;
+     });
+     close();setGoalManageOpen(false);show('Paramètres du projet enregistrés.');break;
+   }
+   case 'goal-close':{
+     if(!goal||goal.status!=='active'||!canManageGoal){setError('Clôture non autorisée.');return;}
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.status='closed';g.scheduledAmount=0;g.nextScheduledDate=undefined;g.scheduledFrequency=undefined});
+     close();setGoalManageOpen(false);show('Projet clôturé (simulation). Solde conservé dans le projet, sans transfert.');break;
    }
    case 'new-pot':{
      const target=parseMoney(form.target||'0');if(!moneyValid(target)||!form.title?.trim()){setError('Nom et objectif valides requis.');return;}
@@ -467,7 +495,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const previousFamilyRoute=stack[stack.length-1];
  const mountedAccountRoute=isAccountRoute(route)?route:(route==='members'&&isAccountRoute(previousFamilyRoute)?previousFamilyRoute:null);
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
- const navigateToGoal=(id:string)=>{setSelectedGoal(id);go('goal')};
+ const navigateToGoal=(id:string)=>{setSelectedGoal(id);setGoalManageOpen(false);setShowAllGoalMovements(false);go('goal')};
  const navigateToPot=(id:string)=>{setSelectedPot(id);setPotMenuOpen(false);setShowAllPotContributions(false);go('pot')};
  const balances={family:family?.account?.balance||0,joint:family?.joint?.balance||0};void balances;
  const goalHomeLabel=(g:Family['goals'][number])=>{
@@ -579,7 +607,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          {visibleGoals.some(g=>g.status==='active')?
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Projets d’épargne, faire défiler horizontalement">
-             {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.id} kind="goal" title={g.title}
+             {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
                description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} onClick={()=>navigateToGoal(g.id)}/>)}
            </div>:
            <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
@@ -742,7 +770,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
              className="block w-full rounded-[23px] bg-white border border-[#EBE3F5] p-3 text-left shadow-sm hover:shadow-[0_6px_20px_rgba(85,35,135,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
              <div className="flex gap-3 items-center">
                <div className="w-[83px] h-[83px] shrink-0 rounded-[18px] overflow-hidden bg-[#F0E9F9]">
-                 <FamilyPhotoCover id={g.id} kind="goal" label={`Photo du projet ${g.title}`}/>
+                 <FamilyPhotoCover id={g.coverId||g.id} kind="goal" label={`Photo du projet ${g.title}`}/>
                </div>
                <div className="min-w-0 flex-1">
                  <div className="flex items-start gap-1 justify-between">
