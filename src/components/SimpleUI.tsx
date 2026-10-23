@@ -26,7 +26,7 @@ export const SimpleRobotIcon: React.FC<{ size?: number; color?: string }> = ({ s
 export const MobileHeader: React.FC<{ title: string; subtitle?: string; onBack: () => void }> = ({ title, subtitle, onBack }) => (
   <header className="sticky top-0 z-30 bg-[#F6F3FE]/85 backdrop-blur-md px-5 pt-3 pb-2.5 flex items-center justify-between">
     <div className="flex items-center gap-2.5 min-w-0">
-      <button type="button" onClick={onBack} aria-label="Retour" className="w-10 h-10 rounded-full bg-white shadow-[0_4px_14px_rgba(20,17,31,0.06)] flex items-center justify-center text-[#14111F]"><ArrowLeft size={20} /></button>
+      <button type="button" onClick={onBack} aria-label="Retour" className="family-hover-control w-10 h-10 rounded-full bg-white shadow-[0_4px_14px_rgba(20,17,31,0.06)] flex items-center justify-center text-[#14111F]"><ArrowLeft size={20} /></button>
       <div><h1 className="text-[18px] font-bold text-[#14111F] leading-tight">{title}</h1>{subtitle && <p className="text-[12px] text-[#7D7693] mt-0.5">{subtitle}</p>}</div>
     </div>
     <button type="button" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm" aria-label="Notifications" title="Notifications - maquette" disabled><Bell size={18} /></button>
@@ -40,11 +40,11 @@ export const BottomBankingNav: React.FC<{ screen: Screen; navigate: Navigate }> 
     { label: 'Menu', screen: 'MENU' as Screen, Icon: Menu },
   ];
   return (
-    <div className="relative z-30 shrink-0 pt-2">
+    <div className={`relative z-30 shrink-0 pt-2 ${screen === 'FAMILY' ? 'simple-family-interactions' : ''}`}>
       <nav className="relative bg-white/95 backdrop-blur-md rounded-t-[30px] shadow-[0_-8px_30px_rgba(20,17,31,0.06)] border-t border-[#F0ECF9] h-[74px] pl-6 pr-24 grid grid-cols-3 items-center">
         {navItems.map(({ label, screen: target, Icon }) => {
           const active = screen === target;
-          return <button type="button" key={target} onClick={() => navigate(target)} className={`flex flex-col items-center justify-center min-h-[48px] transition-colors ${active ? 'text-[#5E1DF0]' : 'text-[#8E87A6]'}`}>
+          return <button type="button" key={target} onClick={() => navigate(target)} className={`family-hover-nav flex flex-col items-center justify-center min-h-[48px] transition-colors ${active ? 'text-[#5E1DF0]' : 'text-[#8E87A6]'}`}>
             <Icon size={22} strokeWidth={active ? 2.4 : 1.9} fill={target === 'HOME' && active ? '#5E1DF0' : 'none'} />
             <span className="text-[11px] font-semibold mt-1">{label}</span>
             {active && <span className="w-1.5 h-1.5 rounded-full bg-[#5E1DF0] mt-0.5" />}
