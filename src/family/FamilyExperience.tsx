@@ -369,12 +369,48 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'new-pot':{
      const target=parseMoney(form.target||'0');if(!moneyValid(target)||!form.title?.trim()){setError('Nom et objectif valides requis.');return;}
-     mutate((_d,f)=>f.pots.push({id:uid('pot'),title:form.title.trim(),target,balance:0,members:f.members.map(m=>m.id),status:'active'}));close();show('Cagnotte familiale ajoutée (modalités à valider).');break;
+     if(form.deadline&&form.deadline<nowDate()){setError('Choisissez une date à venir.');return;}
+     mutate((_d,f)=>f.pots.push({
+       id:uid('pot'),title:form.title.trim(),target,balance:0,members:[data.viewerId],
+       creatorId:data.viewerId,description:form.description?.trim()||'',deadline:form.deadline||'',
+       contributions:[],pendingInvites:[],status:'active'
+     }));
+     close();show('Cagnotte créée. Vous pouvez inviter les membres de votre famille.');break;
    }
    case 'pot-deposit':{
-     if(!pot||pot.status!=='active'){setError('Cagnotte indisponible.');return;}
-     const amount=parseMoney(form.amount||'0');if(!moneyValid(amount)||amount>pot.target-pot.balance||(viewer?.simpleBalance||0)<amount){setError('Montant invalide ou solde insuffisant.');return;}
-     mutate((_d,f)=>{findMember(f,data.viewerId)!.simpleBalance-=amount;const p=f.pots.find(x=>x.id===selectedPot)!;p.balance+=amount;if(p.balance>=p.target)p.status='closed'});close();show('Participation à la cagnotte simulée.');break;
+     if(!pot||pot.status!=='active'||!canParticipateInPot){setError('Participation non autorisée à cette cagnotte.');return;}
+     const amount=parseMoney(form.amount||'0'),source=form.source||`simple:${data.viewerId}`;
+     if(!moneyValid(amount)||amount>pot.target-pot.balance){setError('Montant invalide ou supérieur au reste à collecter.');return;}
+     if(!potFundingOptions.some(o=>o.value===source)||currentBalance(family,source)===undefined||currentBalance(family,source)!<amount){setError('Choisissez un compte personnel suffisamment approvisionné.');return;}
+     if(form.stage!=='confirm'){setForm(prev=>({...prev,source,stage:'confirm'}));return;}
+     mutate((_d,f)=>{
+       changeBalance(f,source,-amount);
+       const p=f.pots.find(x=>x.id===selectedPot)!;
+       p.balance+=amount;
+       p.contributions=[{id:uid('pc'),memberId:data.viewerId,amount,date:today()},...(p.contributions||[])];
+       if(p.balance>=p.target)p.status='closed';
+     });
+     close();show('Contribution ajoutée à la cagnotte (simulation).');break;
+   }
+   case 'pot-invite':{
+     if(!pot||pot.status!=='active'||!canManagePot){setError('Invitation non autorisée.');return;}
+     const memberId=form.memberId;
+     if(!potInviteCandidates.some(m=>m.id===memberId)){setError('Sélectionnez un membre éligible.');return;}
+     mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.pendingInvites=[...new Set([...(p.pendingInvites||[]),memberId])]});
+     close();show('Invitation enregistrée. En attente d’acceptation simulée.');break;
+   }
+   case 'pot-edit':{
+     if(!pot||!canManagePot){setError('Modification non autorisée.');return;}
+     const target=parseMoney(form.target||'0');
+     if(!form.title?.trim()||!moneyValid(target)||target<pot.balance){setError('Indiquez un nom et un objectif au moins égal au montant collecté.');return;}
+     if(form.deadline&&form.deadline<nowDate()){setError('Choisissez une date à venir ou laissez ce champ vide.');return;}
+     mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.title=form.title.trim();p.description=form.description?.trim()||'';p.target=target;p.deadline=form.deadline||''});
+     close();show('Cagnotte mise à jour.');break;
+   }
+   case 'pot-close':{
+     if(!pot||pot.status!=='active'||!canManagePot){setError('Clôture non autorisée.');return;}
+     mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.status='closed';p.pendingInvites=[]});
+     close();show('Collecte clôturée (simulation). Aucun versement de fonds n’a été effectué.');break;
    }
    case 'new-document':{
      if(!form.title?.trim()){setError('Le nom du document est requis.');return;}
