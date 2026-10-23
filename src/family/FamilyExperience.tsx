@@ -18,6 +18,7 @@ import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
 import karimAvatar from '../assets/images/karim.jpg';
 import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
+import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
@@ -32,6 +33,19 @@ const nowDate = () => new Date().toISOString().slice(0,10);
 const cx = 'text-[#171126]';
 const subtle = 'text-[#817895]';
 const softBorder='border border-[#EDE7F6]';
+
+// All six generated family cover photos are embedded in a lightweight AVIF sprite.
+// First row: vacation, studies, weekend; second row: birthday, gift, outing.
+function FamilyPhotoCover({id, kind, label, height=124}: {id:string;kind:'goal'|'pot';label:string;height?:number}) {
+  const goalPositions:Record<string,number>={goal_vac:0,goal_school:1,goal_weekend:2};
+  const potPositions:Record<string,number>={pot1:3,pot2:4,pot3:5};
+  const index=(kind==='goal'?goalPositions:potPositions)[id] ?? (kind==='goal'?0:3);
+  const x=['0%','50%','100%'][index%3];
+  const y=index<3?'0%':'100%';
+  return <div role="img" aria-label={label}
+    style={{height,backgroundImage:`url("${familyCoverSprite}")`,backgroundSize:'300% 200%',backgroundPosition:`${x} ${y}`}}
+    className="w-full shrink-0 bg-[#EFE9F6] bg-no-repeat"/>;
+}
 
 function Avatar({member, size=42}: {member?:Member;size?:number}) {
  const photo=member ? ({lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar} as Record<string,string>)[avatarFor(member.id)] : undefined;
@@ -464,55 +478,58 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          </div>
        </section>
 
-       {/* Savings goals and collection pots are different user intents. */}
+       {/* Each section previews only two image cards. 'Voir tout' retains every item. */}
        <section>
          <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         <Panel className="px-4 py-2 divide-y divide-[#F0EAF7]">
-           {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><button key={g.id} type="button" onClick={()=>navigateToGoal(g.id)}
-             className="block w-full text-left py-3.5 space-y-2.5 rounded-xl transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-             <div className="flex items-center gap-2.5">
-               <div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F3EAFF] text-[#7530DC] flex items-center justify-center"><Target size={19}/></div>
-               <div className="flex-1 min-w-0">
-                 <p className="text-[13px] font-bold text-[#2B1B3E] truncate">{g.title}</p>
-                 <p className="text-[11px] text-[#776A86] truncate">{goalHomeLabel(g)}</p>
+         <div className="space-y-3">
+           {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><button type="button" key={g.id} onClick={()=>navigateToGoal(g.id)}
+             className="block w-full text-left overflow-hidden bg-white rounded-[25px] border border-[#ECE5F6] shadow-[0_5px_18px_rgba(74,24,131,0.05)] hover:shadow-[0_9px_24px_rgba(80,23,148,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             <FamilyPhotoCover id={g.id} kind="goal" label={`Illustration du projet ${g.title}`}/>
+             <div className="p-4 space-y-3">
+               <div className="flex items-start justify-between gap-3">
+                 <div className="min-w-0 flex-1">
+                   <p className="text-[14px] font-extrabold text-[#281936] truncate">{g.title}</p>
+                   <p className="text-[11px] text-[#81748F] mt-0.5 truncate">{goalHomeLabel(g)}</p>
+                 </div>
+                 <span className="text-[12px] font-extrabold text-[#7529DB] shrink-0">{Math.round(g.balance/g.target*100)} %</span>
                </div>
-               <span className="text-[12px] font-bold text-[#7529DB] shrink-0">{Math.round(g.balance/g.target*100)} %</span>
+               <Progress value={g.balance} total={g.target}/>
+               <p className="text-[11px] text-[#81758F]">{showBalance(g.balance)} sur {showBalance(g.target)}</p>
              </div>
-             <Progress value={g.balance} total={g.target}/>
-             <p className="text-[11px] text-[#80758E]">{showBalance(g.balance)} sur {showBalance(g.target)}</p>
            </button>)}
            {visibleGoals.filter(g=>g.status==='active').length===0&&
-             <div className="py-5 flex items-center gap-3">
-               <PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
+             <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
                <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
-               <button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer un projet <ArrowRight size={14} className="inline"/></button></div>
-             </div>}
-         </Panel>
+                 <button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer un projet <ArrowRight size={14} className="inline"/></button>
+               </div>
+             </Panel>}
+         </div>
        </section>
 
        <section>
          <Heading title="Nos cagnottes" right={<button type="button" onClick={()=>mainGo('pots')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         <Panel className="px-4 py-2 divide-y divide-[#F0EAF7]">
+         <div className="space-y-3">
            {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><button type="button" key={p.id} onClick={()=>navigateToPot(p.id)}
-             className="block w-full py-3.5 text-left space-y-2.5 rounded-xl transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
-             <div className="flex items-center gap-2.5">
-               <div className="w-10 h-10 shrink-0 rounded-2xl bg-[#E8F8F0] text-[#198A66] flex items-center justify-center"><Gift size={19}/></div>
-               <div className="flex-1 min-w-0">
-                 <p className="text-[13px] font-bold text-[#2B1B3E] truncate">{p.title}</p>
-                 <p className="text-[11px] text-[#847991]">Cagnotte collective</p>
+             className="block w-full text-left overflow-hidden bg-white rounded-[25px] border border-[#ECE5F6] shadow-[0_5px_18px_rgba(74,24,131,0.05)] hover:shadow-[0_9px_24px_rgba(80,23,148,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             <FamilyPhotoCover id={p.id} kind="pot" label={`Illustration de la cagnotte ${p.title}`}/>
+             <div className="p-4 space-y-3">
+               <div className="flex items-start justify-between gap-3">
+                 <div className="min-w-0 flex-1"><p className="text-[14px] font-extrabold text-[#281936] truncate">{p.title}</p>
+                   <p className="text-[11px] text-[#81748F] mt-0.5">Cagnotte collective · {p.members.length} participant{p.members.length>1?'s':''}</p>
+                 </div>
+                 <span className="text-[12px] font-extrabold text-[#178E66] shrink-0">{Math.round(p.balance/p.target*100)} %</span>
                </div>
-               <span className="text-[12px] font-bold text-[#198A66] shrink-0">{Math.round(p.balance/p.target*100)} %</span>
+               <Progress value={p.balance} total={p.target} tone="green"/>
+               <p className="text-[11px] text-[#81758F]">{showBalance(p.balance)} sur {showBalance(p.target)}</p>
              </div>
-             <Progress value={p.balance} total={p.target} tone="green"/>
-             <p className="text-[11px] text-[#80758E]">{showBalance(p.balance)} sur {showBalance(p.target)}</p>
            </button>)}
            {family.pots.filter(p=>p.status==='active').length===0&&
-             <div className="py-5 flex items-center gap-3">
-               <Gift size={24} className="text-[#198A66] shrink-0"/>
+             <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
                <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
-               <button type="button" onClick={()=>mainGo('pots')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer une cagnotte <ArrowRight size={14} className="inline"/></button></div>
-             </div>}
-         </Panel>
+                 <button type="button" onClick={()=>mainGo('pots')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer une cagnotte <ArrowRight size={14} className="inline"/></button>
+               </div>
+             </Panel>}
+         </div>
        </section>
 
        <section>
