@@ -544,37 +544,62 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
   </>}
   {view==='documents'&&<>
    <MiniHead heading="RIB & documents"/>
-   <Card className="space-y-3"><FileText size={27} className="text-[#702BD8]"/>
-    <h3 className="font-extrabold text-[15px]">Documents du compte</h3>
-    <Notes>Le RIB, les relevés et les documents contractuels ne sont pas disponibles dans la simulation. Aucun identifiant bancaire fictif ne sera présenté comme réel.</Notes>
+   <Card className="p-5 space-y-4">
+    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#F1E8FF] text-[#702BD8]"><FileText size={25}/></div>
+    <h3 className="font-extrabold text-[16px]">Documents du compte joint</h3>
+    <div className="space-y-2">
+     <div className="flex items-center justify-between rounded-[18px] bg-[#FAF7FE] border border-[#EEE7F7] p-3"><div className="flex gap-3 items-center"><Landmark size={19} className="text-[#782ED8]"/><span className="text-[12px] font-bold">RIB du compte</span></div><span className="text-[10px] rounded-full bg-[#EFE9F5] px-2 py-1 text-[#7D7189]">Non disponible</span></div>
+     <div className="flex items-center justify-between rounded-[18px] bg-[#FAF7FE] border border-[#EEE7F7] p-3"><div className="flex gap-3 items-center"><FileText size={19} className="text-[#782ED8]"/><span className="text-[12px] font-bold">Relevés et convention</span></div><span className="text-[10px] rounded-full bg-[#EFE9F5] px-2 py-1 text-[#7D7189]">Non disponible</span></div>
+    </div>
+    <Notes>Les documents contractuels et le RIB ne sont pas générés dans ce prototype. Aucun identifiant bancaire fictif n'est présenté comme réel.</Notes>
    </Card>
   </>}
   {view==='settings'&&<>
    <MiniHead heading="Paramètres du compte"/>
-   <Card className="space-y-3">
-    <div className="flex items-center justify-between"><strong className="text-[13px]">Notifications</strong><input type="checkbox" className="accent-[#722ADA]" checked={notifications} onChange={e=>setNotifications(e.target.checked)}/></div>
-    <Notes>Réglage d'affichage pour la démonstration uniquement.</Notes>
+   <Card className="p-4 space-y-3">
+    <SectionHead title="Préférences"/>
+    <label className="flex items-center gap-3 rounded-[18px] bg-[#FAF7FF] p-3.5">
+     <span className="w-10 h-10 rounded-2xl bg-[#F1E8FF] text-[#702CD6] flex items-center justify-center"><Settings2 size={20}/></span>
+     <span className="flex-1"><span className="block text-[13px] font-bold">Notifications</span><span className="text-[11px] text-[#81758D] block mt-1">Alertes fictives liées au compte</span></span>
+     <input aria-label="Recevoir les notifications du compte" type="checkbox" className="accent-[#722ADA] w-4 h-4" checked={notifications} onChange={e=>setNotifications(e.target.checked)}/>
+    </label>
    </Card>
-   <Card className="space-y-3">
-    <strong className="text-[13px]">Plafond indicatif de démonstration</strong>
+   <Card className="p-4 space-y-4">
+    <SectionHead title="Plafonds"/>
+    <div className="flex gap-3 items-center rounded-[17px] bg-[#F7F2FF] p-3"><ShieldCheck size={21} className="text-[#712AD7]"/><div className="flex-1"><p className="font-bold text-[12px]">Plafond indicatif</p><Notes>Pour la démonstration uniquement</Notes></div></div>
     <Field label="Plafond (DH)" value={limit} onChange={setLimit}/>
     <Button secondary disabled={!authorized||!moneyValid(Number(limit))} onClick={()=>{onUpdate(f=>{const a=kind==='sub'?f.account:f.joint;if(a)a.limit=Number(limit);});onToast('Plafond fictif actualisé.');}}>Enregistrer</Button>
    </Card>
-   {kind==='joint'&&authorized&&<Button secondary onClick={()=>{setClosureAccepted(false);setClosureSecondAccepted(false);jump('closure');}}>Demander la clôture du compte <ArrowRight size={15}/></Button>}
-   <Notes>Les règles opérationnelles, plafonds et demandes réelles dépendent des conventions bancaires applicables.</Notes>
+   {kind==='joint'&&authorized&&<Card className="p-4">
+    <Row icon={LockKeyhole} title="Clôturer le compte joint" caption="Conditions et accords des deux cotitulaires"
+     onClick={()=>{setClosureAccepted(false);setClosureSecondAccepted(false);jump('closure');}}/>
+   </Card>}
+   <Notes>Les plafonds, autorisations et modalités bancaires sont à valider selon les conventions applicables.</Notes>
   </>}
   {view==='closure'&&<>
-   <MiniHead heading="Clôture du compte joint" desc="Ce parcours représente les vérifications et les deux accords nécessaires dans le scénario."/>
-   <Card className="space-y-3">
-    <p className="text-[13px] font-bold">Conditions à vérifier</p>
-    <Notes>Solde du compte : {currency(account?.balance||0)}</Notes>
-    <Notes>Cartes actives : {linkedCards.filter(c=>c.active).length}</Notes>
-    {hasPendingClosure?<p className="text-[#B14C61] text-[12px] font-bold">Videz le compte et suspendez les cartes avant de poursuivre.</p>:
-      <p className="text-[#19865F] text-[12px] font-bold">Conditions de démonstration satisfaites.</p>}
-    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#752DDB] mt-1" checked={closureAccepted} onChange={e=>setClosureAccepted(e.target.checked)}/>Confirmation fictive de {findMember(family,coholders[0]||'')?.name||'premier cotitulaire'}</label>
-    <label className="flex items-start gap-2 text-[12px]"><input type="checkbox" className="accent-[#752DDB] mt-1" checked={closureSecondAccepted} onChange={e=>setClosureSecondAccepted(e.target.checked)}/>Confirmation fictive de {findMember(family,coholders[1]||'')?.name||'deuxième cotitulaire'}</label>
+   <MiniHead heading="Clôture du compte joint" desc="Vérifiez les conditions et simulez la confirmation des deux cotitulaires."/>
+   <Card className="p-4 space-y-4">
+    <SectionHead title="Vérifications"/>
+    <div className="rounded-[18px] bg-[#F8F5FF] p-3 space-y-2">
+     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Solde actuel</span><strong>{currency(account?.balance||0)}</strong></div>
+     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Cartes actives</span><strong>{linkedCards.filter(c=>c.active).length}</strong></div>
+    </div>
+    <div className={'p-3 rounded-[17px] text-[12px] font-bold '+(hasPendingClosure?'bg-[#FFF1F4] text-[#B14C61]':'bg-[#EAF8F1] text-[#16875B]')}>
+     {hasPendingClosure?'Le compte doit être vide et les cartes suspendues.':'Conditions simulées satisfaites.'}
+    </div>
    </Card>
-   <Button disabled={hasPendingClosure||!closureAccepted||!closureSecondAccepted} onClick={()=>{onUpdate(f=>{f.joint=null;f.jointHolderIds=[];f.jointApplication=null;});onToast('Compte joint clôturé (simulation).');onHome();}}>Simuler la clôture <Check size={16}/></Button>
+   <Card className="p-4 space-y-3">
+    <SectionHead title="Accords des cotitulaires"/>
+    {coholders.slice(0,2).map((id,i)=>{
+     const m=findMember(family,id);
+     return <label key={id} className="flex items-center gap-3 rounded-[17px] bg-[#FAF7FF] p-3">
+      <PersonAvatar member={m} size={42}/><span className="flex-1 text-[12px] font-bold">{m?.name||'Cotitulaire'}<span className="block text-[11px] text-[#81758D] font-normal mt-1">Accord fictif {i+1}/2</span></span>
+      <input type="checkbox" checked={i===0?closureAccepted:closureSecondAccepted} onChange={e=>i===0?setClosureAccepted(e.target.checked):setClosureSecondAccepted(e.target.checked)} className="accent-[#752DDB] w-4 h-4"/>
+     </label>;
+    })}
+   </Card>
+   <Button disabled={coholders.length<2||hasPendingClosure||!closureAccepted||!closureSecondAccepted} onClick={()=>{onUpdate(f=>{f.joint=null;f.jointHolderIds=[];f.jointApplication=null;});onToast('Compte joint clôturé (simulation).');onHome();}}>Simuler la clôture <Check size={16}/></Button>
+   <Notes>Aucune demande réelle de clôture n'est envoyée. Les conditions bancaires restent à confirmer.</Notes>
   </>}
  </div>;
 }
