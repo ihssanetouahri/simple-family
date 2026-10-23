@@ -648,7 +648,25 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <Panel className="p-5 bg-gradient-to-br from-[#4F178F] to-[#8C43E6] text-white border-none"><div className="flex items-center gap-2 text-white/80 text-xs"><PiggyBank size={18}/> Objectifs d’épargne</div><p className="text-[29px] font-extrabold mt-4">{showBalance(visibleGoals.filter(g=>g.status==='active').reduce((s,g)=>s+g.balance,0))}</p><p className="text-[11px] text-white/75 mt-1">Épargne active de cette famille</p></Panel>
        <div className="flex justify-between items-center"><h3 className="text-lg font-extrabold">Nos projets</h3><button type="button" onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:family.members.map(m=>m.id).join(',')})} className="text-xs font-bold text-[#6625DE] flex gap-1 items-center"><Plus size={15}/> Nouveau</button></div>
        {visibleGoals.length===0&&<Panel className="p-6 text-center space-y-3"><div className="text-4xl">✈️</div><h3 className="font-extrabold text-[18px]">Quel projet vous fait rêver ?</h3><p className="text-sm text-[#8B8098]">Un voyage, une fête ou un projet à préparer ensemble.</p><PillButton onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:data.viewerId})}>Créer un objectif</PillButton></Panel>}
-       {visibleGoals.map(g=><button type="button" onClick={()=>navigateToGoal(g.id)} key={g.id} className="card-simple p-4 block w-full text-left"><div className="flex justify-between items-center mb-3"><div className="w-10 h-10 rounded-2xl bg-[#F1E8FF] flex items-center justify-center text-xl">{g.title.toLowerCase().includes('vacan')?'✈️':'🎯'}</div><Tag tone={g.status==='closed'?'green':'violet'}>{g.status==='closed'?'Terminé':`${Math.round(g.balance/g.target*100)} %`}</Tag></div><p className="text-[15px] font-extrabold">{g.title}</p><div className="flex justify-between items-end mt-2 mb-2"><span className="text-[13px] font-bold text-[#6529DB]">{currency(g.balance)}</span><span className="text-[11px] text-[#837990]">sur {currency(g.target)}</span></div><Progress value={g.balance} total={g.target}/><p className="text-[11px] text-[#857A95] mt-2">Échéance : {dateFor(g.deadline)} · Pour {initialsFor(g.ownerId)}</p></button>)}
+       {visibleGoals.map(g=><button type="button" onClick={()=>navigateToGoal(g.id)} key={g.id}
+         className="block w-full text-left overflow-hidden rounded-[25px] bg-white border border-[#ECE5F6] shadow-sm hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+         <FamilyPhotoCover id={g.id} kind="goal" label={`Illustration du projet ${g.title}`} height={138}/>
+         <div className="p-4 space-y-3">
+           <div className="flex items-start justify-between gap-2">
+             <div className="min-w-0 flex-1">
+               <p className="text-[15px] font-extrabold text-[#281936] truncate">{g.title}</p>
+               <p className="text-[11px] text-[#84758F] mt-1">{goalHomeLabel(g)}</p>
+             </div>
+             <Tag tone={g.status==='closed'?'green':'violet'}>{g.status==='closed'?'Terminé':`${Math.round(g.balance/g.target*100)} %`}</Tag>
+           </div>
+           <Progress value={g.balance} total={g.target}/>
+           <div className="flex justify-between gap-2 items-end text-[12px]">
+             <span className="font-bold text-[#6529DB]">{showBalance(g.balance)}</span>
+             <span className="text-[#837990]">sur {showBalance(g.target)}</span>
+           </div>
+           <p className="text-[11px] text-[#857A95]">Échéance : {dateFor(g.deadline)} · Pour {initialsFor(g.ownerId)}</p>
+         </div>
+       </button>)}
      </>}
 
      {route==='goal'&&goal&&visibleGoals.some(g=>g.id===goal.id)&&<>
@@ -659,7 +677,24 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {(admin||goal.creatorId===data.viewerId)&&goal.status==='active'&&<button type="button" className="w-full py-3 text-[#AB5070] font-semibold text-xs" onClick={()=>launch('goal-delete')}>Supprimer l’objectif d’épargne</button>}
      </>}
 
-     {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p>{family.pots.map(p=><button type="button" onClick={()=>navigateToPot(p.id)} key={p.id} className="card-simple p-4 text-left w-full space-y-3"><div className="flex items-center justify-between"><span className="text-3xl">🎁</span><Tag tone={p.status==='closed'?'green':'violet'}>{p.status==='closed'?'Terminée':'En cours'}</Tag></div><h3 className="font-extrabold text-[16px]">{p.title}</h3><div className="flex justify-between text-xs"><strong>{currency(p.balance)}</strong><span className="text-[#80748F]">{currency(p.target)}</span></div><Progress value={p.balance} total={p.target} tone="green"/></button>)}<PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
+     {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p>{family.pots.map(p=><button type="button" onClick={()=>navigateToPot(p.id)} key={p.id}
+          className="block w-full overflow-hidden rounded-[25px] bg-white border border-[#ECE5F6] text-left shadow-sm hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+          <FamilyPhotoCover id={p.id} kind="pot" label={`Illustration de la cagnotte ${p.title}`} height={138}/>
+          <div className="p-4 space-y-3">
+            <div className="flex justify-between gap-2 items-start">
+              <div className="min-w-0 flex-1">
+                <p className="font-extrabold text-[15px] text-[#281936] truncate">{p.title}</p>
+                <p className="text-[11px] text-[#847991] mt-1">Cagnotte collective · {p.members.length} participant{p.members.length>1?'s':''}</p>
+              </div>
+              <Tag tone={p.status==='closed'?'green':'violet'}>{p.status==='closed'?'Terminée':`${Math.round(p.balance/p.target*100)} %`}</Tag>
+            </div>
+            <Progress value={p.balance} total={p.target} tone="green"/>
+            <div className="flex justify-between gap-2 text-[12px]">
+              <span className="font-bold text-[#198A66]">{showBalance(p.balance)}</span>
+              <span className="text-[#80748F]">sur {showBalance(p.target)}</span>
+            </div>
+          </div>
+        </button>)}<PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
      {route==='pot'&&pot&&<><Panel className="p-5 text-center space-y-4"><div className="text-5xl">🎁</div><h2 className="text-2xl font-extrabold">{pot.title}</h2><p className="text-3xl font-extrabold text-[#6728D9]">{currency(pot.balance)}</p><p className="text-xs text-[#8D8199]">Objectif : {currency(pot.target)}</p><Progress value={pot.balance} total={pot.target} tone="green"/></Panel>{pot.status==='active'&&<PillButton onClick={()=>launch('pot-deposit')}>Participer à la cagnotte <Plus size={16}/></PillButton>}</>}
 
      {route==='services'&&<>
