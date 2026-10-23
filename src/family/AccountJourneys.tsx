@@ -379,57 +379,83 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
    {application?.status==='rejected'&&<Button onClick={()=>{onUpdate(f=>{f.jointApplication=null;});setOpeningHolder('');setTermsAccepted(false);setFirstSignature(false);jump('coholder');}}>Nouvelle demande <ArrowRight size={16}/></Button>}
   </>}
   {view==='opening-success'&&<Card className="p-6 text-center space-y-4">
-   <CheckCircle2 size={43} className="text-[#20A77C] mx-auto"/>
-   <h2 className="text-[20px] font-extrabold">{kind==='sub'?'Sous-compte Famille créé !':'Compte joint ouvert !'}</h2>
-   <Notes>Succès simulé. Aucun produit bancaire réel n'a été ouvert.</Notes>
-   <Button onClick={root}>Accéder au compte <ArrowRight size={16}/></Button>
-  </Card>}
+    <span className="w-[70px] h-[70px] flex items-center justify-center rounded-full bg-[#E8F8EF] text-[#20A77C] mx-auto"><CheckCircle2 size={39}/></span>
+    <h2 className="text-[21px] font-extrabold">{kind==='sub'?'Sous-compte Famille créé !':'Compte joint ouvert !'}</h2>
+    <div className="flex justify-center"><AvatarStack members={kind==='sub'?family.members:family.members.filter(m=>coholders.includes(m.id))}/></div>
+    <Notes>Succès simulé. Aucun produit bancaire réel n'a été ouvert.</Notes>
+    <Button onClick={root}>Accéder au compte <ArrowRight size={16}/></Button>
+   </Card>}
   {view==='money'&&<>
-   <MiniHead heading={nextLabel} desc={'Opération fictive depuis '+title}/>
-   <Card className="space-y-3">
-    <div><Notes>Compte à débiter</Notes><p className="font-bold text-[13px]">{action==='add'?'Mon compte Simple':title}</p><p className="text-[11px] text-[#83758F] mt-1">Disponible : {currency(sourceBalance)}</p></div>
-    {action==='transfer'&&<label className="block space-y-2"><span className="text-[12px] font-bold">Destination</span>
-     <select value={dest} onChange={e=>setDestination(e.target.value)} className="w-full h-12 border border-[#E4D9F4] rounded-2xl bg-[#F8F5FE] px-3 text-[13px]">
-      {targets.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
-     </select></label>}
-    {action==='pay'&&<label className="block space-y-2"><span className="text-[12px] font-bold">Bénéficiaire / facture</span>
-     <input value={beneficiary} onChange={e=>setBeneficiary(e.target.value)} className="w-full h-12 border border-[#E4D9F4] rounded-2xl bg-[#F8F5FE] px-3 text-[13px]"/></label>}
+   <MiniHead heading={nextLabel} desc={`Depuis ${title} · Opération fictive`}/>
+   <Card className="p-4 space-y-4">
+    <div className="flex items-center gap-3 p-3 rounded-[19px] bg-[#F7F2FF] border border-[#EDE3FA]">
+     <span className="rounded-2xl bg-white w-11 h-11 shrink-0 flex items-center justify-center text-[#722DD8]">
+      {action==='add'?<WalletCards size={22}/>:kind==='sub'?<Landmark size={22}/>:<HeartHandshake size={22}/>}
+     </span>
+     <div className="min-w-0"><Notes>Compte à débiter</Notes><p className="font-extrabold text-[13px] mt-1">{action==='add'?'Mon compte Simple':title}</p>
+      <p className="text-[11px] text-[#776687] mt-1">Disponible : {currency(sourceBalance)}</p></div>
+    </div>
+    {action==='transfer'&&<>
+     <label className="block space-y-2"><span className="font-bold text-[12px]">Envoyer à</span>
+      <select value={dest} onChange={e=>setDestination(e.target.value)} className="w-full h-12 border border-[#E7DFF2] rounded-2xl bg-[#F9F6FF] px-3 text-[13px]">
+       {targets.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
+      </select></label>
+     {dest.startsWith('pocket:')&&<PersonTile member={findMember(family,dest.slice(7))} label="Pocket familiale · Membre destinataire"/>}
+    </>}
+    {action==='pay'&&<label className="block space-y-2"><span className="font-bold text-[12px]">Bénéficiaire / facture</span>
+     <input value={beneficiary} onChange={e=>setBeneficiary(e.target.value)}
+      className="w-full h-12 border border-[#E4D9F4] rounded-2xl bg-[#F8F5FE] px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#D4BCF6]"/></label>}
     <Field label="Montant (DH)" value={amount} onChange={setAmount}/>
-    {validAmount&&amountValue>sourceBalance&&<p className="text-xs text-[#B4435C]">Solde insuffisant.</p>}
+    {validAmount&&amountValue>sourceBalance&&<p className="text-xs text-[#B4435C] bg-[#FFF1F4] p-2 rounded-lg">Solde insuffisant pour effectuer cette opération.</p>}
     {action==='pay'&&!beneficiary.trim()&&<p className="text-xs text-[#B4435C]">Ajoutez un bénéficiaire.</p>}
    </Card>
    <Button disabled={!canSubmit||(action==='pay'&&!beneficiary.trim())} onClick={()=>jump('review')}>Continuer <ArrowRight size={16}/></Button>
   </>}
   {view==='review'&&<>
-   <MiniHead heading="Vérifier l'opération" desc="Contrôlez les informations avant confirmation."/>
-   <Card className="space-y-4">
-    <p className="text-[28px] font-extrabold text-[#6C2ADD]">{currency(amountValue)}</p>
-    <div className="flex justify-between text-[12px]"><span className="text-[#7A7187]">Depuis</span><strong>{action==='add'?'Mon compte Simple':title}</strong></div>
-    <div className="flex justify-between text-[12px]"><span className="text-[#7A7187]">Vers</span><strong>{action==='pay'?beneficiary:dest==='account'?'Sous-compte Famille':dest==='joint'?'Compte joint':dest.startsWith('pocket:')?'Pocket '+findMember(family,dest.slice(7))?.name:dest.startsWith('simple:')?'Compte Simple':title}</strong></div>
-    <Notes>Dans un parcours bancaire réel, des validations de sécurité supplémentaires peuvent être exigées.</Notes>
+   <MiniHead heading="Vérifier l'opération" desc="Contrôlez les informations avant de confirmer."/>
+   <Card className="p-5 space-y-4">
+    <div className="text-center py-2"><p className="text-[11px] text-[#81738F]">Montant de l'opération</p>
+     <p className="text-[30px] mt-2 font-extrabold tracking-tight text-[#6C2ADD] tabular-nums">{currency(amountValue)}</p></div>
+    <div className="border-t border-[#EEE8F5]"/>
+    <div className="flex gap-3 items-center"><span className="w-9 h-9 bg-[#F1E8FF] rounded-xl flex justify-center items-center text-[#752EDC]"><WalletCards size={17}/></span>
+     <div className="flex-1"><Notes>Depuis</Notes><p className="text-[13px] font-bold">{action==='add'?'Mon compte Simple':title}</p></div></div>
+    <div className="flex gap-3 items-center"><span className="w-9 h-9 bg-[#F1E8FF] rounded-xl flex justify-center items-center text-[#752EDC]"><ArrowLeftRight size={17}/></span>
+     <div className="flex-1"><Notes>Vers</Notes><p className="text-[13px] font-bold">{action==='pay'?beneficiary:dest==='account'?'Sous-compte Famille':dest==='joint'?'Compte joint':dest.startsWith('pocket:')?'Pocket '+findMember(family,dest.slice(7))?.name:dest.startsWith('simple:')?'Compte Simple':title}</p></div>
+     {dest.startsWith('pocket:')&&<PersonAvatar member={findMember(family,dest.slice(7))} size={35}/>}
+    </div>
+   </Card>
+   <Card className="flex gap-3 items-start bg-[#F3EDFE] border-[#E3D7FA]">
+    <ShieldCheck size={20} className="text-[#722ADA] shrink-0"/>
+    <Notes>{needsDemoApproval?'Cette opération demandera deux accords fictifs.':'Une validation de sécurité pourra être nécessaire selon les règles bancaires.'}</Notes>
    </Card>
    {notice&&<p className="text-[12px] text-[#B4435C]">{notice}</p>}
    <Button disabled={!canSubmit} onClick={()=>needsDemoApproval?jump('approval'):commitMoney()}>Confirmer (simulation) <Check size={17}/></Button>
   </>}
   {view==='approval'&&<>
-    <MiniHead heading="Double validation (simulation)" desc="Hypothèse UX pour illustrer une validation renforcée au-dessus du seuil fictif défini dans le prototype."/>
-    <Card className="space-y-4">
-     <p className="font-extrabold text-[23px]">{currency(amountValue)}</p>
+    <MiniHead heading="Double validation" desc="Simulation de l'approbation renforcée d'une opération importante."/>
+    <Card className="p-5 space-y-4">
+     <div className="text-center border-b border-[#EEE7F6] pb-4"><ShieldCheck size={30} className="mx-auto text-[#7029D6] mb-2"/>
+      <p className="font-extrabold text-[25px]">{currency(amountValue)}</p><Notes>Montant à autoriser</Notes></div>
      {approvalNames.length<2&&<p className="text-xs text-[#A74963]">Deux personnes autorisées sont nécessaires dans ce scénario.</p>}
-     <label className="flex gap-3 items-center text-[12px]"><input type="checkbox" checked={approvalFirst} onChange={e=>setApprovalFirst(e.target.checked)} className="accent-[#762BDD]"/>
-      Accord fictif de {approvalNames[0]||'premier titulaire'}</label>
-     <label className="flex gap-3 items-center text-[12px]"><input type="checkbox" checked={approvalSecond} onChange={e=>setApprovalSecond(e.target.checked)} className="accent-[#762BDD]"/>
-      Accord fictif de {approvalNames[1]||'deuxième titulaire'}</label>
+     {(kind==='sub'?family.members.filter(m=>m.role==='leader'||m.role==='coleader'):family.members.filter(m=>coholders.includes(m.id))).slice(0,2).map((m,i)=>
+      <label key={m.id} className="flex items-center gap-3 rounded-[18px] bg-[#FAF7FF] border border-[#EEE6FA] p-3">
+       <PersonAvatar member={m} size={43}/>
+       <span className="flex-1"><span className="font-bold text-[12px] block">{m.name}</span><span className="text-[11px] text-[#83778F]">Validation {i+1}/2 (fictive)</span></span>
+       <input type="checkbox" checked={i===0?approvalFirst:approvalSecond} onChange={e=>i===0?setApprovalFirst(e.target.checked):setApprovalSecond(e.target.checked)} className="accent-[#762BDD] w-4 h-4"/>
+      </label>)}
     </Card>
     <Button disabled={!canSubmit||approvalNames.length<2||!approvalFirst||!approvalSecond} onClick={commitMoney}>Valider l'opération <ShieldCheck size={17}/></Button>
    </>}
   {view==='money-success'&&<Card className="p-6 text-center space-y-4">
-   <CheckCircle2 size={42} className="text-[#1CA67B] mx-auto"/>
-   <h2 className="text-[20px] font-extrabold">Opération effectuée !</h2>
-   <p className="text-[24px] font-extrabold text-[#6D2BD8]">{currency(amountValue)}</p>
-   <Notes>Soldes et historique fictifs mis à jour.</Notes>
-   <Button onClick={root}>Retour au compte <ArrowRight size={16}/></Button>
-  </Card>}
+    <span className="w-[72px] h-[72px] mx-auto rounded-full bg-[#E7F8EE] text-[#20A67A] flex items-center justify-center"><CheckCircle2 size={40}/></span>
+    <h2 className="text-[20px] font-extrabold">Opération effectuée !</h2>
+    <p className="text-[28px] font-extrabold text-[#6D2BD8] tabular-nums">{currency(amountValue)}</p>
+    <div className="rounded-2xl bg-[#F6F1FE] p-3 text-left flex items-center gap-2">
+     {dest.startsWith('pocket:')?<PersonAvatar member={findMember(family,dest.slice(7))} size={40}/>:<CheckCircle2 size={23} className="text-[#762ED9]"/>}
+     <Notes>Les soldes et l'historique fictifs ont été actualisés.</Notes>
+    </div>
+    <Button onClick={root}>Retour au compte <ArrowRight size={16}/></Button>
+   </Card>}
   {view==='history'&&<>
    <MiniHead heading="Historique des opérations" desc="Mouvements associés uniquement à ce compte."/>
    <label className="block text-[12px]">Filtrer par catégorie
