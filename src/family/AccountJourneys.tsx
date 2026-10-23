@@ -58,6 +58,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const admin=isAdmin(family,viewerId);
  const coholders=family.jointHolderIds||[];
  const jointOwner=coholders.includes(viewerId);
+ const canRequestJoint=Boolean(viewer&&!viewer.simpleOne&&(viewer.relation==='Moi'||viewer.relation==='Conjoint'));
  const authorized=kind==='sub'?admin:jointOwner;
  const account=kind==='sub'?family.account:family.joint;
  const title=kind==='sub'?'Sous-compte Famille':'Compte joint';
@@ -125,7 +126,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
   jump('money-success');onToast('Opération fictive enregistrée.');
  }
  function requestJoint(){
-  if(!viewer||!openingHolder||!termsAccepted||!firstSignature)return;
+  if(!canRequestJoint||!openingHolder||!termsAccepted||!firstSignature)return;
   onUpdate(f=>{f.jointApplication={status:'awaiting',requesterId:viewerId,coHolderId:openingHolder};});
   jump('opening');onToast('Demande fictive envoyée au deuxième cotitulaire.');
  }
@@ -207,8 +208,8 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
     <Row icon={CreditCard} title="Cartes et paiements selon l'offre" onClick={()=>onToast('Fonctionnalité simulée, sous réserve des conditions bancaires.')} />
    </Card>
    {kind==='sub'?<Button disabled={!admin} onClick={()=>jump('sub-config')}>Créer mon sous-compte <ArrowRight size={16}/></Button>:
-    <Button onClick={()=>jump('coholder')}>Ouvrir un compte joint <ArrowRight size={16}/></Button>}
-   <Notes>Offre, éligibilité, tarifs et conventions bancaires à valider. L'ouverture ici est uniquement simulée.</Notes>
+    <Button disabled={!canRequestJoint} onClick={()=>jump('coholder')}>Ouvrir un compte joint <ArrowRight size={16}/></Button>}
+   <Notes>{kind==='joint'&&!canRequestJoint?'L’ouverture n’est pas accessible à ce profil dans le scénario. ':' '}Offre, éligibilité, tarifs et conventions bancaires à valider. L'ouverture ici est uniquement simulée.</Notes>
   </>}
   {view==='sub-config'&&<>
    <MiniHead heading="Configurer votre sous-compte" desc="Définissez les membres autorisés à consulter le solde. Les droits de paiement restent distincts."/>
