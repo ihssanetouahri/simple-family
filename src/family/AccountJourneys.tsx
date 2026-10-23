@@ -8,7 +8,7 @@ import { currency, findMember, isAdmin, moneyValid, today, uid, type Family, typ
 
 type Kind = 'sub' | 'joint';
 type Action = 'add' | 'transfer' | 'pay';
-type View = 'overview' | 'intro' | 'coholder' | 'identity' | 'terms' | 'opening' | 'opening-success'
+type View = 'overview' | 'intro' | 'sub-config' | 'approval' | 'coholder' | 'identity' | 'terms' | 'opening' | 'opening-success'
   | 'money' | 'review' | 'money-success' | 'history' | 'transaction'
   | 'members' | 'person' | 'cards' | 'card' | 'documents' | 'settings' | 'closure';
 type Props = {
@@ -76,6 +76,9 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const [openingHolder,setOpeningHolder]=useState('');
  const [termsAccepted,setTermsAccepted]=useState(false);
  const [firstSignature,setFirstSignature]=useState(false);
+ const [subAccess,setSubAccess]=useState<string[]>(family.accountViewIds);
+ const [approvalFirst,setApprovalFirst]=useState(false);
+ const [approvalSecond,setApprovalSecond]=useState(false);
  const [closureAccepted,setClosureAccepted]=useState(false);
  const [notice,setNotice]=useState('');
  const [notifications,setNotifications]=useState(true);
@@ -83,7 +86,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const jump=(next:View)=>{setTrail(prev=>[...prev,view]);setView(next);setNotice('');scrollTop();};
  const previous=()=>{if(trail.length){setView(trail[trail.length-1]);setTrail(t=>t.slice(0,-1));setNotice('');scrollTop();}else onHome();};
  const root=()=>{setTrail([]);setView('overview');setNotice('');scrollTop();};
- const begin=(type:Action)=>{setAction(type);setAmount('');setBeneficiary('Facture familiale');setDestination('');jump('money');};
+ const begin=(type:Action)=>{setAction(type);setAmount('');setBeneficiary('Facture familiale');setDestination('');setApprovalFirst(false);setApprovalSecond(false);jump('money');};
  const membersEligible=family.members.filter(m=>m.id!==viewerId&&!m.simpleOne&&m.relation==='Conjoint');
  const application=family.jointApplication;
  const readable=kind==='sub'?canViewSub:jointOwner;
@@ -97,6 +100,8 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const amountValue=Number(amount.replace(',','.'));
  const validAmount=Number.isFinite(amountValue)&&moneyValid(amountValue);
  const canSubmit=authorized&&validAmount&&sourceBalance>=amountValue&&Boolean(dest);
+ const needsDemoApproval=action!=='add'&&validAmount&&amountValue>=family.otpThreshold;
+ const approvalNames=(kind==='sub'?family.members.filter(m=>m.role==='leader'||m.role==='coleader'):family.members.filter(m=>coholders.includes(m.id))).slice(0,2).map(m=>m.name);
  const linkedCards=family.cards.filter(c=>kind==='sub'?['family','account',family.account?.id].includes(c.source):['joint',family.joint?.id].includes(c.source));
  const transactions=family.transactions.filter(t=>kind==='sub'?
   ['account','family','Sous-compte Famille'].includes(t.source)||['account','family','Sous-compte Famille'].includes(t.target):
@@ -107,7 +112,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  const hasPendingClosure=linkedCards.some(c=>c.active)||Boolean(account&&account.balance!==0);
 
  function commitMoney(){
-  if(!authorized||!validAmount||!dest||sourceBalance<amountValue){setNotice('Vérifiez le montant, le solde et vos autorisations.');return;}
+  if(!authorized||!validAmount||!dest||sourceBalance<amountValue||(needsDemoApproval&&(!approvalFirst||!approvalSecond))){setNotice('Vérifiez le montant, le solde et vos autorisations.');return;}
   onUpdate(f=>{
    if((accountBalance(f,source)||0)<amountValue)return;
    adjustBalance(f,source,-amountValue);
@@ -141,7 +146,7 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
  }
  function createSub(){
   if(!admin||family.account)return;
-  onUpdate(f=>{f.account={id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000};});
+  onUpdate(f=>{f.account={id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000};f.accountViewIds=[...new Set([...f.members.filter(m=>m.role==='leader'||m.role==='coleader').map(m=>m.id),...subAccess])];});
   jump('opening-success');onToast('Sous-compte créé (simulation).');
  }
  function newCard(){
@@ -200,9 +205,26 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
     <Row icon={ShieldCheck} title="Autorisations et sécurité" onClick={()=>onToast('Les modalités bancaires restent à confirmer.')} />
     <Row icon={CreditCard} title="Cartes et paiements selon l'offre" onClick={()=>onToast('Fonctionnalité simulée, sous réserve des conditions bancaires.')} />
    </Card>
-   {kind==='sub'?<Button disabled={!admin} onClick={createSub}>Créer mon sous-compte <ArrowRight size={16}/></Button>:
+   {kind==='sub'?<Button disabled={!admin} onClick={()=>jump('sub-config')}>Créer mon sous-compte <ArrowRight size={16}/></Button>:
     <Button onClick={()=>jump('coholder')}>Ouvrir un compte joint <ArrowRight size={16}/></Button>}
    <Notes>Offre, éligibilité, tarifs et conventions bancaires à valider. L'ouverture ici est uniquement simulée.</Notes>
+  </>}
+  {view==='sub-config'&&<>
+   <MiniHead heading="Configurer votre sous-compte" desc="Définissez les membres autorisés à consulter le solde. Les droits de paiement restent distincts."/>
+   <Card className="space-y-3">
+    <p className="font-bold text-[13px]">Consultation du solde</p>
+    {family.members.map(m=>{
+     const locked=m.role==='leader'||m.role==='coleader';
+     return <label key={m.id} className="flex items-center gap-3 py-2 border-b last:border-none border-[#EEE7F8] text-[12px]">
+      <input type="checkbox" disabled={locked} checked={locked||subAccess.includes(m.id)}
+       onChange={e=>setSubAccess(prev=>e.target.checked?[...new Set([...prev,m.id])]:prev.filter(id=>id!==m.id))}
+       className="accent-[#772DDD]"/>
+      <span className="flex-1"><strong>{m.name}</strong><span className="block text-[#81758D] text-[11px]">{locked?'Accès de gestion':'Consultation facultative'}</span></span>
+     </label>;
+    })}
+   </Card>
+   <Button disabled={!admin} onClick={createSub}>Confirmer la création fictive <Check size={16}/></Button>
+   <Notes>La création et les droits sont simulés ; les règles bancaires définitives restent à valider.</Notes>
   </>}
   {view==='coholder'&&<>
    <MiniHead heading="Choisir le deuxième cotitulaire" desc="Sélectionnez un membre adulte éligible dans la famille. Le rôle familial ne confère pas automatiquement de droits bancaires."/>
@@ -285,8 +307,20 @@ export function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome
     <Notes>Dans un parcours bancaire réel, des validations de sécurité supplémentaires peuvent être exigées.</Notes>
    </Card>
    {notice&&<p className="text-[12px] text-[#B4435C]">{notice}</p>}
-   <Button disabled={!canSubmit} onClick={commitMoney}>Confirmer (simulation) <Check size={17}/></Button>
+   <Button disabled={!canSubmit} onClick={()=>needsDemoApproval?jump('approval'):commitMoney()}>Confirmer (simulation) <Check size={17}/></Button>
   </>}
+  {view==='approval'&&<>
+    <MiniHead heading="Double validation (simulation)" desc="Hypothèse UX pour illustrer une validation renforcée au-dessus du seuil fictif défini dans le prototype."/>
+    <Card className="space-y-4">
+     <p className="font-extrabold text-[23px]">{currency(amountValue)}</p>
+     {approvalNames.length<2&&<p className="text-xs text-[#A74963]">Deux personnes autorisées sont nécessaires dans ce scénario.</p>}
+     <label className="flex gap-3 items-center text-[12px]"><input type="checkbox" checked={approvalFirst} onChange={e=>setApprovalFirst(e.target.checked)} className="accent-[#762BDD]"/>
+      Accord fictif de {approvalNames[0]||'premier titulaire'}</label>
+     <label className="flex gap-3 items-center text-[12px]"><input type="checkbox" checked={approvalSecond} onChange={e=>setApprovalSecond(e.target.checked)} className="accent-[#762BDD]"/>
+      Accord fictif de {approvalNames[1]||'deuxième titulaire'}</label>
+    </Card>
+    <Button disabled={!canSubmit||approvalNames.length<2||!approvalFirst||!approvalSecond} onClick={commitMoney}>Valider l'opération <ShieldCheck size={17}/></Button>
+   </>}
   {view==='money-success'&&<Card className="p-6 text-center space-y-4">
    <CheckCircle2 size={42} className="text-[#1CA67B] mx-auto"/>
    <h2 className="text-[20px] font-extrabold">Opération effectuée !</h2>
