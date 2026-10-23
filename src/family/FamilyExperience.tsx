@@ -1056,7 +1056,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    document.getElementById('simple-device-frame')!
   )}
   {route==='chat' && document.getElementById('simple-chat-composer-slot') && createPortal(
-      <div className="bg-white/95 backdrop-blur-md border-t border-[#ECE6F6] shadow-[0_-8px_26px_rgba(35,18,70,0.05)] px-5 pt-3 pb-5">
+      <div className="simple-family-interactions bg-white/95 backdrop-blur-md border-t border-[#ECE6F6] shadow-[0_-8px_26px_rgba(35,18,70,0.05)] px-5 pt-3 pb-5">
         <form onSubmit={createMessage} className="flex items-center gap-2.5">
           <input aria-label="Écrire un message" value={chatInput} onChange={e=>setChatInput(e.target.value)}
             className="flex-1 min-w-0 h-12 rounded-full bg-[#F8F6FC] border border-[#E8E0F4] px-4 outline-none focus:ring-2 focus:ring-[#C6A9FF] text-[13px] text-[#241536]"
@@ -1071,7 +1071,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       document.getElementById('simple-chat-composer-slot')!
     )}
     {toast&&<div role="status" className="sticky bottom-[78px] z-40 mx-5 mb-2 bg-[#2B1751] text-white text-xs rounded-2xl px-4 py-3 shadow-lg flex items-start gap-2"><CheckCircle2 size={16} className="shrink-0 text-[#A7E7C7]"/>{toast}</div>}
-   {modal&&createPortal(<div className="absolute inset-0 z-50 flex flex-col justify-end bg-[#1C1234]/45 backdrop-blur-[2px]" onClick={close}>
+   {modal&&createPortal(<div className="simple-family-interactions absolute inset-0 z-50 flex flex-col justify-end bg-[#1C1234]/45 backdrop-blur-[2px]" onClick={close}>
     <div onClick={e=>e.stopPropagation()} className="max-h-[94%] min-h-[240px] overflow-y-auto no-scrollbar bg-white rounded-t-[32px] shadow-2xl px-5 pt-3 pb-7">
       <div className="w-12 h-1 rounded-full bg-[#DAD3E6] mx-auto mb-5"/>
       <div className="flex items-start justify-between gap-2 mb-4"><div><h3 className="text-[19px] font-extrabold">{({
