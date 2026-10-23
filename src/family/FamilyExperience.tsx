@@ -90,7 +90,7 @@ function FamilyProgressPhotoCard({id,kind,title,description,current,target,onCli
         {cardContent}
       </section>
     : <button type="button" onClick={onClick}
-        className="shrink-0 w-[264px] snap-start group rounded-[27px] bg-white border border-[#EDE5F7] p-4 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)] hover:shadow-[0_9px_23px_rgba(72,30,132,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+        className="family-hover-card shrink-0 w-[264px] snap-start group rounded-[27px] bg-white border border-[#EDE5F7] p-4 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
         {cardContent}
       </button>;
 }
@@ -108,7 +108,7 @@ function Tag({children,tone='violet'}:{children:React.ReactNode;tone?:'violet'|'
 function Panel({children,className=''}:{children:React.ReactNode;className?:string}) {return <section className={`card-simple ${className}`}>{children}</section>}
 function Heading({title,right,subtitle}: {title:string;right?:React.ReactNode;subtitle?:string}) {return <div className="flex items-end justify-between px-1 gap-2 mb-3"><div><h3 className="text-[17px] font-extrabold leading-tight">{title}</h3>{subtitle&&<p className={`${subtle} text-[11px] mt-1`}>{subtitle}</p>}</div>{right}</div>}
 function PillButton({children,onClick,secondary=false,disabled=false}: {children:React.ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean}) {return <button disabled={disabled} type="button" onClick={onClick} className={`${secondary?'bg-[#F0EAFC] text-[#6225CE]':'btn-simple-primary text-white'} h-[45px] rounded-full px-4 flex items-center justify-center gap-2 font-bold text-[13px] w-full disabled:opacity-40 disabled:cursor-not-allowed`}>{children}</button>}
-function ActionLine({icon:Icon,title,subtitle,onClick,trailing,disabled=false}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle?:string;onClick?:()=>void;trailing?:React.ReactNode;disabled?:boolean}) {return <button disabled={disabled} onClick={onClick} type="button" className="w-full text-left py-3.5 flex items-center gap-3 border-b last:border-b-0 border-[#F1EDF7] disabled:opacity-40"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F4EEFF] text-[#6824DC] flex items-center justify-center"><Icon size={19}/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-bold text-[#221633] truncate">{title}</p>{subtitle&&<p className="text-[11px] text-[#817895] mt-0.5 leading-snug">{subtitle}</p>}</div>{trailing||<ChevronRight size={17} className="text-[#A69EB9] shrink-0"/>}</button>}
+function ActionLine({icon:Icon,title,subtitle,onClick,trailing,disabled=false}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle?:string;onClick?:()=>void;trailing?:React.ReactNode;disabled?:boolean}) {return <button disabled={disabled} onClick={onClick} type="button" className="family-hover-row w-full text-left py-3.5 flex items-center gap-3 border-b last:border-b-0 border-[#F1EDF7] disabled:opacity-40"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F4EEFF] text-[#6824DC] flex items-center justify-center"><Icon size={19}/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-bold text-[#221633] truncate">{title}</p>{subtitle&&<p className="text-[11px] text-[#817895] mt-0.5 leading-snug">{subtitle}</p>}</div>{trailing||<ChevronRight size={17} className="text-[#A69EB9] shrink-0"/>}</button>}
 function Input({label,value,onChange,type='text',placeholder='',min,required=false}:{label:string;value?:string;onChange:(v:string)=>void;type?:string;placeholder?:string;min?:string;required?:boolean}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><input required={required} min={min} type={type} value={value??''} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]"/></label>}
 function SelectInput({label,value,onChange,options}:{label:string;value?:string;onChange:(v:string)=>void;options:{value:string;label:string}[]}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><select value={value??''} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]">{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>}
 function Progress({value,total,tone='violet'}:{value:number;total:number;tone?:'violet'|'green'|'amber'}) { const colors={violet:'bg-[#7926EB]',green:'bg-[#18AB7F]',amber:'bg-[#F4A344]'}; return <div className="h-2.5 rounded-full bg-[#EEEAF4] overflow-hidden"><div className={`h-full rounded-full ${colors[tone]} transition-all`} style={{width:`${Math.min(100,Math.max(0,total?value/total*100:0))}%`}}/></div> }
@@ -116,7 +116,7 @@ const dateFor = (date:string) => date ? new Date(date+'T12:00:00').toLocaleDateS
 const daysUntil = (date:string) => {const today=new Date();today.setHours(12,0,0,0);return Math.max(0,Math.round((new Date(date+'T12:00:00').getTime()-today.getTime())/86400000));};
 
 function AlertItem({icon:Icon,title,subtitle,badge,onClick,tone='violet'}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle:string;badge?:string;onClick:()=>void;tone?:'violet'|'amber'}) {
- return <button type="button" onClick={onClick} className="w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] transition-colors hover:bg-[#FAF7FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+ return <button type="button" onClick={onClick} className="family-hover-row w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
   <span className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center ${tone==='amber'?'bg-[#FFF3E1] text-[#BF7A12]':'bg-[#F1E9FF] text-[#7430DD]'}`}><Icon size={19}/></span>
   <span className="flex-1 min-w-0"><span className="block text-[13px] font-extrabold text-[#241932] leading-snug truncate">{title}</span><span className="block text-[11px] text-[#746884] mt-1 leading-snug">{subtitle}</span></span>
   <span className="shrink-0 flex items-center gap-1.5">{badge&&<span className="rounded-full bg-[#FFF0D7] text-[#A56B12] px-2 py-1 text-[10px] font-bold">{badge}</span>}<ChevronRight size={16} className="text-[#9487A4]"/></span>
@@ -514,11 +514,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const hasFamilyFollowUps=Boolean(dueBill||pendingInvite||displayUpcomingGoal);
  const openDueBill=(bill:Family['alerts'][number])=>launch('pay-bill',{from:'account',beneficiary:bill.beneficiary,amount:String(bill.amount),alertId:bill.id});
 
- return <div className="min-h-full flex flex-col bg-simple-canvas relative">
+ return <div className="simple-family-interactions min-h-full flex flex-col bg-simple-canvas relative">
    {route==='dashboard' ? <div className="sticky top-0 z-30 bg-[#F6F3FE]/85 backdrop-blur-md px-5 pt-3 pb-3">
-    <div className="flex items-center justify-between gap-2"><button onClick={()=>navigate('HOME')} type="button" aria-label="Retour accueil" className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><ArrowLeft size={19}/></button>
+    <div className="flex items-center justify-between gap-2"><button onClick={()=>navigate('HOME')} type="button" aria-label="Retour accueil" className="family-hover-control w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><ArrowLeft size={19}/></button>
      <div className="text-center min-w-0 flex-1"><p className="text-[11px] text-[#85769D]">Espace familial</p><h1 className="font-extrabold text-[18px] leading-tight truncate">Ma famille</h1></div>
-     <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
+     <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="family-hover-control w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
     </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='goal'?'Projet d’épargne familial':route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
      {route!=='savings'&&route!=='pot'&&route!=='goal'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
@@ -541,12 +541,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
                  <p className="text-[12px] text-white/85 mt-1">{family.members.length} membre{family.members.length>1?'s':''} · {roleLabel(viewer?.role||'member')}</p>
                </div>
                <button type="button" ref={familySelectorButtonRef} onClick={toggleFamilySelector} aria-haspopup="menu" aria-controls="family-selector-menu" aria-expanded={selectorOpen} aria-label="Changer ou ajouter une famille"
-                 className="shrink-0 bg-white/20 backdrop-blur-md border border-white/35 text-white rounded-full px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
+                 className="family-hover-glass shrink-0 bg-white/20 backdrop-blur-md border border-white/35 text-white rounded-full px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
                  Mes familles <ChevronDown size={14}/>
                </button>
              </div>
              <div className="flex items-end justify-between gap-3">
-               <button type="button" onClick={()=>mainGo('members')} className="text-[12px] font-bold rounded-full px-3.5 py-2.5 bg-white text-[#5120A8] inline-flex items-center gap-2">
+               <button type="button" onClick={()=>mainGo('members')} className="family-hover-hero text-[12px] font-bold rounded-full px-3.5 py-2.5 bg-white text-[#5120A8] inline-flex items-center gap-2">
                  Voir les membres <ArrowRight size={15}/>
                </button>
                <div className="flex -space-x-2" aria-label="Aperçu des membres">
@@ -560,7 +560,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
        {/* Alertes fictives, actionnables et visibles uniquement quand elles sont en attente. */}
        {hasFamilyFollowUps&&<section>
-         <Heading title="À suivre en famille" right={<button type="button" onClick={()=>mainGo('alerts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Heading title="À suivre en famille" right={<button type="button" onClick={()=>mainGo('alerts')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <Panel className="px-4">
            {dueBill&&<AlertItem icon={CalendarClock} title={dueBill.title} subtitle={`${currency(dueBill.amount)} · Échéance le ${dateFor(dueBill.dueDate)}`} badge={`J-${daysUntil(dueBill.dueDate)}`} tone="amber" onClick={()=>openDueBill(dueBill)}/>}
            {pendingInvite&&<AlertItem icon={UserPlus} title="Invitation en attente" subtitle={`${pendingInvite.name} · Gérer son invitation`} onClick={()=>mainGo('members')}/>}
@@ -569,19 +569,19 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>}
 
        <section>
-         <Heading title="Comptes partagés" right={<button type="button" onClick={()=>mainGo('accounts')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Heading title="Comptes partagés" right={<button type="button" onClick={()=>mainGo('accounts')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <div className="grid grid-cols-2 gap-3">
-           <button type="button" onClick={()=>mainGo('sub-account')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+           <button type="button" onClick={()=>mainGo('sub-account')} className="family-hover-card bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><Landmark size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Sous-compte Famille</p><p className="text-[10px] text-[#756785] mt-0.5">Dépenses communes</p>
              <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-auto pt-2">{family.account?(canViewFamilyAccount?showBalance(family.account.balance):'Accès restreint'):'À créer'}</p>
            </button>
-           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+           {admin&&family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="family-hover-card bg-white border border-[#EBE4F4] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#7430DD]"/><ArrowUpRight size={16} className="text-[#A99EB8]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
              <p className="text-[17px] font-extrabold tracking-tight leading-tight mt-auto pt-2">{showBalance(family.joint.balance)}</p>
            </button>}
-           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col transition-colors hover:bg-[#EEE5FC] hover:border-[#AB8CD9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+           {admin&&!family.joint&&<button type="button" onClick={()=>mainGo('joint-account')} className="family-hover-card bg-[#F5F0FC] border border-dashed border-[#D6C4F0] rounded-[23px] p-4 text-left min-h-[126px] flex flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex justify-between items-center"><HeartHandshake size={21} className="text-[#8F69C2]"/><Plus size={16} className="text-[#8F69C2]"/></div>
              <p className="text-[11px] leading-tight text-[#726582] mt-3">Compte joint</p><p className="text-[10px] text-[#756785] mt-0.5">Compte bancaire à deux</p>
              <p className="text-[13px] font-bold text-[#6B35B1] mt-1">{family.jointApplication?(family.jointApplication.status==='awaiting'?'Accord en attente':family.jointApplication.status==='review'?'En cours de validation':'Demande refusée'):'À ouvrir'}</p>
@@ -590,10 +590,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
 
        <section>
-         <Heading title="Pockets des membres" right={<button type="button" onClick={()=>mainGo('pockets')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Heading title="Pockets des membres" right={<button type="button" onClick={()=>mainGo('pockets')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-3 scroll-smooth snap-x snap-mandatory scroll-px-1">
            {visiblePockets.slice(0,3).map(p=>{const m=findMember(family,p.ownerId);return <button key={p.id} type="button" onClick={()=>navigateToMember(p.ownerId)}
-             className="shrink-0 snap-start w-[152px] rounded-[23px] p-4 bg-white border border-[#E9E1F5] text-left shadow-sm transition-all duration-150 hover:border-[#CBB8EE] hover:shadow-md active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+             className="family-hover-card shrink-0 snap-start w-[152px] rounded-[23px] p-4 bg-white border border-[#E9E1F5] text-left shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
              <div className="flex items-center justify-between"><Avatar member={m} size={36}/><ArrowUpRight size={16} className="text-[#8D67C9]"/></div>
              <p className="mt-3 text-[11px] text-[#82778F] truncate">Pocket {m?.name}</p>
              <p className="font-extrabold text-[16px] mt-1 truncate">{showBalance(p.balance)}</p>
@@ -604,7 +604,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
        {/* Two cards visible in each preview; swipe to view the second. */}
        <section>
-         <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          {visibleGoals.some(g=>g.status==='active')?
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Projets d’épargne, faire défiler horizontalement">
              {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
@@ -617,7 +617,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
            </Panel>}
        </section>
        <section>
-         <Heading title="Nos cagnottes" right={<button type="button" onClick={()=>mainGo('pots')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
+         <Heading title="Nos cagnottes" right={<button type="button" onClick={()=>mainGo('pots')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          {family.pots.some(p=>p.status==='active')?
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Cagnottes, faire défiler horizontalement">
              {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
@@ -631,11 +631,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
 
        <section>
-         <Heading title="Services familiaux" right={<button type="button" onClick={()=>mainGo('services')} className="text-[12px] text-[#6428DF] font-bold flex items-center">Tous les services <ChevronRight size={15}/></button>}/>
+         <Heading title="Services familiaux" right={<button type="button" onClick={()=>mainGo('services')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Tous les services <ChevronRight size={15}/></button>}/>
          <Panel className="px-3 py-4">
            <div className="grid grid-cols-4 gap-1.5">
              {[{label:'Chat familial',icon:MessageCircle,screen:'chat'},{label:'Simple Trip',icon:Plane,screen:'trip'},{label:'Documents',icon:LockKeyhole,screen:'vault'},{label:'Autres',icon:MoreHorizontal,screen:'services'}].map(item=>
-               <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="w-full min-w-0 min-h-[76px] rounded-2xl px-0.5 py-1 flex flex-col items-center justify-start gap-1.5 transition-colors hover:bg-[#F7F1FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+               <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="family-hover-service w-full min-w-0 min-h-[76px] rounded-2xl px-0.5 py-1 flex flex-col items-center justify-start gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
                  <span className="w-11 h-11 rounded-[16px] bg-[#F2EAFE] text-[#6E28D7] flex items-center justify-center"><item.icon size={20}/></span>
                  <span className="text-[10px] font-bold text-center leading-tight text-[#554568] break-words">{item.label}</span>
                </button>)}
@@ -647,7 +647,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          <div className="bg-white text-[#7731DF] w-11 h-11 rounded-full flex items-center justify-center shrink-0"><Sparkles size={21}/></div>
          <div className="flex-1"><p className="text-[14px] font-extrabold">Pilotez les finances de votre foyer</p>
            <p className="text-[12px] text-[#7E7394] mt-1 leading-relaxed">Analysez vos dépenses familiales, suivez vos budgets et recevez des conseils adaptés.</p>
-           <button type="button" onClick={()=>mainGo('pfm')} className="text-[12px] text-[#6024D1] font-bold mt-2 flex items-center gap-1">Découvrir Mon foyer <ArrowRight size={14}/></button>
+           <button type="button" onClick={()=>mainGo('pfm')} className="family-hover-link text-[12px] text-[#6024D1] font-bold mt-2 flex items-center gap-1">Découvrir Mon foyer <ArrowRight size={14}/></button>
          </div>
        </section>
      </>}
@@ -1033,11 +1033,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    {selectorOpen&&route==='dashboard'&&family&&document.getElementById('simple-device-frame')&&createPortal(
    <div id="family-selector-menu" ref={familySelectorMenuRef} role="menu" aria-label="Mes familles"
     style={{top:selectorPosition.top,right:selectorPosition.right,width:selectorPosition.width,maxHeight:'min(430px, 65vh)'}}
-    className="absolute z-[45] overflow-y-auto rounded-[18px] border border-[#EAE0F7] bg-white p-2.5 shadow-[0_16px_38px_rgba(36,16,81,0.24)] text-[#251838]">
+    className="simple-family-interactions absolute z-[45] overflow-y-auto rounded-[18px] border border-[#EAE0F7] bg-white p-2.5 shadow-[0_16px_38px_rgba(36,16,81,0.24)] text-[#251838]">
     <p className="px-2.5 pb-2 pt-1 text-[12px] font-extrabold text-[#655674]">Mes familles</p>
     <div className="space-y-1">
      {data.families.map(f=><button type="button" role="menuitemradio" aria-checked={f.id===family.id} key={f.id} onClick={()=>switchFamily(f.id)}
-      className={'w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left border transition-colors hover:bg-[#F5EEFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD] '+(f.id===family.id?'border-[#CFB8FA] bg-[#F2EBFF]':'border-transparent bg-white')}>
+      className={'w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left border family-hover-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD] '+(f.id===family.id?'border-[#CFB8FA] bg-[#F2EBFF]':'border-transparent bg-white')}>
       <span className="text-xl shrink-0">{f.emoji}</span>
       <span className="flex-1 min-w-0"><span className="block text-[12px] font-bold truncate">{f.name}</span><span className="block text-[10px] text-[#817494]">{f.members.length} membre{f.members.length>1?'s':''}</span></span>
       {f.id===family.id&&<Check size={16} className="text-[#6225DB] shrink-0"/>}
@@ -1045,11 +1045,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     </div>
     <div className="my-2 border-t border-[#EDE7F6]"/>
     <button type="button" role="menuitem" onClick={()=>{setSelectorOpen(false);launch('new-family',{openAccount:'false',emoji:'💜'})}}
-     className="w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left text-[12px] font-bold text-[#6428D1] transition-colors hover:bg-[#F5EEFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD]">
+     className="w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left text-[12px] font-bold text-[#6428D1] family-hover-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD]">
      <Plus size={17} className="shrink-0"/> Créer une famille
     </button>
     <button type="button" role="menuitem" onClick={()=>{setSelectorOpen(false);launch('join-family')}}
-     className="w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left text-[12px] font-bold text-[#6428D1] transition-colors hover:bg-[#F5EEFF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD]">
+     className="w-full rounded-xl px-3 py-2.5 flex items-center gap-2.5 text-left text-[12px] font-bold text-[#6428D1] family-hover-control focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7430DD]">
      <UserPlus size={17} className="shrink-0"/> Rejoindre une famille
     </button>
    </div>,
