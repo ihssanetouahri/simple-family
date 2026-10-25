@@ -11,6 +11,8 @@ import {
   canViewJointAccount, canRequestJointAccount, canViewFamilyAccount,
   requiresDemoDualApproval
 } from './permissions';
+import { accountClosureState, approvalMembers, canRespondJointApplication, canSimulateBankReview,
+  getAccountCards, validateAccountOperation } from './accounts/accountRules';
 import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
 import karimAvatar from '../assets/images/karim.jpg';
 import yasmineAvatar from '../assets/images/yasmine.jpg';
@@ -155,22 +157,30 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
  const sourceBalance=accountBalance(family,source)||0;
  const amountValue=Number(amount.replace(',','.'));
  const validAmount=Number.isFinite(amountValue)&&moneyValid(amountValue);
- const canSubmit=authorized&&validAmount&&sourceBalance>=amountValue&&Boolean(dest);
+ const accountCheck=validateAccountOperation(family,kind,action,viewerId,amountValue,dest,beneficiary);
+ const canSubmit=accountCheck.ok;
  const needsDemoApproval=action!=='add'&&validAmount&&requiresDemoDualApproval(family,kind==='sub'?'account':'joint',amountValue);
- const approvalNames=(kind==='sub'?family.members.filter(m=>m.role==='leader'||m.role==='coleader'):family.members.filter(m=>coholders.includes(m.id))).slice(0,2).map(m=>m.name);
- const linkedCards=family.cards.filter(c=>kind==='sub'?['family','account',family.account?.id].includes(c.source):['joint',family.joint?.id].includes(c.source));
+ const demoApprovers=approvalMembers(family,kind);
+ const approvalNames=demoApprovers.map(m=>m.name);
+ const linkedCards=getAccountCards(family,kind);
  const transactions=family.transactions.filter(t=>kind==='sub'?
   ['account','family','Sous-compte Famille'].includes(t.source)||['account','family','Sous-compte Famille'].includes(t.target):
   ['joint','Compte joint'].includes(t.source)||['joint','Compte joint'].includes(t.target));
  const filteredTransactions=historyFilter==='all'?transactions:transactions.filter(t=>t.category===historyFilter);
  const tx=transactions.find(t=>t.id===selectedTransaction);
  const selectedCardItem=linkedCards.find(c=>c.id===selectedCard);
- const hasPendingClosure=linkedCards.some(c=>c.active)||Boolean(account&&account.balance!==0);
+ const closure=accountClosureState(family,kind,viewerId);
+ const hasPendingClosure=closure.balance!==0||closure.activeCards>0;
 
  function commitMoney(){
-  if(!authorized||!validAmount||!dest||sourceBalance<amountValue||(needsDemoApproval&&(!approvalFirst||!approvalSecond))){setNotice('Vérifiez le montant, le solde et vos autorisations.');return;}
+  const currentCheck=validateAccountOperation(family,kind,action,viewerId,amountValue,dest,beneficiary);
+  if(!currentCheck.ok){setNotice('reason' in currentCheck?currentCheck.reason:'Opération invalide.');return;}
+  if(needsDemoApproval&&(demoApprovers.length<2||!approvalFirst||!approvalSecond)){
+    setNotice('Deux validations fictives des responsables sont nécessaires.');return;
+  }
   onUpdate(f=>{
-   if((accountBalance(f,source)||0)<amountValue)return;
+   const check=validateAccountOperation(f,kind,action,viewerId,amountValue,dest,beneficiary);
+   if(!check.ok)return;
    adjustBalance(f,source,-amountValue);
    if(dest!=='external')adjustBalance(f,dest,amountValue);
    const description=action==='add'?'Alimentation '+title:action==='transfer'?'Virement '+title:'Paiement · '+beneficiary;
@@ -180,17 +190,21 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
   jump('money-success');onToast('Opération fictive enregistrée.');
  }
  function requestJoint(){
-  if(!canRequestJoint||!openingHolder||!termsAccepted||!firstSignature)return;
+  if(!canRequestJoint||!membersEligible.some(m=>m.id===openingHolder)||!termsAccepted||!firstSignature){
+    setNotice('Le conjoint sélectionné doit être éligible et les conditions confirmées.');return;
+  }
   onUpdate(f=>{f.jointApplication={status:'awaiting',requesterId:viewerId,coHolderId:openingHolder};});
   jump('opening');onToast('Demande fictive envoyée au deuxième cotitulaire.');
  }
  function respondJoint(accepted:boolean){
-  if(!application||application.status!=='awaiting')return;
+  if(!canRespondJointApplication(family,viewerId)){
+    setNotice('Seul le second cotitulaire peut répondre en sélectionnant son profil dans le Mode démo.');return;
+  }
   onUpdate(f=>{if(f.jointApplication)f.jointApplication.status=accepted?'review':'rejected';});
   onToast(accepted?'Accord fictif du deuxième cotitulaire enregistré.':'Demande refusée dans la simulation.');
  }
  function activateJoint(){
-  if(!application||application.status!=='review')return;
+  if(!canSimulateBankReview(family,viewerId))return;
   onUpdate(f=>{
    const a=f.jointApplication;
    if(!a||a.status!=='review')return;
