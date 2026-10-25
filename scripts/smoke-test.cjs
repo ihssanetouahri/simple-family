@@ -42,3 +42,66 @@ assert(familyScreen.includes("mainGo('sub-account')")&&familyScreen.includes("ma
 assert(familyScreen.includes("label:'Autres',icon:MoreHorizontal"),'Raccourci Autres conservé');
 assert(!familyScreen.includes('selectorOpen&&<Panel'),'Le sélecteur Mes familles ne doit plus pousser la page');
 console.log('OK — parcours dédiés, données de démonstration, routes et syntaxe TSX contrôlés.');
+
+
+// FAMILY UX V2: protect the existing Home and ensure the demo resets on refresh.
+const heroSnapshotFile=path.join(__dirname,'snapshots/family-hero.tsx.snap');
+const marker='<section className="relative min-h-[212px]';
+const start=familyScreen.indexOf(marker),end=familyScreen.indexOf('</section>',start);
+assert(start>=0&&end>start,'Carte Notre famille manquante');
+assert.strictEqual(familyScreen.indexOf(marker,start+1),-1,'La carte Notre famille doit être unique');
+const heroMarkup=familyScreen.slice(start,end+'</section>'.length).replace(/\r\n/g,'\n');
+const heroBaseline=fs.readFileSync(heroSnapshotFile,'utf8').replace(/\r\n/g,'\n');
+assert.strictEqual(heroMarkup,heroBaseline,'Régression visuelle possible : la carte Notre famille a changé sans validation');
+
+const homeStart=familyScreen.indexOf("{route==='dashboard' && <>");
+const homeEnd=familyScreen.indexOf("{route==='alerts'&&<>",homeStart);
+assert(homeStart>=0&&homeEnd>homeStart,'Le corps de la Home est introuvable');
+const home=familyScreen.slice(homeStart,homeEnd);
+const homeSections=['À suivre en famille','Comptes partagés','Pockets des membres',
+ 'Nos projets d’épargne','Nos cagnottes','Services familiaux'];
+let cursor=-1;
+for (const title of homeSections) {
+ const at=home.indexOf(title,cursor+1);
+ assert(at>cursor,'Section Home manquante ou déplacée : '+title);
+ cursor=at;
+}
+assert(home.includes("mainGo('sub-account')")&&home.includes("mainGo('joint-account')"),'Accès aux deux comptes absents');
+assert(home.includes("label:'Autres',icon:MoreHorizontal"),'Raccourci Autres absent');
+assert(familyScreen.includes('id="family-selector-menu"'),'Le dropdown Mes familles manque');
+assert(!familyScreen.includes('{selectorOpen&&<Panel'),'Le sélecteur Mes familles ne doit pas pousser le contenu');
+assert(familyScreen.includes('onBack={handleBack}'),'La navigation Retour doit suivre les écrans précédents');
+
+const accountScreen=fs.readFileSync(path.join(__dirname,'../src/family/AccountJourneys.tsx'),'utf8');
+assert(accountScreen.includes('React.useImperativeHandle(ref,()=>({goBack}))'),
+ 'Retour depuis les sous-écrans des comptes non exposé à la navigation');
+for (const view of ['overview','coholder','terms','opening','money','review','history','members','cards']) {
+ assert(accountScreen.includes("view==='"+view+"'"),'Écran Compte manquant : '+view);
+}
+assert.strictEqual(f.account.label,'Sous-compte Famille','Le nom du sous-compte doit rester exact');
+assert(f.cards.some(c=>c.holderId==='yasmine'),'Carte de Yasmine manquante');
+assert(f.goals.some(g=>g.title==='Vacances en famille'),'Projet Vacances en famille manquant');
+assert(f.pots.some(p=>p.title==='Anniversaire de Yasmine'),'Cagnotte familiale manquante');
+
+function loadFreshModel() {
+ const instance={exports:{}};
+ const fakeStorage={removedKeys:[],removeItem(key){this.removedKeys.push(key);}};
+ vm.runInNewContext(compiled,{
+  module:instance,exports:instance.exports,localStorage:fakeStorage,structuredClone
+ },{filename:'family/model.js'});
+ return {api:instance.exports,storage:fakeStorage};
+}
+const session=loadFreshModel();
+const initial=session.api.loadFamilyState();
+assert.strictEqual(initial.families[0].account.balance,6450,'État démo initial erroné');
+initial.families[0].account.balance=123;
+session.api.saveFamilyState(initial);
+assert.strictEqual(session.api.loadFamilyState().families[0].account.balance,123,
+ 'Les modifications doivent rester pendant la navigation');
+const refreshed=loadFreshModel().api.loadFamilyState();
+assert.strictEqual(refreshed.families[0].account.balance,6450,
+ 'Après F5, les données doivent revenir au scénario initial');
+assert(session.storage.removedKeys.includes(session.api.STORE_KEY),
+ 'Les anciennes données locales doivent être invalidées');
+
+console.log('OK — protection Notre famille, Home, navigation et remise à zéro F5.');
