@@ -230,6 +230,17 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
   {desc&&<Notes>{desc}</Notes>}</div>;
  const nextLabel=action==='add'?'Alimenter':action==='transfer'?'Transférer':'Payer';
  const jointPeople=coholders.map(id=>findMember(family,id)?.name||'Cotitulaire').join(' & ');
+ // Un rôle familial ne donne pas automatiquement accès au détail d'un compte joint.
+ if((account&&!readable)||(kind==='joint'&&application&&![
+   application.requesterId,application.coHolderId].includes(viewerId))) {
+   return <Card className="p-5 space-y-3">
+     <div className="flex items-center gap-3"><LockKeyhole size={23} className="text-[#7332D7]"/>
+       <h2 className="font-extrabold text-[16px]">Accès réservé</h2></div>
+     <Notes>{kind==='joint'?'Seuls les cotitulaires de ce compte peuvent consulter ses opérations, cartes et données associées.':
+       'Votre profil n’a pas les droits de consultation de ce Sous-compte Famille.'}</Notes>
+     <Button secondary onClick={onBack}>Revenir à la page précédente <ArrowLeft size={16}/></Button>
+   </Card>;
+ }
  return <div className="space-y-4 pb-5 text-[#251635]">
   {view==='overview'&&account&&<>
    <div className="relative overflow-hidden rounded-[28px] p-5 bg-gradient-to-br from-[#32106E] via-[#5416A9] to-[#7837E5] text-white shadow-[0_12px_30px_rgba(74,26,148,0.20)]">
@@ -611,8 +622,8 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
    </Card>
    <Card className="p-4 space-y-4">
     <SectionHead title="Plafonds"/>
-    <div className="flex gap-3 items-center rounded-[17px] bg-[#F7F2FF] p-3"><ShieldCheck size={21} className="text-[#712AD7]"/><div className="flex-1"><p className="font-bold text-[12px]">Plafond indicatif</p><Notes>Pour la démonstration uniquement</Notes></div></div>
-    <Field label="Plafond (DH)" value={limit} onChange={setLimit}/>
+    <div className="flex gap-3 items-center rounded-[17px] bg-[#F7F2FF] p-3"><ShieldCheck size={21} className="text-[#712AD7]"/><div className="flex-1"><p className="font-bold text-[12px]">Plafond par opération sortante</p><Notes>Hypothèse de démonstration, non bancaire</Notes></div></div>
+    <Field label="Plafond indicatif par opération (DH)" value={limit} onChange={setLimit}/>
     <Button secondary disabled={!authorized||!moneyValid(Number(limit))} onClick={()=>{onUpdate(f=>{const a=kind==='sub'?f.account:f.joint;if(a)a.limit=Number(limit);});onToast('Plafond fictif actualisé.');}}>Enregistrer</Button>
    </Card>
    {(kind==='sub'?family.members.some(m=>m.id===viewerId&&m.role==='leader'&&!m.simpleOne):authorized)&&<Card className="p-4">
