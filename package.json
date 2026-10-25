@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node scripts/smoke-test.cjs && node scripts/permissions-test.cjs && node scripts/member-profile-test.cjs && node scripts/pockets-test.cjs"
+    "test": "node scripts/smoke-test.cjs && node scripts/permissions-test.cjs && node scripts/member-profile-test.cjs && node scripts/pockets-test.cjs && node scripts/accounts-test.cjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
