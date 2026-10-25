@@ -401,15 +401,25 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
     </div>
    </Card>
    {application?.status==='awaiting'&&<Card className="p-4 space-y-3">
-    <PersonTile member={findMember(family,application.coHolderId)} label="Confirmation du deuxième cotitulaire"/>
-    <Button onClick={()=>respondJoint(true)}>Simuler son accord <Check size={16}/></Button>
-    <Button secondary onClick={()=>respondJoint(false)}>Simuler un refus <XCircle size={16}/></Button>
-   </Card>}
+    <PersonTile member={findMember(family,application.coHolderId)} label="Accord personnel du deuxième cotitulaire"/>
+    {canRespondJointApplication(family,viewerId)?<>
+      <p className="rounded-[14px] bg-[#F3ECFF] text-[#6D4A93] p-3 text-[11px] leading-relaxed">Vous intervenez dans le rôle de {viewer?.name}. Choisissez sa décision pour cette simulation, sans signature ni OTP réel.</p>
+      <Button onClick={()=>respondJoint(true)}>Confirmer mon accord fictif <Check size={16}/></Button>
+      <Button secondary onClick={()=>respondJoint(false)}>Refuser la demande <XCircle size={16}/></Button>
+    </>:<p className="rounded-[15px] bg-[#FFF5E9] text-[#8E632A] p-3 text-[12px] leading-relaxed">
+      En attente de {findMember(family,application.coHolderId)?.name}. Pour continuer la démonstration, choisissez son profil dans « Mode démo », puis revenez au Compte joint.
+    </p>}
+   </Card>
    {application?.status==='review'&&<Card className="p-4 space-y-3">
-    <Notes>Les deux accords fictifs sont obtenus. Les vérifications bancaires sont uniquement illustrées.</Notes>
-    <Button onClick={activateJoint}>Simuler la validation bancaire <CheckCircle2 size={16}/></Button>
-   </Card>}
-   {application?.status==='rejected'&&<Button onClick={()=>{onUpdate(f=>{f.jointApplication=null;});setOpeningHolder('');setTermsAccepted(false);setFirstSignature(false);jump('coholder');}}>Nouvelle demande <ArrowRight size={16}/></Button>}
+    <div className="flex items-center gap-2 rounded-[15px] bg-[#EAF8F1] text-[#16845E] p-3 text-[12px] font-bold"><CheckCircle2 size={19}/>Accord du deuxième cotitulaire enregistré</div>
+    <Notes>Les deux accords sont simulés. La vérification bancaire (identité, éligibilité et documents) n'est pas réalisée par l'application de démonstration.</Notes>
+    <Button disabled={!canSimulateBankReview(family,viewerId)} onClick={activateJoint}>Simuler la validation bancaire <CheckCircle2 size={16}/></Button>
+   </Card>
+   {application?.status==='rejected'&&<Card className="p-4 space-y-3">
+     <p className="text-[12px] text-[#AD4B61] font-bold">Le second cotitulaire a refusé cette demande fictive.</p>
+     <Button disabled={viewerId!==application.requesterId} onClick={()=>{onUpdate(f=>{f.jointApplication=null;});setOpeningHolder('');setTermsAccepted(false);setFirstSignature(false);jump('coholder');}}>Créer une nouvelle demande <ArrowRight size={16}/></Button>
+     {viewerId!==application.requesterId&&<Notes>Pour recommencer, choisissez le profil du demandeur initial dans « Mode démo ».</Notes>}
+    </Card>
   </>}
   {view==='opening-success'&&<Card className="p-6 text-center space-y-4">
     <span className="w-[70px] h-[70px] flex items-center justify-center rounded-full bg-[#E8F8EF] text-[#20A77C] mx-auto"><CheckCircle2 size={39}/></span>
@@ -439,7 +449,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
      <input value={beneficiary} onChange={e=>setBeneficiary(e.target.value)}
       className="w-full h-12 border border-[#E4D9F4] rounded-2xl bg-[#F8F5FE] px-3 text-[13px] outline-none focus:ring-2 focus:ring-[#D4BCF6]"/></label>}
     <Field label="Montant (DH)" value={amount} onChange={setAmount}/>
-    {validAmount&&amountValue>sourceBalance&&<p className="text-xs text-[#B4435C] bg-[#FFF1F4] p-2 rounded-lg">Solde insuffisant pour effectuer cette opération.</p>}
+    {!accountCheck.ok&&validAmount&&<p role="alert" className="text-xs text-[#B4435C] bg-[#FFF1F4] p-3 rounded-xl">{'reason' in accountCheck?accountCheck.reason:'Opération non disponible.'}</p>}
     {action==='pay'&&!beneficiary.trim()&&<p className="text-xs text-[#B4435C]">Ajoutez un bénéficiaire.</p>}
    </Card>
    <Button disabled={!canSubmit||(action==='pay'&&!beneficiary.trim())} onClick={()=>jump('review')}>Continuer <ArrowRight size={16}/></Button>
@@ -459,10 +469,10 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
    </Card>
    <Card className="flex gap-3 items-start bg-[#F3EDFE] border-[#E3D7FA]">
     <ShieldCheck size={20} className="text-[#722ADA] shrink-0"/>
-    <Notes>{needsDemoApproval?'Cette opération demandera deux accords fictifs.':'Une validation de sécurité pourra être nécessaire selon les règles bancaires.'}</Notes>
+    <Notes>{needsDemoApproval?'Le montant dépasse le seuil configurable de la démo : deux accords fictifs seront nécessaires.':'Les validations réelles restent soumises aux règles bancaires.'}</Notes>
    </Card>
    {notice&&<p className="text-[12px] text-[#B4435C]">{notice}</p>}
-   <Button disabled={!canSubmit} onClick={()=>needsDemoApproval?jump('approval'):commitMoney()}>Confirmer (simulation) <Check size={17}/></Button>
+   <Button disabled={!canSubmit||(needsDemoApproval&&demoApprovers.length<2)} onClick={()=>needsDemoApproval?jump('approval'):commitMoney()}>Confirmer (simulation) <Check size={17}/></Button>
   </>}
   {view==='approval'&&<>
     <MiniHead heading="Double validation" desc="Simulation de l'approbation renforcée d'une opération importante."/>
@@ -470,13 +480,15 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
      <div className="text-center border-b border-[#EEE7F6] pb-4"><ShieldCheck size={30} className="mx-auto text-[#7029D6] mb-2"/>
       <p className="font-extrabold text-[25px]">{currency(amountValue)}</p><Notes>Montant à autoriser</Notes></div>
      {approvalNames.length<2&&<p className="text-xs text-[#A74963]">Deux personnes autorisées sont nécessaires dans ce scénario.</p>}
-     {(kind==='sub'?family.members.filter(m=>m.role==='leader'||m.role==='coleader'):family.members.filter(m=>coholders.includes(m.id))).slice(0,2).map((m,i)=>
+     {demoApprovers.map((m,i)=>
       <label key={m.id} className="flex items-center gap-3 rounded-[18px] bg-[#FAF7FF] border border-[#EEE6FA] p-3">
        <PersonAvatar member={m} size={43}/>
        <span className="flex-1"><span className="font-bold text-[12px] block">{m.name}</span><span className="text-[11px] text-[#83778F]">Validation {i+1}/2 (fictive)</span></span>
        <input type="checkbox" checked={i===0?approvalFirst:approvalSecond} onChange={e=>i===0?setApprovalFirst(e.target.checked):setApprovalSecond(e.target.checked)} className="accent-[#762BDD] w-4 h-4"/>
       </label>)}
     </Card>
+    <Notes>Ces cases représentent deux étapes de la démonstration, pas deux authentifications distinctes ni des OTP réellement envoyés.</Notes>
+    {notice&&<p role="alert" className="text-[12px] text-[#B4435C]">{notice}</p>}
     <Button disabled={!canSubmit||approvalNames.length<2||!approvalFirst||!approvalSecond} onClick={commitMoney}>Valider l'opération <ShieldCheck size={17}/></Button>
    </>}
   {view==='money-success'&&<Card className="p-6 text-center space-y-4">
