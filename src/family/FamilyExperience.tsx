@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { MobileHeader, SimpleButton, type Navigate } from '../components/SimpleUI';
 import {
-  avatarFor, canSeePocket, createDemoState, currency, findMember, isAdmin, loadFamilyState,
+  avatarFor, createDemoState, currency, findMember, loadFamilyState,
   moneyValid, parseMoney, roleLabel, saveFamilyState, today, uid,
   type Family, type FamilyState, type Member, type Role
 } from './model';
@@ -20,6 +20,13 @@ import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
 import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
+import {
+  canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
+  canViewPocket, canOperatePocket, canOperateFamilyAccount, canOperateJointAccount,
+  canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal,
+  canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory,
+  canRemoveFamilyMember, canChangeMemberRole, canViewFamilyCard
+} from './permissions';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
  'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
@@ -152,20 +159,20 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [showAmounts,setShowAmounts]=useState(true);
  const family = data.families.find(f=>f.id===data.activeFamilyId) || null;
  const viewer = family?.members.find(m=>m.id===data.viewerId) || null;
- const admin = family ? isAdmin(family,data.viewerId):false;
- const leader = viewer?.role==='leader';
- const canViewFamilyAccount = family ? admin || family.accountViewIds.includes(data.viewerId) : false;
- const visibleGoals=family?.goals.filter(g=>admin||g.ownerId===data.viewerId||g.contributors.includes(data.viewerId)||g.history.some(h=>h.memberId===data.viewerId))||[];
+ const admin = family ? canManageFamily(family,data.viewerId):false;
+ const leader = family ? isFamilyLeader(family,data.viewerId):false;
+ const canViewFamilyAccount = family ? mayViewFamilyAccount(family,data.viewerId):false;
+ const visibleGoals=family?.goals.filter(g=>canViewSavingsGoal(family,data.viewerId,g))||[];
  const filteredGoals=visibleGoals.filter(g=>projectFilter==='all'||g.status===projectFilter);
  const goal=family?.goals.find(g=>g.id===selectedGoal);
- const canManageGoal=Boolean(goal&&(admin||goal.creatorId===data.viewerId));
+ const canManageGoal=Boolean(family&&goal&&canEditSavingsGoal(family,data.viewerId,goal));
  const canScheduleGoal=Boolean(goal&&(admin||goal.ownerId===data.viewerId));
  const pocket = family?.pockets.find(p=>p.ownerId===selectedMember);
  const owner=family?.members.find(m=>m.id===selectedMember);
  const pot=family?.pots.find(p=>p.id===selectedPot);
- const canManagePot=Boolean(pot&&(admin||pot.creatorId===data.viewerId));
- const canParticipateInPot=Boolean(pot?.members.includes(data.viewerId));
- const canSeePotHistory=Boolean(pot&&(admin||canParticipateInPot));
+ const canManagePot=Boolean(family&&pot&&canManageFamilyPot(family,data.viewerId,pot));
+ const canParticipateInPot=Boolean(family&&pot&&canContributeToFamilyPot(family,data.viewerId,pot));
+ const canSeePotHistory=Boolean(family&&pot&&canViewFamilyPotHistory(family,data.viewerId,pot));
  const potInviteCandidates=family?.members.filter(m=>pot&&!pot.members.includes(m.id)&&!(pot.pendingInvites||[]).includes(m.id))||[];
  const potFundingOptions=family&&viewer?[
   {value:`simple:${data.viewerId}`,label:`Mon compte Simple · ${currency(viewer.simpleBalance)}`},
@@ -239,13 +246,13 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    if(scrollable)scrollable.scrollTop=scrollable.scrollHeight;
  },[route,family?.chat.length]);
  const memberOptions=family?.members.map(m=>({value:m.id,label:`${m.name}${m.simpleOne?' · Simple One':''}`}))||[];
- const visiblePockets=family?.pockets.filter(p=>canSeePocket(family,data.viewerId,p.ownerId))||[];
+ const visiblePockets=family?.pockets.filter(p=>canViewPocket(family,data.viewerId,p.ownerId))||[];
  const transferOptions=useMemo(()=>{
    if(!family||!viewer)return [];
    const opts=[{value:`simple:${viewer.id}`,label:`Mon compte Simple · ${currency(viewer.simpleBalance)}`}];
    if(admin&&family.account) opts.push({value:'account',label:`Sous-compte Famille · ${currency(family.account.balance)}`});
    if(admin&&family.joint) opts.push({value:'joint',label:`Compte joint · ${currency(family.joint.balance)}`});
-   family.pockets.filter(p=>canSeePocket(family,viewer.id,p.ownerId)).forEach(p=>{
+   family.pockets.filter(p=>canViewPocket(family,viewer.id,p.ownerId)).forEach(p=>{
      const m=findMember(family,p.ownerId);opts.push({value:`pocket:${p.ownerId}`,label:`Pocket ${m?.name||''} · ${currency(p.balance)}`});
    });
    return opts;
@@ -279,8 +286,16 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   if(payment.from===payment.to){setError('Choisissez deux comptes différents.');return false;}
   const balance=currentBalance(family,payment.from);
   if(balance===undefined||balance<payment.amount){setError('Solde insuffisant pour cette simulation.');return false;}
-  if((payment.from==='account'||payment.from==='joint')&&!admin){setError('Cette opération est réservée au Leader et aux Co-leaders.');return false;}
+  // Do not rely only on the disabled state of a UI control for authorizations.
+  const sourcePermitted=payment.from===`simple:${data.viewerId}` ||
+    (payment.from==='account'&&canOperateFamilyAccount(family,data.viewerId)) ||
+    (payment.from==='joint'&&canOperateJointAccount(family,data.viewerId)) ||
+    (payment.from.startsWith('pocket:')&&canOperatePocket(family,data.viewerId,payment.from.slice(7)));
+  if(!sourcePermitted){setError('Vous ne disposez pas des droits nécessaires sur le compte source.');return false;}
   if(payment.from==='joint'&&!family.joint){setError('Aucun compte joint.');return false;}
+  if(modal==='simple-pay'&&(!canUseSimplePayFamily(family,data.viewerId)||payment.from!=='account')){
+    setError('Simple Pay Famille est réservé au Sous-compte Famille et aux responsables habilités.');return false;
+  }
   const needsDouble=(payment.from==='account'||payment.from==='joint')&&payment.amount>=family.otpThreshold;
   if(needsDouble){
     if(!family.members.some(m=>m.role==='coleader')){setError('Un Co-leader est nécessaire à la double validation simulée.');return false;}
@@ -455,7 +470,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'member-delete':{
      if(!admin||selectedMember===data.viewerId){setError('Suppression non autorisée.');return;}
-     const toRemove=findMember(family,selectedMember);if(!toRemove||toRemove.role==='leader'||(toRemove.role==='coleader'&&!leader)){setError('La suppression d’un Co-leader est réservée au Leader.');return;}
+     const toRemove=findMember(family,selectedMember);if(!toRemove||!canRemoveFamilyMember(family,data.viewerId,selectedMember)){setError('La suppression d’un Co-leader est réservée au Leader.');return;}
      mutate((_d,f)=>{const member=findMember(f,selectedMember)!;const p=f.pockets.find(x=>x.ownerId===member.id);if(p)member.simpleBalance+=p.balance;
        f.pockets=f.pockets.filter(x=>x.ownerId!==member.id);f.members=f.members.filter(x=>x.id!==member.id);f.cards=f.cards.filter(c=>c.holderId!==member.id&&c.source!==`pocket:${member.id}`);});close();go('members');show('Membre retiré, pocket clôturé et fonds simulés reversés.');break;
    }
@@ -476,7 +491,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    show(`${inv.name} a rejoint la famille (acceptation simulée).`);
  }
  function updateMemberRole(memberId:string,role:Role){
-   if(!family||!leader)return;const m=findMember(family,memberId);if(!m||m.role==='leader'||(m.simpleOne&&role==='coleader')){show('Rôle non autorisé.');return;}
+   if(!family||!canChangeMemberRole(family,data.viewerId,memberId,role)){show('Rôle non autorisé.');return;}
    mutate((_d,f)=>{findMember(f,memberId)!.role=role});show('Rôle mis à jour dans la démonstration.');
  }
  function createMessage(e:React.FormEvent){e.preventDefault();if(!chatInput.trim()||!viewer)return;mutate((_d,f)=>f.chat.push({id:uid('msg'),authorId:viewer.id,text:chatInput.trim(),date:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}));setChatInput('');}
@@ -737,7 +752,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='cards'&&<>
-      <Heading title="Les cartes associées à la famille"/><div className="space-y-3">{family.cards.filter(c=>admin||c.holderId===data.viewerId).map(c=>{const m=findMember(family,c.holderId);return <Panel key={c.id} className="p-4"><div className="rounded-[23px] bg-gradient-to-br from-[#2E0B69] to-[#7436E4] text-white p-5"><div className="flex justify-between items-center text-xs"><span className="font-bold">Simple Family</span><CreditCard size={20}/></div><p className="mt-7 font-mono text-[17px] tracking-[.1em]">•••• •••• •••• {c.last4}</p><div className="mt-5 flex items-center justify-between text-[11px]"><span>{m?.name}</span><span>{c.active?'Active':'Suspendue'}</span></div></div><div className="flex items-center justify-between pt-3"><p className="text-[12px] font-bold">{c.label}</p><button type="button" disabled={!admin} onClick={()=>toggleCard(c.id)} className="bg-[#EFE8FF] text-[#6828D4] text-[11px] font-bold px-3 py-2 rounded-full disabled:opacity-40">{c.active?'Suspendre':'Réactiver'}</button></div></Panel>})}</div>
+      <Heading title="Les cartes associées à la famille"/><div className="space-y-3">{family.cards.filter(c=>canViewFamilyCard(family,data.viewerId,c)).map(c=>{const m=findMember(family,c.holderId);return <Panel key={c.id} className="p-4"><div className="rounded-[23px] bg-gradient-to-br from-[#2E0B69] to-[#7436E4] text-white p-5"><div className="flex justify-between items-center text-xs"><span className="font-bold">Simple Family</span><CreditCard size={20}/></div><p className="mt-7 font-mono text-[17px] tracking-[.1em]">•••• •••• •••• {c.last4}</p><div className="mt-5 flex items-center justify-between text-[11px]"><span>{m?.name}</span><span>{c.active?'Active':'Suspendue'}</span></div></div><div className="flex items-center justify-between pt-3"><p className="text-[12px] font-bold">{c.label}</p><button type="button" disabled={!admin} onClick={()=>toggleCard(c.id)} className="bg-[#EFE8FF] text-[#6828D4] text-[11px] font-bold px-3 py-2 rounded-full disabled:opacity-40">{c.active?'Suspendre':'Réactiver'}</button></div></Panel>})}</div>
       {admin&&<PillButton onClick={()=>launch('create-card',{source:family.account?'family':`pocket:${data.viewerId}`,holder:data.viewerId})}>Créer une carte virtuelle <Plus size={16}/></PillButton>}
       <Panel className="p-4"><p className="text-[12px] text-[#80758F]">Attribution et suspension simulées. Les plafonds Simple One, contrôles et règles de cartes réelles doivent être intégrés côté banque.</p></Panel>
      </>}
