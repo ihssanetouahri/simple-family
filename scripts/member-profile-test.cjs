@@ -58,5 +58,7 @@ assert(familyUi.includes("const navigateToMember=(id:string)=>{setSelectedMember
  'Entrées pocket existantes à préserver');
 assert(familyUi.includes("getMemberVisibleCards(family,data.viewerId,cardsMemberFilter)"),
  'La page de cartes doit filtrer sur le membre sélectionné');
+assert(familyUi.includes("const stackedAccountRoute=[...stack].reverse().find(isAccountRoute)||null;"),
+ 'La navigation interne des comptes doit survivre au détour par les fiches membres');
 
 console.log('OK — profils Lamia/Karim/Yasmine, activité pocket, cartes, objectifs, confidentialité et navigation.');
