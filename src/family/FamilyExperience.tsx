@@ -22,7 +22,7 @@ import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 import {
   canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
-  canViewPocket, canOperatePocket, canOperateFamilyAccount, canOperateJointAccount,
+  canViewPocket,
   canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal,
   canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory,
   canRemoveFamilyMember, canChangeMemberRole, canViewFamilyCard,
