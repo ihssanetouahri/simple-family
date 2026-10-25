@@ -22,12 +22,13 @@ import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 import { MemberProfile } from './members/MemberProfile';
 import { PocketDetail } from './pockets/PocketDetail';
+import { closeFamilyPot, closeSavingsGoal, goalDisplayState, goalContributions, potContributions, potDisplayState } from './savings/savingsRules';
 import { FamilyCardsView } from './pockets/FamilyCardsView';
 import { validatePocketDebit } from './pockets/pocketRules';
 import {
   canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
   canViewPocket,
-  canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal,
+  canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal, canFundSavingsGoal, canWithdrawSavingsGoal,
   canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory,
   canRemoveFamilyMember, canChangeMemberRole,
   canDebitFamilySource, canCreditFamilyDestination, canIssueFamilyCard
@@ -377,15 +378,19 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'goal-deposit':{
      if(!goal||goal.status!=='active'){setError('Cet objectif est clôturé.');return;}
-     if(!goal.contributors.includes(data.viewerId)&&!admin){setError('Vous ne pouvez pas contribuer à cet objectif.');return;}
+     if(!canFundSavingsGoal(family,data.viewerId,goal)){setError('Vous ne pouvez pas contribuer à cet objectif.');return;}
      const amount=parseMoney(form.amount||'0');
      if(!moneyValid(amount)||amount>goal.target-goal.balance){setError('Montant invalide ou supérieur au reste à atteindre.');return;}
      if((viewer?.simpleBalance||0)<amount){setError('Solde Simple insuffisant.');return;}
-     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;const m=findMember(f,data.viewerId)!;m.simpleBalance-=amount;g.balance+=amount;g.history.unshift({id:uid('gh'),memberId:m.id,amount,date:today(),kind:'deposit'});if(g.balance>=g.target){g.status='closed';const own=findMember(f,g.ownerId);if(own)own.simpleBalance+=g.balance;}});
-     close();show(goal.balance+amount>=goal.target?'Objectif atteint : fonds reversés au propriétaire (simulation).':'Contribution ajoutée.');break;
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;const m=findMember(f,data.viewerId)!;
+       m.simpleBalance-=amount;g.balance+=amount;
+       g.history.unshift({id:uid('gh'),memberId:m.id,amount,date:today(),kind:'deposit'});
+       if(g.balance>=g.target)closeSavingsGoal(f,g.id,'reached');
+     });
+     close();show(goal.balance+amount>=goal.target?'Objectif atteint : reversement fictif tracé au propriétaire.':'Contribution ajoutée.');break;
    }
    case 'goal-withdraw':{
-     if(!goal||goal.status!=='active'||!(admin||goal.ownerId===data.viewerId)){setError('Retrait non autorisé.');return;}
+     if(!goal||goal.status!=='active'||!canWithdrawSavingsGoal(family,data.viewerId,goal)){setError('Retrait non autorisé.');return;}
      const amount=parseMoney(form.amount||'0');if(!moneyValid(amount)||amount>goal.balance){setError('Montant supérieur à l’épargne disponible.');return;}
      mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.balance-=amount;g.history.unshift({id:uid('gh'),memberId:data.viewerId,amount,date:today(),kind:'withdrawal'});findMember(f,g.ownerId)!.simpleBalance+=amount});close();show('Retrait simulé vers le compte du propriétaire.');break;
    }
@@ -414,13 +419,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        g.title=form.title.trim();g.target=target;g.deadline=form.deadline;
        g.coverId=['goal_vac','goal_school','goal_weekend'].includes(form.coverId||'')?form.coverId:undefined;
        g.contributors=allowed;
+       if(g.balance>=g.target)closeSavingsGoal(f,g.id,'reached');
      });
      close();setGoalManageOpen(false);show('Paramètres du projet enregistrés.');break;
    }
    case 'goal-close':{
      if(!goal||goal.status!=='active'||!canManageGoal){setError('Clôture non autorisée.');return;}
-     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.status='closed';g.scheduledAmount=0;g.nextScheduledDate=undefined;g.scheduledFrequency=undefined});
-     close();setGoalManageOpen(false);show('Projet clôturé (simulation). Solde conservé dans le projet, sans transfert.');break;
+     mutate((_d,f)=>{closeSavingsGoal(f,selectedGoal,'manual')});
+     close();setGoalManageOpen(false);show('Projet clôturé : reversement fictif au propriétaire enregistré, programmation arrêtée.');break;
    }
    case 'new-pot':{
      const target=parseMoney(form.target||'0');if(!moneyValid(target)||!form.title?.trim()){setError('Nom et objectif valides requis.');return;}
@@ -443,7 +449,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        const p=f.pots.find(x=>x.id===selectedPot)!;
        p.balance+=amount;
        p.contributions=[{id:uid('pc'),memberId:data.viewerId,amount,date:today()},...(p.contributions||[])];
-       if(p.balance>=p.target)p.status='closed';
+       if(p.balance>=p.target)closeFamilyPot(f,p.id,'target');
      });
      close();show('Contribution ajoutée à la cagnotte (simulation).');break;
    }
@@ -455,17 +461,17 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      close();show('Invitation enregistrée. En attente d’acceptation simulée.');break;
    }
    case 'pot-edit':{
-     if(!pot||!canManagePot){setError('Modification non autorisée.');return;}
+     if(!pot||pot.status!=='active'||!canManagePot){setError('Modification non autorisée.');return;}
      const target=parseMoney(form.target||'0');
      if(!form.title?.trim()||!moneyValid(target)||target<pot.balance){setError('Indiquez un nom et un objectif au moins égal au montant collecté.');return;}
      if(form.deadline&&form.deadline<nowDate()){setError('Choisissez une date à venir ou laissez ce champ vide.');return;}
-     mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.title=form.title.trim();p.description=form.description?.trim()||'';p.target=target;p.deadline=form.deadline||''});
+     mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.title=form.title.trim();p.description=form.description?.trim()||'';p.target=target;p.deadline=form.deadline||'';if(p.balance>=p.target)closeFamilyPot(f,p.id,'target')});
      close();show('Cagnotte mise à jour.');break;
    }
    case 'pot-close':{
      if(!pot||pot.status!=='active'||!canManagePot){setError('Clôture non autorisée.');return;}
-     mutate((_d,f)=>{const p=f.pots.find(x=>x.id===selectedPot)!;p.status='closed';p.pendingInvites=[]});
-     close();show('Collecte clôturée (simulation). Aucun versement de fonds n’a été effectué.');break;
+     mutate((_d,f)=>{closeFamilyPot(f,selectedPot,'manual')});
+     close();show('Collecte clôturée. Fonds conservés, sans reversement simulé (règles métier à confirmer).');break;
    }
    case 'new-document':{
      if(!form.title?.trim()){setError('Le nom du document est requis.');return;}
