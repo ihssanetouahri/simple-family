@@ -301,6 +301,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   }
   const pocketCheck=validatePocketDebit(family,data.viewerId,payment.from,payment.amount);
   if('reason' in pocketCheck){setError(pocketCheck.reason);return false;}
+  // The same per-operation demo ceiling applies to account transfers started outside AccountJourneys.
+  const sendingAccount=payment.from==='account'?family.account:payment.from==='joint'?family.joint:null;
+  if(sendingAccount&&payment.amount>sendingAccount.limit){
+    setError('Ce montant dépasse le plafond indicatif par opération de ce compte.');return false;
+  }
   if(modal==='simple-pay'&&(!canUseSimplePayFamily(family,data.viewerId)||payment.from!=='account')){
     setError('Simple Pay Famille est réservé au Sous-compte Famille et aux responsables habilités.');return false;
   }
@@ -340,8 +345,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       mutate((_d,f)=>{f.account={id:uid('account'),label:'Sous-compte Famille',balance:0,limit:9000}});close();show('Sous-compte Famille ouvert (simulation).');break;
    }
    case 'open-joint':{
-      if(!admin||family.joint||!family.members.some(m=>m.role==='coleader'&&m.relation==='Conjoint')){setError('Le compte joint nécessite un couple Leader / Co-leader.');return;}
-      mutate((_d,f)=>{f.joint={id:uid('joint'),label:'Compte joint',balance:0,limit:9000}});close();show('Compte joint créé (simulation).');break;
+      // Do not bypass the two-holder onboarding, even from a legacy modal entry.
+      close();mainGo('joint-account');show('Poursuivez le parcours de demande avec les deux cotitulaires.');break;
    }
    case 'transfer':{
       const amount=parseMoney(form.amount||'0');
