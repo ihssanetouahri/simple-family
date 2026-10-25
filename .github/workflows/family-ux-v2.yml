@@ -1,0 +1,30 @@
+name: Family UX V2 regression checks
+
+on:
+  push:
+    branches:
+      - feature/family-ux-v2
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    name: TypeScript, regression tests and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # No package-lock.json is committed yet: npm ci cannot be used.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check TypeScript
+        run: npm run lint
+      - name: Check protected Home and demo journeys
+        run: npm run test
+      - name: Verify production build
+        run: npm run build
