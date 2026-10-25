@@ -443,6 +443,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      const amount=parseMoney(form.amount||'0'),source=form.source||`simple:${data.viewerId}`;
      if(!moneyValid(amount)||amount>pot.target-pot.balance){setError('Montant invalide ou supérieur au reste à collecter.');return;}
      if(!potFundingOptions.some(o=>o.value===source)||currentBalance(family,source)===undefined||currentBalance(family,source)!<amount){setError('Choisissez un compte personnel suffisamment approvisionné.');return;}
+     const fundingRule=validatePocketDebit(family,data.viewerId,source,amount);
+     if('reason' in fundingRule){setError(fundingRule.reason);return;}
      if(form.stage!=='confirm'){setForm(prev=>({...prev,source,stage:'confirm'}));return;}
      mutate((_d,f)=>{
        changeBalance(f,source,-amount);
@@ -865,9 +867,22 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          description={`Échéance : ${dateFor(goal.deadline)} · Pour ${initialsFor(goal.ownerId)}`}
          current={goal.balance} target={goal.target} status={goal.status} detail/>
 
+       <Panel className="p-4 space-y-2">
+         <div className="flex justify-between items-center gap-2">
+          <span className={'text-[11px] font-extrabold rounded-full px-3 py-1.5 '+(goalDisplayState(goal,nowDate()).tone==='green'?'bg-[#E5F8EE] text-[#178C64]':goalDisplayState(goal,nowDate()).tone==='orange'?'bg-[#FFF2DE] text-[#A66C1F]':'bg-[#F1EAFD] text-[#6E2DCA]')}>
+           {goalDisplayState(goal,nowDate()).label}</span>
+          <span className="text-[11px] text-[#80728E]">Pour {findMember(family,goal.ownerId)?.name||'le bénéficiaire'}</span>
+         </div>
+         <p className="text-[12px] leading-relaxed text-[#716580]">{goalDisplayState(goal,nowDate()).description}</p>
+         {goal.settledAmount!==undefined&&<div className="flex justify-between items-center gap-2 border-t border-[#EFE6F7] pt-3 text-[12px]">
+          <span className="text-[#81728F]">Reversé au propriétaire (simulation)</span>
+          <strong className="text-[#178A65]">{showBalance(goal.settledAmount)}</strong>
+         </div>}
+        </Panel>
+
        {goal.status==='active'&&<div className="grid grid-cols-2 gap-3">
-         <PillButton disabled={!(admin||goal.contributors.includes(data.viewerId))} onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/> Contribuer</PillButton>
-         <PillButton secondary disabled={!(admin||goal.ownerId===data.viewerId)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton>
+         <PillButton disabled={!canFundSavingsGoal(family,data.viewerId,goal)} onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/> Contribuer</PillButton>
+         <PillButton secondary disabled={!canWithdrawSavingsGoal(family,data.viewerId,goal)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton>
        </div>}
 
        <section>
@@ -897,9 +912,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Les contributeurs" subtitle="Membres habilités à participer"/>
          <Panel className="px-4">
-           {goal.contributors.filter(id=>family.members.some(m=>m.id===id)).map(id=>{
+           {goalContributions(goal).filter(({memberId})=>family.members.some(m=>m.id===memberId)).map(({memberId:id,total})=>{
              const member=findMember(family,id);
-             const total=goal.history.filter(h=>h.memberId===id&&h.kind==='deposit').reduce((sum,h)=>sum+h.amount,0);
              return <div key={id} className="flex items-center gap-3 py-3.5 border-b last:border-none border-[#F0EAF7]">
                <Avatar size={42} member={member}/>
                <div className="flex-1 min-w-0"><p className="text-[13px] font-extrabold">{member?.name||'Membre'}</p><p className="text-[11px] text-[#897C96] mt-0.5">{id===goal.ownerId?'Bénéficiaire · ':''}Contributeur habilité</p></div>
@@ -917,7 +931,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
            {goal.history.length?(showAllGoalMovements?goal.history:goal.history.slice(0,2)).map(h=>
              <div key={h.id} className="flex gap-3 items-center py-3.5 border-b last:border-none border-[#F0EAF7]">
                <div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F0E9FF] text-[#7A35E0] flex items-center justify-center">{h.kind==='deposit'?<ArrowDownLeft size={19}/>:<ArrowUpRight size={19}/>}</div>
-               <div className="min-w-0 flex-1"><p className="text-[12px] font-bold">{h.kind==='deposit'?'Contribution':'Retrait'} · {findMember(family,h.memberId)?.name||'Membre'}</p><p className="text-[10px] text-[#8A8097] mt-0.5">{h.date}</p></div>
+               <div className="min-w-0 flex-1"><p className="text-[12px] font-bold">{h.kind==='deposit'?'Contribution':h.kind==='settlement'?'Reversement au propriétaire':'Retrait'} · {findMember(family,h.memberId)?.name||'Membre'}</p><p className="text-[10px] text-[#8A8097] mt-0.5">{h.date}</p></div>
                <p className={'text-[12px] font-bold whitespace-nowrap '+(h.kind==='deposit'?'text-[#4B306D]':'text-[#A24C70]')}>{h.kind==='deposit'?'+':'−'}{currency(h.amount)}</p>
              </div>
            ):<p className="py-4 text-[12px] text-[#81758F]">Aucun mouvement pour le moment.</p>}
@@ -969,6 +983,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <FamilyProgressPhotoCard id={pot.id} kind="pot" title={pot.title}
          description={pot.description||'Une collecte pour partager un beau moment ensemble.'}
          current={pot.balance} target={pot.target} status={pot.status} detail/>
+       <Panel className="p-4 space-y-2">
+         <div className="flex justify-between items-center gap-2">
+          <span className={'text-[11px] font-extrabold rounded-full px-3 py-1.5 '+(potDisplayState(pot,nowDate()).tone==='green'?'bg-[#E5F8EE] text-[#178C64]':potDisplayState(pot,nowDate()).tone==='orange'?'bg-[#FFF2DE] text-[#A66C1F]':'bg-[#F1EAFD] text-[#6E2DCA]')}>
+           {potDisplayState(pot,nowDate()).label}</span>
+          <span className="text-[11px] text-[#81728F]">{pot.members.length} participant{pot.members.length>1?'s':''}</span>
+         </div>
+         <p className="text-[12px] leading-relaxed text-[#716580]">{potDisplayState(pot,nowDate()).description}</p>
+       </Panel>
        {pot.deadline&&<p className="text-[11px] text-[#86768F] flex gap-1.5 items-center justify-center"><CalendarDays size={14}/> Fin prévue : {dateFor(pot.deadline)}</p>}
 
        {(pot.pendingInvites||[]).includes(data.viewerId)&&pot.status==='active'&&<Panel className="p-4 border-[#D8C8F5] bg-[#F7F2FF] space-y-3">
@@ -1011,7 +1033,15 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
 
        <section>
-         <Heading title="Contributions récentes" right={canSeePotHistory&&(pot.contributions||[]).length>2&&
+         {canSeePotHistory&&potContributions(pot).length>0&&<Panel className="p-4 space-y-2">
+          <p className="text-[12px] font-bold text-[#382448]">Contributions par participant</p>
+          {potContributions(pot).map(({memberId,total})=><div key={memberId} className="flex justify-between items-center gap-2 border-t border-[#F1EAF7] py-2 text-[12px]">
+            <span className="text-[#786A8A]">{findMember(family,memberId)?.name||'Membre'}</span>
+            <strong className="text-[#632CC1]">{showBalance(total)}</strong>
+          </div>)}
+        </Panel>}
+
+        <Heading title="Contributions récentes" right={canSeePotHistory&&(pot.contributions||[]).length>2&&
            <button type="button" onClick={()=>setShowAllPotContributions(v=>!v)}
              className="text-[#6A26D8] text-[12px] font-bold flex items-center gap-1">
              {showAllPotContributions?'Réduire':'Voir tout'} <ChevronRight size={15}/>
@@ -1180,7 +1210,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
         </>}
         {modal==='goal-close'&&<div className="bg-[#FFF4F7] p-4 rounded-[20px] space-y-2">
           <p className="text-[13px] font-extrabold text-[#944260]">Clôturer ce projet ?</p>
-          <p className="text-[12px] text-[#87687A]">Les contributions et les versements programmés seront arrêtés. Le solde restera affiché dans le projet clôturé, sans transfert ni remboursement automatique dans ce prototype.</p>
+          <p className="text-[12px] text-[#87687A]">Les contributions et la programmation seront arrêtées. Le solde disponible ({goal?currency(goal.balance):'0 DH'}) sera reversé fictivement sur le compte Simple du propriétaire, avec une trace dans l’historique. Aucun virement bancaire réel.</p>
         </div>}
        {(modal==='new-pot'||modal==='pot-edit')&&<>
           <Input label="Nom de la cagnotte" value={form.title} onChange={v=>setField('title',v)} placeholder="Anniversaire, sortie…" required/>
