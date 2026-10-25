@@ -56,7 +56,10 @@ assert(familyUi.includes("route==='member' && owner && <MemberProfile"),'Nouvell
 assert(familyUi.includes("navigateToMemberProfile(m.id)"),'Voir les membres doit ouvrir le profil');
 assert(familyUi.includes("const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')}"),
  'Entrées pocket existantes à préserver');
-assert(familyUi.includes("getMemberVisibleCards(family,data.viewerId,cardsMemberFilter)"),
+const cardUi=fs.readFileSync(path.join(__dirname,'../src/family/pockets/FamilyCardsView.tsx'),'utf8');
+assert(familyUi.includes("<FamilyCardsView") && familyUi.includes("memberFilter={cardsMemberFilter}"),
+ 'La page doit transmettre le membre sélectionné au composant de cartes');
+assert(cardUi.includes("getMemberVisibleCards(family,viewerId,memberFilter)"),
  'La page de cartes doit filtrer sur le membre sélectionné');
 assert(familyUi.includes("const stackedAccountRoute=[...stack].reverse().find(isAccountRoute)||null;"),
  'La navigation interne des comptes doit survivre au détour par les fiches membres');
