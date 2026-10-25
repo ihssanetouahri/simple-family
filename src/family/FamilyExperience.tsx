@@ -20,6 +20,8 @@ import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
 import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
+import { MemberProfile } from './members/MemberProfile';
+import { getMemberVisibleCards } from './members/memberSelectors';
 import {
   canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
   canViewPocket,
@@ -29,7 +31,7 @@ import {
   canDebitFamilySource, canCreditFamilyDestination
 } from './permissions';
 
-type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
+type Route = 'dashboard'|'members'|'member'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
  'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
 type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-account'|'open-joint'|'create-card'|
   'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'goal-edit'|'goal-close'|'new-pot'|'pot-deposit'|'pot-invite'|'pot-edit'|'pot-close'|'new-document'|
@@ -142,6 +144,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [error,setError]=useState('');
  const [toast,setToast]=useState('');
  const [selectedMember,setSelectedMember]=useState('yasmine');
+ const [cardsMemberFilter,setCardsMemberFilter]=useState<string|null>(null);
  const [selectedGoal,setSelectedGoal]=useState('goal_vac');
  const [goalManageOpen,setGoalManageOpen]=useState(false);
  const [showAllGoalMovements,setShowAllGoalMovements]=useState(false);
@@ -503,7 +506,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const showBalance=(n:number)=>showAmounts?currency(n):'•••• DH';
  const context={}; void context;
 
- const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
+ const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',member:owner?.name||'Membre',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
  const isAccountRoute=(value:Route|undefined):value is 'sub-account'|'joint-account'=>value==='sub-account'||value==='joint-account';
  // Keep the journey mounted when visiting family member management, so the back arrow
@@ -511,6 +514,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const previousFamilyRoute=stack[stack.length-1];
  const mountedAccountRoute=isAccountRoute(route)?route:(route==='members'&&isAccountRoute(previousFamilyRoute)?previousFamilyRoute:null);
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
+ const navigateToMemberProfile=(id:string)=>{setSelectedMember(id);go('member')};
+ const openMemberCards=(id:string)=>{setSelectedMember(id);setCardsMemberFilter(id);go('cards')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);setGoalManageOpen(false);setShowAllGoalMovements(false);go('goal')};
  const navigateToPot=(id:string)=>{setSelectedPot(id);setPotMenuOpen(false);setShowAllPotContributions(false);go('pot')};
  const balances={family:family?.account?.balance||0,joint:family?.joint?.balance||0};void balances;
@@ -687,10 +692,23 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
       {route==='members' && <>
        <Panel className="p-4"><div className="flex items-center justify-between"><div><p className="text-xs text-[#887C97]">Composition de la famille</p><h2 className="font-extrabold text-[22px] mt-1">{family.members.length} membres</h2></div><div className="text-3xl">👨‍👩‍👧</div></div></Panel>
-       <section><Heading title="Membres" right={admin&&<button type="button" onClick={()=>launch('invite',{relation:'Proche',role:'member',simpleOne:'false'})} className="text-xs font-bold text-[#6725D8] flex items-center gap-1"><Plus size={15}/>Inviter</button>}/><Panel className="px-4">{family.members.map(m=>{const p=family.pockets.find(x=>x.ownerId===m.id);return <div key={m.id} className="py-3.5 flex items-center gap-3 border-b last:border-none border-[#F0EBF6]"><Avatar member={m} size={46}/><button type="button" onClick={()=>navigateToMember(m.id)} className="text-left flex-1 min-w-0"><p className="text-[14px] font-extrabold">{m.name} {m.id===data.viewerId&&<span className="text-[#9359DA] text-[10px]">(vous)</span>}</p><p className="text-[11px] text-[#80758E]">{m.relation} · Pocket {p?showBalance(p.balance):'—'}</p><div className="mt-1"><Tag tone={m.role==='leader'?'violet':m.simpleOne?'amber':'gray'}>{m.simpleOne?'Simple One':roleLabel(m.role)}</Tag></div></button>{leader&&m.role!=='leader'&&!m.simpleOne&&<select aria-label={`Rôle de ${m.name}`} className="text-[10px] w-[93px] bg-[#F8F4FF] rounded-xl px-1 py-2" value={m.role} onChange={e=>updateMemberRole(m.id,e.target.value as Role)}><option value="member">Membre</option><option value="coleader">Co-leader</option></select>}{admin&&m.role!=='leader'&&(m.role!=='coleader'||leader)&&<button type="button" aria-label={`Retirer ${m.name}`} onClick={()=>{setSelectedMember(m.id);launch('member-delete')}} className="text-[#B68BAF] p-1.5"><Trash2 size={16}/></button>}</div>})}</Panel></section>
+       <section><Heading title="Membres" right={admin&&<button type="button" onClick={()=>launch('invite',{relation:'Proche',role:'member',simpleOne:'false'})} className="text-xs font-bold text-[#6725D8] flex items-center gap-1"><Plus size={15}/>Inviter</button>}/><Panel className="px-4">{family.members.map(m=>{const p=family.pockets.find(x=>x.ownerId===m.id);return <div key={m.id} className="py-3.5 flex items-center gap-3 border-b last:border-none border-[#F0EBF6]"><Avatar member={m} size={46}/><button type="button" onClick={()=>navigateToMemberProfile(m.id)} aria-label={`Consulter la fiche de ${m.name}`} className="text-left flex-1 min-w-0"><p className="text-[14px] font-extrabold">{m.name} {m.id===data.viewerId&&<span className="text-[#9359DA] text-[10px]">(vous)</span>}</p><p className="text-[11px] text-[#80758E]">{m.relation} · Pocket {p&&canViewPocket(family,data.viewerId,m.id)?showBalance(p.balance):p?'Accès réservé':'—'}</p><div className="mt-1"><Tag tone={m.role==='leader'?'violet':m.simpleOne?'amber':'gray'}>{m.simpleOne?'Simple One':roleLabel(m.role)}</Tag></div></button>{leader&&m.role!=='leader'&&!m.simpleOne&&<select aria-label={`Rôle de ${m.name}`} className="text-[10px] w-[93px] bg-[#F8F4FF] rounded-xl px-1 py-2" value={m.role} onChange={e=>updateMemberRole(m.id,e.target.value as Role)}><option value="member">Membre</option><option value="coleader">Co-leader</option></select>}{admin&&m.role!=='leader'&&(m.role!=='coleader'||leader)&&<button type="button" aria-label={`Retirer ${m.name}`} onClick={()=>{setSelectedMember(m.id);launch('member-delete')}} className="text-[#B68BAF] p-1.5"><Trash2 size={16}/></button>}</div>})}</Panel></section>
        <section><Heading title="Invitations en attente"/><Panel className="p-4 space-y-2">{family.invites.length?family.invites.map(inv=><div key={inv.id} className="flex items-center justify-between gap-2 p-2 bg-[#FAF7FF] rounded-xl"><div><p className="text-[13px] font-bold">{inv.name}</p><p className="text-[11px] text-[#887D98]">{inv.relation} · Invitation en attente</p></div>{admin&&<button type="button" className="text-[11px] rounded-full px-3 py-2 bg-[#E7FAEF] text-[#168253] font-bold" onClick={()=>acceptInvite(inv.id)}>Simuler acceptation</button>}</div>):<p className="text-[12px] text-[#81768F]">Aucune invitation en attente.</p>}</Panel></section>
        <Panel className="p-4 flex items-start gap-2.5"><ShieldCheck size={18} className="text-[#6535D7] shrink-0"/><p className="text-[11px] leading-relaxed text-[#7F758D]">Les invitations et rattachements sont simulés. Un membre Simple One ne peut pas devenir Co-leader. Les autorisations réelles restent à confirmer avec les équipes métiers.</p></Panel>
      </>}
+
+     {route==='member' && owner && <MemberProfile
+       family={family}
+       memberId={owner.id}
+       viewerId={data.viewerId}
+       showAmounts={showAmounts}
+       onPocket={()=>navigateToMember(owner.id)}
+       onTopup={()=>launch('transfer',{from:admin&&family.account?'account':`simple:${data.viewerId}`,to:`pocket:${owner.id}`})}
+       onTransfer={()=>launch('transfer',{from:`pocket:${owner.id}`,to:`simple:${data.viewerId}`})}
+       onCards={()=>openMemberCards(owner.id)}
+       onGoal={navigateToGoal}
+       onPermissions={()=>mainGo('preferences')}
+     />}
 
      {route==='accounts' && <>
         <section>
@@ -748,13 +766,16 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      {route==='pocket'&&pocket&&owner&&<>
        <Panel className="p-5 bg-gradient-to-br from-[#3B117A] to-[#6F2EE3] text-white border-none"><div className="flex items-center gap-2"><Avatar member={owner} size={49}/><div><p className="text-[11px] text-white/75">Pocket personnel</p><h2 className="text-lg font-bold">{owner.name}</h2></div></div><p className="text-white/60 text-xs mt-6">Solde disponible</p><p className="text-[29px] font-extrabold mt-1">{showBalance(pocket.balance)}</p><p className="text-xs text-white/70 mt-4">Plafond indicatif : {currency(pocket.limit)}</p><div className="mt-2 h-2 rounded-full bg-white/20 overflow-hidden"><div className="bg-white h-full rounded-full" style={{width:`${Math.min(100,pocket.balance/pocket.limit*100)}%`}}/></div></Panel>
        <div className="grid grid-cols-2 gap-3"><PillButton onClick={()=>launch('transfer',{from:admin&&family.account?'account':`simple:${data.viewerId}`,to:`pocket:${owner.id}`})}>Alimenter <Plus size={16}/></PillButton><PillButton secondary onClick={()=>launch('transfer',{from:`pocket:${owner.id}`,to:`simple:${data.viewerId}`})}>Transférer <ArrowRight size={16}/></PillButton></div>
-       <Panel className="px-4"><ActionLine icon={CreditCard} title="Cartes virtuelles associées" subtitle={`${family.cards.filter(c=>c.source===`pocket:${owner.id}`||c.source===pocket.id).length} carte(s)`} onClick={()=>mainGo('cards')}/>{admin&&<ActionLine icon={Settings2} title="Adapter le plafond" subtitle="Simulation de paramétrage" onClick={()=>launch('limit',{amount:String(pocket.limit)})}/>}<ActionLine icon={ShieldCheck} title="Droits d'accès" subtitle={owner.simpleOne?'Compte Simple One : règles spécifiques':'Visibilité : titulaire, Leader et Co-leader'} onClick={()=>show('Les règles d’autorisation sont appliquées dans le prototype selon le profil.')}/></Panel>
+       <Panel className="px-4"><ActionLine icon={CreditCard} title="Cartes virtuelles associées" subtitle={`${family.cards.filter(c=>c.source===`pocket:${owner.id}`||c.source===pocket.id).length} carte(s)`} onClick={()=>openMemberCards(owner.id)}/>{admin&&<ActionLine icon={Settings2} title="Adapter le plafond" subtitle="Simulation de paramétrage" onClick={()=>launch('limit',{amount:String(pocket.limit)})}/>}<ActionLine icon={ShieldCheck} title="Droits d'accès" subtitle={owner.simpleOne?'Compte Simple One : règles spécifiques':'Visibilité : titulaire, Leader et Co-leader'} onClick={()=>show('Les règles d’autorisation sont appliquées dans le prototype selon le profil.')}/></Panel>
        <Panel className="p-4"><p className="text-[12px] text-[#7E738C]">Les opérations et cartes présentées sont des exemples. Aucun RIB réel ni service bancaire n’est connecté.</p></Panel>
      </>}
 
      {route==='cards'&&<>
-      <Heading title="Les cartes associées à la famille"/><div className="space-y-3">{family.cards.filter(c=>canViewFamilyCard(family,data.viewerId,c)).map(c=>{const m=findMember(family,c.holderId);return <Panel key={c.id} className="p-4"><div className="rounded-[23px] bg-gradient-to-br from-[#2E0B69] to-[#7436E4] text-white p-5"><div className="flex justify-between items-center text-xs"><span className="font-bold">Simple Family</span><CreditCard size={20}/></div><p className="mt-7 font-mono text-[17px] tracking-[.1em]">•••• •••• •••• {c.last4}</p><div className="mt-5 flex items-center justify-between text-[11px]"><span>{m?.name}</span><span>{c.active?'Active':'Suspendue'}</span></div></div><div className="flex items-center justify-between pt-3"><p className="text-[12px] font-bold">{c.label}</p><button type="button" disabled={!admin} onClick={()=>toggleCard(c.id)} className="bg-[#EFE8FF] text-[#6828D4] text-[11px] font-bold px-3 py-2 rounded-full disabled:opacity-40">{c.active?'Suspendre':'Réactiver'}</button></div></Panel>})}</div>
-      {admin&&<PillButton onClick={()=>launch('create-card',{source:family.account?'family':`pocket:${data.viewerId}`,holder:data.viewerId})}>Créer une carte virtuelle <Plus size={16}/></PillButton>}
+      <Heading title={cardsMemberFilter?`Cartes de ${findMember(family,cardsMemberFilter)?.name||'ce membre'}`:"Les cartes associées à la famille"}/><div className="space-y-3">{(cardsMemberFilter?getMemberVisibleCards(family,data.viewerId,cardsMemberFilter):family.cards.filter(c=>canViewFamilyCard(family,data.viewerId,c))).map(c=>{const m=findMember(family,c.holderId);return <Panel key={c.id} className="p-4"><div className="rounded-[23px] bg-gradient-to-br from-[#2E0B69] to-[#7436E4] text-white p-5"><div className="flex justify-between items-center text-xs"><span className="font-bold">Simple Family</span><CreditCard size={20}/></div><p className="mt-7 font-mono text-[17px] tracking-[.1em]">•••• •••• •••• {c.last4}</p><div className="mt-5 flex items-center justify-between text-[11px]"><span>{m?.name}</span><span>{c.active?'Active':'Suspendue'}</span></div></div><div className="flex items-center justify-between pt-3"><p className="text-[12px] font-bold">{c.label}</p><button type="button" disabled={!admin} onClick={()=>toggleCard(c.id)} className="bg-[#EFE8FF] text-[#6828D4] text-[11px] font-bold px-3 py-2 rounded-full disabled:opacity-40">{c.active?'Suspendre':'Réactiver'}</button></div></Panel>})}</div>
+      {admin&&<PillButton onClick={()=>launch('create-card',{
+       source:cardsMemberFilter?`pocket:${cardsMemberFilter}`:family.account?'family':`pocket:${data.viewerId}`,
+       holder:cardsMemberFilter||data.viewerId
+     })}>Créer une carte virtuelle <Plus size={16}/></PillButton>}
       <Panel className="p-4"><p className="text-[12px] text-[#80758F]">Attribution et suspension simulées. Les plafonds Simple One, contrôles et règles de cartes réelles doivent être intégrés côté banque.</p></Panel>
      </>}
 
