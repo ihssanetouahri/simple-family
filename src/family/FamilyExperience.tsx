@@ -21,14 +21,16 @@ import familyPhoto from '../assets/images/family_photo.jpg';
 import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 import { MemberProfile } from './members/MemberProfile';
-import { getMemberVisibleCards } from './members/memberSelectors';
+import { PocketDetail } from './pockets/PocketDetail';
+import { FamilyCardsView } from './pockets/FamilyCardsView';
+import { validatePocketDebit } from './pockets/pocketRules';
 import {
   canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
   canViewPocket,
   canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal,
   canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory,
-  canRemoveFamilyMember, canChangeMemberRole, canViewFamilyCard,
-  canDebitFamilySource, canCreditFamilyDestination
+  canRemoveFamilyMember, canChangeMemberRole,
+  canDebitFamilySource, canCreditFamilyDestination, canIssueFamilyCard
 } from './permissions';
 
 type Route = 'dashboard'|'members'|'member'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
@@ -297,6 +299,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   if(!canCreditFamilyDestination(family,data.viewerId,payment.to)){
     setError('Destination non autorisée pour votre profil.');return false;
   }
+  const pocketCheck=validatePocketDebit(family,data.viewerId,payment.from,payment.amount);
+  if(!pocketCheck.ok){setError(pocketCheck.reason);return false;}
   if(modal==='simple-pay'&&(!canUseSimplePayFamily(family,data.viewerId)||payment.from!=='account')){
     setError('Simple Pay Famille est réservé au Sous-compte Famille et aux responsables habilités.');return false;
   }
@@ -352,9 +356,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      if(!admin){setError('Seul un Leader ou Co-leader peut attribuer une carte familiale.');return;}
      if(!form.source){setError('Choisissez un compte ou pocket.');return;}
      const holder=findMember(family,form.holder||data.viewerId);
-     const linkedOwner=form.source.startsWith('pocket:')?form.source.slice(7):null;
-     if(!holder||((form.source==='family'||form.source==='joint')&&holder.role==='member') || (linkedOwner&&holder.id!==linkedOwner&&holder.role==='member')){
-       setError('Ce compte ne peut être utilisé que par un titulaire habilité.');return;
+     if(!holder||!canIssueFamilyCard(family,data.viewerId,form.source,holder.id)){
+       setError('Le titulaire choisi ne peut pas recevoir une carte liée à cette source.');return;
      }
      mutate((_d,f)=>f.cards.push({id:uid('card'),label:form.label?.trim()||'Carte virtuelle',last4:String(Math.floor(1000+Math.random()*9000)),source:form.source,holderId:form.holder||data.viewerId,active:true}));close();show('Carte virtuelle ajoutée à la démonstration.');break;
    }
@@ -483,8 +486,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      setData(prev=>{const families=prev.families.filter(f=>f.id!==prev.activeFamilyId);return {...prev,families,activeFamilyId:families[0]?.id||null,viewerId:'lamia'}});close();toDashboard();show('Famille supprimée de la démonstration.');break;
    }
    case 'limit':{
-     const limit=parseMoney(form.amount||'0');if(!admin||!moneyValid(limit)){setError('Un Leader ou Co-leader doit saisir un plafond valide.');return;}
-     mutate((_d,f)=>{const p=f.pockets.find(x=>x.ownerId===selectedMember);if(p)p.limit=limit});close();show('Plafond indicatif mis à jour.');break;
+     const limit=parseMoney(form.amount||'0');
+     if(!admin||!moneyValid(limit)||!family.pockets.some(p=>p.ownerId===selectedMember)){
+       setError('Un responsable doit choisir une pocket et saisir un plafond valide.');return;
+     }
+     mutate((_d,f)=>{const p=f.pockets.find(x=>x.ownerId===selectedMember);if(p)p.limit=limit});
+     close();show('Plafond par virement sortant mis à jour (démo).');break;
    }
   }
  }
@@ -763,21 +770,24 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
      </>}
 
-     {route==='pocket'&&pocket&&owner&&<>
-       <Panel className="p-5 bg-gradient-to-br from-[#3B117A] to-[#6F2EE3] text-white border-none"><div className="flex items-center gap-2"><Avatar member={owner} size={49}/><div><p className="text-[11px] text-white/75">Pocket personnel</p><h2 className="text-lg font-bold">{owner.name}</h2></div></div><p className="text-white/60 text-xs mt-6">Solde disponible</p><p className="text-[29px] font-extrabold mt-1">{showBalance(pocket.balance)}</p><p className="text-xs text-white/70 mt-4">Plafond indicatif : {currency(pocket.limit)}</p><div className="mt-2 h-2 rounded-full bg-white/20 overflow-hidden"><div className="bg-white h-full rounded-full" style={{width:`${Math.min(100,pocket.balance/pocket.limit*100)}%`}}/></div></Panel>
-       <div className="grid grid-cols-2 gap-3"><PillButton onClick={()=>launch('transfer',{from:admin&&family.account?'account':`simple:${data.viewerId}`,to:`pocket:${owner.id}`})}>Alimenter <Plus size={16}/></PillButton><PillButton secondary onClick={()=>launch('transfer',{from:`pocket:${owner.id}`,to:`simple:${data.viewerId}`})}>Transférer <ArrowRight size={16}/></PillButton></div>
-       <Panel className="px-4"><ActionLine icon={CreditCard} title="Cartes virtuelles associées" subtitle={`${family.cards.filter(c=>c.source===`pocket:${owner.id}`||c.source===pocket.id).length} carte(s)`} onClick={()=>openMemberCards(owner.id)}/>{admin&&<ActionLine icon={Settings2} title="Adapter le plafond" subtitle="Simulation de paramétrage" onClick={()=>launch('limit',{amount:String(pocket.limit)})}/>}<ActionLine icon={ShieldCheck} title="Droits d'accès" subtitle={owner.simpleOne?'Compte Simple One : règles spécifiques':'Visibilité : titulaire, Leader et Co-leader'} onClick={()=>show('Les règles d’autorisation sont appliquées dans le prototype selon le profil.')}/></Panel>
-       <Panel className="p-4"><p className="text-[12px] text-[#7E738C]">Les opérations et cartes présentées sont des exemples. Aucun RIB réel ni service bancaire n’est connecté.</p></Panel>
-     </>}
+     {route==='pocket'&&pocket&&owner&&<PocketDetail
+       key={family.id+owner.id}
+       family={family} ownerId={owner.id} viewerId={data.viewerId} showAmounts={showAmounts}
+       onTopup={()=>launch('transfer',{from:admin&&family.account?'account':`simple:${data.viewerId}`,to:`pocket:${owner.id}`})}
+       onTransfer={()=>launch('transfer',{from:`pocket:${owner.id}`,to:`simple:${data.viewerId}`})}
+       onCards={()=>openMemberCards(owner.id)}
+       onLimit={()=>launch('limit',{amount:String(pocket.limit)})}
+       onProfile={()=>navigateToMemberProfile(owner.id)}
+     />}
 
-     {route==='cards'&&<>
-      <Heading title={cardsMemberFilter?`Cartes de ${findMember(family,cardsMemberFilter)?.name||'ce membre'}`:"Les cartes associées à la famille"}/><div className="space-y-3">{(cardsMemberFilter?getMemberVisibleCards(family,data.viewerId,cardsMemberFilter):family.cards.filter(c=>canViewFamilyCard(family,data.viewerId,c))).map(c=>{const m=findMember(family,c.holderId);return <Panel key={c.id} className="p-4"><div className="rounded-[23px] bg-gradient-to-br from-[#2E0B69] to-[#7436E4] text-white p-5"><div className="flex justify-between items-center text-xs"><span className="font-bold">Simple Family</span><CreditCard size={20}/></div><p className="mt-7 font-mono text-[17px] tracking-[.1em]">•••• •••• •••• {c.last4}</p><div className="mt-5 flex items-center justify-between text-[11px]"><span>{m?.name}</span><span>{c.active?'Active':'Suspendue'}</span></div></div><div className="flex items-center justify-between pt-3"><p className="text-[12px] font-bold">{c.label}</p><button type="button" disabled={!admin} onClick={()=>toggleCard(c.id)} className="bg-[#EFE8FF] text-[#6828D4] text-[11px] font-bold px-3 py-2 rounded-full disabled:opacity-40">{c.active?'Suspendre':'Réactiver'}</button></div></Panel>})}</div>
-      {admin&&<PillButton onClick={()=>launch('create-card',{
-       source:cardsMemberFilter?`pocket:${cardsMemberFilter}`:family.account?'family':`pocket:${data.viewerId}`,
-       holder:cardsMemberFilter||data.viewerId
-     })}>Créer une carte virtuelle <Plus size={16}/></PillButton>}
-      <Panel className="p-4"><p className="text-[12px] text-[#80758F]">Attribution et suspension simulées. Les plafonds Simple One, contrôles et règles de cartes réelles doivent être intégrés côté banque.</p></Panel>
-     </>}
+     {route==='cards'&&<FamilyCardsView
+       family={family} viewerId={data.viewerId} memberFilter={cardsMemberFilter}
+       onToggle={toggleCard} onOpenPocket={navigateToMember}
+       onCreate={()=>launch('create-card',{
+         source:cardsMemberFilter?`pocket:${cardsMemberFilter}`:family.account?'family':`pocket:${data.viewerId}`,
+         holder:cardsMemberFilter||data.viewerId
+       })}
+     />}
 
      {route==='savings'&&<>
        <Panel className="p-4 bg-[#F1EAFC] border border-[#E1D5F5] shadow-none">
@@ -1131,8 +1141,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='create-card'&&<><Input label="Nom de la carte" value={form.label} onChange={v=>setField('label',v)} placeholder="Carte courses"/><SelectInput label="Compte ou pocket associé" value={form.source} onChange={v=>setField('source',v)} options={[...(family?.account?[{value:'family',label:'Sous-compte Famille'}]:[]),...(family?.joint?[{value:'joint',label:'Compte joint'}]:[]),...(family?.pockets||[]).map(p=>({value:`pocket:${p.ownerId}`,label:`Pocket ${initialsFor(p.ownerId)}`}))]}/><SelectInput label="Titulaire de la carte" value={form.holder} onChange={v=>setField('holder',v)} options={memberOptions}/></>}
        {modal==='new-goal'&&<><Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/><Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)}/><Input label="Date de fin" type="date" min={nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)}/><SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/><div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p><div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]"><input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)s.add(m.id);else s.delete(m.id);setField('contributors',[...s].join(','))}}/>{m.name}</label>)}</div></div></>}
        {(modal==='goal-deposit'||modal==='goal-withdraw'||modal==='limit')&&<>
-          <Input label={modal==='limit'?'Nouveau plafond (DH)':'Montant (DH)'} type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 500"/>
-          <p className="text-xs text-[#847992]">{modal==='limit'?'Plafond indicatif de démonstration.':`Disponible sur votre compte Simple fictif : ${currency(viewer?.simpleBalance||0)}.`}</p>
+          <Input label={modal==='limit'?'Plafond par virement sortant (DH)':'Montant (DH)'} type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 500"/>
+          <p className="text-xs text-[#847992]">{modal==='limit'?'Plafond appliqué aux virements sortants de la pocket uniquement dans la démonstration. Ce n’est pas un plafond bancaire Simple One.':`Disponible sur votre compte Simple fictif : ${currency(viewer?.simpleBalance||0)}.`}</p>
         </>}
         {modal==='goal-schedule'&&<>
           <Input label="Montant par versement (DH)" type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 250"/>
