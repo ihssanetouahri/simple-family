@@ -1,0 +1,25 @@
+<section className="relative min-h-[212px] overflow-hidden rounded-[29px] shadow-[0_12px_34px_rgba(66,20,126,0.18)]">
+           <img src={familyPhoto} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover object-center"/>
+           <div className="absolute inset-0 bg-gradient-to-r from-[#240958]/95 via-[#42147C]/72 to-[#290C5A]/30"/>
+           <div className="relative z-10 min-h-[212px] p-5 flex flex-col justify-between text-white">
+             <div className="flex items-start justify-between gap-2">
+               <div className="min-w-0">
+                 <p className="text-[10px] font-bold text-white/75 uppercase tracking-[0.12em]">Notre espace familial</p>
+                 <h2 className="mt-2 text-[23px] font-extrabold font-display leading-tight break-words">{family.name}</h2>
+                 <p className="text-[12px] text-white/85 mt-1">{family.members.length} membre{family.members.length>1?'s':''} · {roleLabel(viewer?.role||'member')}</p>
+               </div>
+               <button type="button" ref={familySelectorButtonRef} onClick={toggleFamilySelector} aria-haspopup="menu" aria-controls="family-selector-menu" aria-expanded={selectorOpen} aria-label="Changer ou ajouter une famille"
+                 className="family-hover-glass shrink-0 bg-white/20 backdrop-blur-md border border-white/35 text-white rounded-full px-3 py-2 text-[11px] font-bold flex items-center gap-1.5">
+                 Mes familles <ChevronDown size={14}/>
+               </button>
+             </div>
+             <div className="flex items-end justify-between gap-3">
+               <button type="button" onClick={()=>mainGo('members')} className="family-hover-hero text-[12px] font-bold rounded-full px-3.5 py-2.5 bg-white text-[#5120A8] inline-flex items-center gap-2">
+                 Voir les membres <ArrowRight size={15}/>
+               </button>
+               <div className="flex -space-x-2" aria-label="Aperçu des membres">
+                 {family.members.slice(0,3).map(m=><Avatar key={m.id} member={m} size={34}/>)}
+               </div>
+             </div>
+           </div>
+         </section>
