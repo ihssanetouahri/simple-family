@@ -300,7 +300,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
     setError('Destination non autorisée pour votre profil.');return false;
   }
   const pocketCheck=validatePocketDebit(family,data.viewerId,payment.from,payment.amount);
-  if(!pocketCheck.ok){setError(pocketCheck.reason);return false;}
+  if('reason' in pocketCheck){setError(pocketCheck.reason);return false;}
   if(modal==='simple-pay'&&(!canUseSimplePayFamily(family,data.viewerId)||payment.from!=='account')){
     setError('Simple Pay Famille est réservé au Sous-compte Famille et aux responsables habilités.');return false;
   }
