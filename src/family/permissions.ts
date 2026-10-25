@@ -70,6 +70,29 @@ export const canViewJointAccount = (family:Family, viewerId:string):boolean =>
   Boolean(family.joint && memberOf(family,viewerId) && family.jointHolderIds?.includes(viewerId));
 export const canOperateJointAccount = canViewJointAccount;
 
+/** Vérifications sur les références de comptes des transferts simulés. */
+export const canDebitFamilySource = (family:Family, viewerId:string, source:string):boolean => {
+  if(source.startsWith('simple:'))return source===`simple:${viewerId}` && Boolean(memberOf(family,viewerId));
+  if(source==='account')return Boolean(family.account&&canOperateFamilyAccount(family,viewerId));
+  if(source==='joint')return canOperateJointAccount(family,viewerId);
+  if(source.startsWith('pocket:')) {
+    const ownerId=source.slice(7);
+    return family.pockets.some(p=>p.ownerId===ownerId) && canOperatePocket(family,viewerId,ownerId);
+  }
+  return false;
+};
+export const canCreditFamilyDestination = (family:Family, viewerId:string, target:string):boolean => {
+  if(target==='external')return Boolean(memberOf(family,viewerId));
+  if(target.startsWith('simple:'))return target===`simple:${viewerId}` && Boolean(memberOf(family,viewerId));
+  if(target==='account')return Boolean(family.account&&canOperateFamilyAccount(family,viewerId));
+  if(target==='joint')return canOperateJointAccount(family,viewerId);
+  if(target.startsWith('pocket:')) {
+    const ownerId=target.slice(7);
+    return family.pockets.some(p=>p.ownerId===ownerId) && canOperatePocket(family,viewerId,ownerId);
+  }
+  return false;
+};
+
 /** Épargne : visibilité spécifique, contribution par habilitation et droits de gestion distincts. */
 export const canViewSavingsGoal = (family:Family, viewerId:string, goal:SavingsGoal):boolean =>
   Boolean(memberOf(family,viewerId) && (eligibleAdmin(family,viewerId) ||
