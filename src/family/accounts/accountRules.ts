@@ -83,7 +83,7 @@ export function canRespondJointApplication(family:Family,viewerId:string):boolea
  const a=family.jointApplication;
  return Boolean(a?.status==='awaiting'&&a.coHolderId===viewerId &&
   findMember(family,viewerId) && !findMember(family,viewerId)?.simpleOne &&
-  findMember(family,viewerId)?.role==='coleader');
+  canManageFamily(family,viewerId));
 }
 
 /** La validation dite bancaire est uniquement une simulation, jamais une autorisation métier. */
