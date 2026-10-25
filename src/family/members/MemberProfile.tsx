@@ -61,7 +61,6 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
  const hasJointAccess=canViewJointAccount(family,memberId);
  const canManageCards=canManagePocketCards(family,viewerId,memberId);
  const money=(value:number)=>showAmounts?currency(value):'•••• DH';
- const maxPercentage=pocket?.limit?Math.min(100,Math.max(0,pocket.balance/pocket.limit*100)):0;
  return <div className="space-y-5 pb-3">
   <section className={surface+' p-5 relative overflow-hidden'}>
    <div aria-hidden="true" className="absolute top-0 right-0 h-28 w-28 rounded-full bg-[#F1E7FF] blur-2xl translate-x-8 -translate-y-9"/>
@@ -92,8 +91,7 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
      </div>
      <p className="text-white/70 text-[11px] mt-5">Solde disponible</p>
      <p className="text-[29px] font-extrabold mt-1 tracking-tight">{money(pocket.balance)}</p>
-     <div className="flex justify-between gap-2 items-center mt-4 mb-2"><span className="text-[11px] text-white/75">Plafond indicatif</span><span className="text-[11px] font-semibold">{money(pocket.limit)}</span></div>
-     <div className="h-2 rounded-full bg-white/20 overflow-hidden"><div style={{width:`${maxPercentage}%`}} className="h-full rounded-full bg-white"/></div>
+     <div className="flex justify-between gap-2 items-center mt-4 mb-2"><span className="text-[11px] text-white/75">Plafond de virement sortant (démo)</span><span className="text-[11px] font-semibold">{money(pocket.limit)} / opération</span></div>
      <div className="grid grid-cols-2 gap-2.5 mt-5">
       <button type="button" disabled={!canOperate} onClick={onTopup} className="min-h-[43px] bg-white text-[#5E26B5] rounded-full text-[12px] font-extrabold flex justify-center items-center gap-2 disabled:opacity-50"><Plus size={16}/>Alimenter</button>
       <button type="button" disabled={!canOperate} onClick={onTransfer} className="min-h-[43px] bg-white/15 text-white border border-white/35 rounded-full text-[12px] font-bold flex justify-center items-center gap-2 disabled:opacity-40"><ArrowRight size={16}/>Transférer</button>
