@@ -5,7 +5,12 @@ import {
   ReceiptText, Send, Settings2, ShieldCheck, Users, WalletCards, XCircle, Eye,
   ArrowLeftRight, PiggyBank
 } from 'lucide-react';
-import { avatarFor, currency, findMember, isAdmin, moneyValid, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
+import { avatarFor, currency, findMember, moneyValid, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
+import {
+  canManageFamily, canOperateFamilyAccount, canOperateJointAccount,
+  canViewJointAccount, canRequestJointAccount, canViewFamilyAccount,
+  requiresDemoDualApproval
+} from './permissions';
 import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
 import karimAvatar from '../assets/images/karim.jpg';
 import yasmineAvatar from '../assets/images/yasmine.jpg';
@@ -91,11 +96,11 @@ function adjustBalance(f:Family,source:string,delta:number) {
 }
 export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome,onBack,onToast,onOpenMembers},ref){
  const viewer=findMember(family,viewerId);
- const admin=isAdmin(family,viewerId);
+ const admin=canManageFamily(family,viewerId);
  const coholders=family.jointHolderIds||[];
- const jointOwner=coholders.includes(viewerId);
- const canRequestJoint=Boolean(viewer&&!viewer.simpleOne&&(viewer.relation==='Moi'||viewer.relation==='Conjoint'));
- const authorized=kind==='sub'?admin:jointOwner;
+ const jointOwner=canViewJointAccount(family,viewerId);
+ const canRequestJoint=canRequestJointAccount(family,viewerId);
+ const authorized=kind==='sub'?canOperateFamilyAccount(family,viewerId):canOperateJointAccount(family,viewerId);
  const account=kind==='sub'?family.account:family.joint;
  const title=kind==='sub'?'Sous-compte Famille':'Compte joint';
  const initialView:View=kind==='sub'?(family.account?'overview':'intro'):(family.joint?'overview':family.jointApplication?'opening':'intro');
@@ -136,9 +141,11 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
  const previous=()=>{if(!goBack())onBack();};
  const root=()=>{setTrail([]);setView('overview');setNotice('');scrollTop();};
  const begin=(type:Action)=>{setAction(type);setAmount('');setBeneficiary('Facture familiale');setDestination('');setApprovalFirst(false);setApprovalSecond(false);jump('money');};
- const membersEligible=family.members.filter(m=>m.id!==viewerId&&!m.simpleOne&&m.relation==='Conjoint');
+ const membersEligible=family.members.filter(m=>m.id!==viewerId&&!m.simpleOne&&
+   (m.relation==='Moi'||m.relation==='Conjoint') && m.relation!==viewer?.relation &&
+   canManageFamily(family,m.id));
  const application=family.jointApplication;
- const readable=kind==='sub'?canViewSub:jointOwner;
+ const readable=kind==='sub'?(canViewSub&&canViewFamilyAccount(family,viewerId)):jointOwner;
  const bankKey=kind==='sub'?'account':'joint';
  const source=action==='add'?'simple:'+viewerId:bankKey;
  const subTargets=family.pockets.filter(p=>admin||p.ownerId===viewerId).map(p=>({value:'pocket:'+p.ownerId,label:'Pocket '+(findMember(family,p.ownerId)?.name||'Membre')}));
@@ -149,7 +156,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
  const amountValue=Number(amount.replace(',','.'));
  const validAmount=Number.isFinite(amountValue)&&moneyValid(amountValue);
  const canSubmit=authorized&&validAmount&&sourceBalance>=amountValue&&Boolean(dest);
- const needsDemoApproval=action!=='add'&&validAmount&&amountValue>=family.otpThreshold;
+ const needsDemoApproval=action!=='add'&&validAmount&&requiresDemoDualApproval(family,kind==='sub'?'account':'joint',amountValue);
  const approvalNames=(kind==='sub'?family.members.filter(m=>m.role==='leader'||m.role==='coleader'):family.members.filter(m=>coholders.includes(m.id))).slice(0,2).map(m=>m.name);
  const linkedCards=family.cards.filter(c=>kind==='sub'?['family','account',family.account?.id].includes(c.source):['joint',family.joint?.id].includes(c.source));
  const transactions=family.transactions.filter(t=>kind==='sub'?
