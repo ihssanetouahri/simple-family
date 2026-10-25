@@ -9,7 +9,7 @@ import { avatarFor, currency, findMember, moneyValid, roleLabel, today, uid, typ
 import {
   canManageFamily, canOperateFamilyAccount, canOperateJointAccount,
   canViewJointAccount, canRequestJointAccount, canViewFamilyAccount,
-  requiresDemoDualApproval
+  canViewFamilyCard, requiresDemoDualApproval
 } from './permissions';
 import { accountClosureState, approvalMembers, canRespondJointApplication, canSimulateBankReview,
   getAccountCards, validateAccountOperation } from './accounts/accountRules';
@@ -162,7 +162,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
  const needsDemoApproval=action!=='add'&&validAmount&&requiresDemoDualApproval(family,kind==='sub'?'account':'joint',amountValue);
  const demoApprovers=approvalMembers(family,kind);
  const approvalNames=demoApprovers.map(m=>m.name);
- const linkedCards=getAccountCards(family,kind);
+ const linkedCards=getAccountCards(family,kind).filter(c=>canViewFamilyCard(family,viewerId,c));
  const transactions=family.transactions.filter(t=>kind==='sub'?
   ['account','family','Sous-compte Famille'].includes(t.source)||['account','family','Sous-compte Famille'].includes(t.target):
   ['joint','Compte joint'].includes(t.source)||['joint','Compte joint'].includes(t.target));
