@@ -129,12 +129,12 @@ assert(check('canBookFamilyTrip',co));
 assert(!check('canBookFamilyTrip',child));
 assert(check('canViewFamilyDocument',leader,family.documents[0]));
 assert(!check('canViewFamilyDocument',child,family.documents[0]));
-assert(!check('requiresDemoDualApproval',family,'account',100)); // seuil fictif à 2000 DH
+assert(!check('requiresDemoDualApproval','account',100)); // seuil fictif à 2000 DH
 
 // Erreur volontaire évitée : la double validation ne commence qu'au seuil fictif.
-assert(check('requiresDemoDualApproval',family,'account',2000));
-assert(!check('requiresDemoDualApproval',family,'account',1999));
-assert(!check('requiresDemoDualApproval',family,'joint',2500),'Pas de compte joint actif');
+assert(check('requiresDemoDualApproval','account',2000));
+assert(!check('requiresDemoDualApproval','account',1999));
+assert(!check('requiresDemoDualApproval','joint',2500),'Pas de compte joint actif');
 
 const invalid=model.createDemoState().families[0];
 invalid.members.find(m=>m.id==='yasmine').role='coleader'; // state should never grant admin powers
