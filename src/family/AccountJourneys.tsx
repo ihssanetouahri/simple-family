@@ -409,17 +409,17 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
     </>:<p className="rounded-[15px] bg-[#FFF5E9] text-[#8E632A] p-3 text-[12px] leading-relaxed">
       En attente de {findMember(family,application.coHolderId)?.name}. Pour continuer la démonstration, choisissez son profil dans « Mode démo », puis revenez au Compte joint.
     </p>}
-   </Card>
+   </Card>}
    {application?.status==='review'&&<Card className="p-4 space-y-3">
     <div className="flex items-center gap-2 rounded-[15px] bg-[#EAF8F1] text-[#16845E] p-3 text-[12px] font-bold"><CheckCircle2 size={19}/>Accord du deuxième cotitulaire enregistré</div>
     <Notes>Les deux accords sont simulés. La vérification bancaire (identité, éligibilité et documents) n'est pas réalisée par l'application de démonstration.</Notes>
     <Button disabled={!canSimulateBankReview(family,viewerId)} onClick={activateJoint}>Simuler la validation bancaire <CheckCircle2 size={16}/></Button>
-   </Card>
+   </Card>}
    {application?.status==='rejected'&&<Card className="p-4 space-y-3">
      <p className="text-[12px] text-[#AD4B61] font-bold">Le second cotitulaire a refusé cette demande fictive.</p>
      <Button disabled={viewerId!==application.requesterId} onClick={()=>{onUpdate(f=>{f.jointApplication=null;});setOpeningHolder('');setTermsAccepted(false);setFirstSignature(false);jump('coholder');}}>Créer une nouvelle demande <ArrowRight size={16}/></Button>
      {viewerId!==application.requesterId&&<Notes>Pour recommencer, choisissez le profil du demandeur initial dans « Mode démo ».</Notes>}
-    </Card>
+    </Card>}
   </>}
   {view==='opening-success'&&<Card className="p-6 text-center space-y-4">
     <span className="w-[70px] h-[70px] flex items-center justify-center rounded-full bg-[#E8F8EF] text-[#20A77C] mx-auto"><CheckCircle2 size={39}/></span>
