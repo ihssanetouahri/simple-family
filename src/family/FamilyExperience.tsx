@@ -25,7 +25,8 @@ import {
   canViewPocket, canOperatePocket, canOperateFamilyAccount, canOperateJointAccount,
   canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal,
   canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory,
-  canRemoveFamilyMember, canChangeMemberRole, canViewFamilyCard
+  canRemoveFamilyMember, canChangeMemberRole, canViewFamilyCard,
+  canDebitFamilySource, canCreditFamilyDestination
 } from './permissions';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
@@ -287,12 +288,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   const balance=currentBalance(family,payment.from);
   if(balance===undefined||balance<payment.amount){setError('Solde insuffisant pour cette simulation.');return false;}
   // Do not rely only on the disabled state of a UI control for authorizations.
-  const sourcePermitted=payment.from===`simple:${data.viewerId}` ||
-    (payment.from==='account'&&canOperateFamilyAccount(family,data.viewerId)) ||
-    (payment.from==='joint'&&canOperateJointAccount(family,data.viewerId)) ||
-    (payment.from.startsWith('pocket:')&&canOperatePocket(family,data.viewerId,payment.from.slice(7)));
-  if(!sourcePermitted){setError('Vous ne disposez pas des droits nécessaires sur le compte source.');return false;}
-  if(payment.from==='joint'&&!family.joint){setError('Aucun compte joint.');return false;}
+  if(!canDebitFamilySource(family,data.viewerId,payment.from)){
+    setError('Vous ne disposez pas des droits nécessaires sur le compte source.');return false;
+  }
+  if(!canCreditFamilyDestination(family,data.viewerId,payment.to)){
+    setError('Destination non autorisée pour votre profil.');return false;
+  }
   if(modal==='simple-pay'&&(!canUseSimplePayFamily(family,data.viewerId)||payment.from!=='account')){
     setError('Simple Pay Famille est réservé au Sous-compte Famille et aux responsables habilités.');return false;
   }
