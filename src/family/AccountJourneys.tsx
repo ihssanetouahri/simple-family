@@ -615,36 +615,64 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
     <Field label="Plafond (DH)" value={limit} onChange={setLimit}/>
     <Button secondary disabled={!authorized||!moneyValid(Number(limit))} onClick={()=>{onUpdate(f=>{const a=kind==='sub'?f.account:f.joint;if(a)a.limit=Number(limit);});onToast('Plafond fictif actualisé.');}}>Enregistrer</Button>
    </Card>
-   {kind==='joint'&&authorized&&<Card className="p-4">
-    <Row icon={LockKeyhole} title="Clôturer le compte joint" caption="Conditions et accords des deux cotitulaires"
+   {(kind==='sub'?family.members.some(m=>m.id===viewerId&&m.role==='leader'&&!m.simpleOne):authorized)&&<Card className="p-4">
+    <Row icon={LockKeyhole} title={kind==='sub'?'Clôturer le Sous-compte Famille':'Clôturer le compte joint'}
+     caption={kind==='sub'?'Leader uniquement · solde nul et cartes suspendues':'Solde nul, cartes suspendues et accords des cotitulaires'}
      onClick={()=>{setClosureAccepted(false);setClosureSecondAccepted(false);jump('closure');}}/>
    </Card>}
    <Notes>Les plafonds, autorisations et modalités bancaires sont à valider selon les conventions applicables.</Notes>
   </>}
   {view==='closure'&&<>
-   <MiniHead heading="Clôture du compte joint" desc="Vérifiez les conditions et simulez la confirmation des deux cotitulaires."/>
-   <Card className="p-4 space-y-4">
-    <SectionHead title="Vérifications"/>
+   <MiniHead heading={kind==='sub'?'Clôturer le Sous-compte Famille':'Clôturer le compte joint'}
+    desc={kind==='sub'?'Simulation réservée au Leader, sans transfert bancaire.':'Simulation avec accords des deux cotitulaires.'}/>
+   <Card className="p-4 space-y-3">
+    <SectionHead title="Vérifications avant clôture"/>
     <div className="rounded-[18px] bg-[#F8F5FF] p-3 space-y-2">
-     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Solde actuel</span><strong>{currency(account?.balance||0)}</strong></div>
-     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Cartes actives</span><strong>{linkedCards.filter(c=>c.active).length}</strong></div>
+     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Solde actuel</span><strong>{currency(closure.balance)}</strong></div>
+     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Cartes associées</span><strong>{closure.totalCards}</strong></div>
+     <div className="flex justify-between gap-2 text-[12px]"><span className="text-[#81758D]">Cartes encore actives</span><strong>{closure.activeCards}</strong></div>
     </div>
-    <div className={'p-3 rounded-[17px] text-[12px] font-bold '+(hasPendingClosure?'bg-[#FFF1F4] text-[#B14C61]':'bg-[#EAF8F1] text-[#16875B]')}>
-     {hasPendingClosure?'Le compte doit être vide et les cartes suspendues.':'Conditions simulées satisfaites.'}
+    <div className={'p-3 rounded-[17px] text-[12px] font-bold '+(!closure.canClose?'bg-[#FFF1F4] text-[#B14C61]':'bg-[#EAF8F1] text-[#16875B]')}>
+     {closure.canClose?'Les conditions simulées sont remplies.':'Clôture momentanément indisponible.'}
     </div>
+    {closure.issues.length>0&&<div className="space-y-2">
+     {closure.issues.map((issue,i)=><p key={i} className="text-[11px] text-[#A34C65]">• {issue}</p>)}
+    </div>}
+    {hasPendingClosure&&<div className="rounded-[16px] bg-[#F7F2FE] p-3 space-y-2">
+     <Notes>Revenez au compte pour transférer le solde disponible vers une destination autorisée, puis suspendre ses cartes. Aucun solde n'est transféré automatiquement à la clôture.</Notes>
+     {closure.activeCards>0&&<Button secondary onClick={()=>jump('cards')}>Voir les cartes à suspendre <CreditCard size={16}/></Button>}
+     <Button secondary onClick={root}>Retour au compte <ArrowLeft size={16}/></Button>
+    </div>}
    </Card>
    <Card className="p-4 space-y-3">
-    <SectionHead title="Accords des cotitulaires"/>
-    {coholders.slice(0,2).map((id,i)=>{
+    <SectionHead title={kind==='sub'?'Confirmation du Leader':'Accords des cotitulaires'}/>
+    {(kind==='sub'?[viewerId]:coholders.slice(0,2)).map((id,i)=>{
      const m=findMember(family,id);
      return <label key={id} className="flex items-center gap-3 rounded-[17px] bg-[#FAF7FF] p-3">
-      <PersonAvatar member={m} size={42}/><span className="flex-1 text-[12px] font-bold">{m?.name||'Cotitulaire'}<span className="block text-[11px] text-[#81758D] font-normal mt-1">Accord fictif {i+1}/2</span></span>
-      <input type="checkbox" checked={i===0?closureAccepted:closureSecondAccepted} onChange={e=>i===0?setClosureAccepted(e.target.checked):setClosureSecondAccepted(e.target.checked)} className="accent-[#752DDB] w-4 h-4"/>
+      <PersonAvatar member={m} size={42}/><span className="flex-1 text-[12px] font-bold">{m?.name||'Responsable'}
+       <span className="block text-[11px] text-[#81758D] font-normal mt-1">{kind==='sub'?'Confirmation fictive du Leader':`Accord fictif ${i+1}/2`}</span></span>
+      <input type="checkbox" disabled={!closure.canClose}
+       checked={i===0?closureAccepted:closureSecondAccepted}
+       onChange={e=>i===0?setClosureAccepted(e.target.checked):setClosureSecondAccepted(e.target.checked)}
+       className="accent-[#752DDB] w-4 h-4"/>
      </label>;
     })}
+    <Notes>{kind==='sub'?'La clôture désactive et supprime les cartes fictives associées et retire les accès de consultation.':'Les deux cases sont une simulation UX, et non des signatures bancaires distinctes.'} Les ordres de virement permanents réels ne sont pas modélisés ici.</Notes>
    </Card>
-   <Button disabled={coholders.length<2||hasPendingClosure||!closureAccepted||!closureSecondAccepted} onClick={()=>{onUpdate(f=>{f.joint=null;f.jointHolderIds=[];f.jointApplication=null;});onToast('Compte joint clôturé (simulation).');onHome();}}>Simuler la clôture <Check size={16}/></Button>
-   <Notes>Aucune demande réelle de clôture n'est envoyée. Les conditions bancaires restent à confirmer.</Notes>
+   <Button disabled={!closure.canClose||!closureAccepted||(kind==='joint'&&!closureSecondAccepted)}
+    onClick={()=>{
+      if(!accountClosureState(family,kind,viewerId).canClose)return;
+      onUpdate(f=>{
+       if(!accountClosureState(f,kind,viewerId).canClose)return;
+       const linkedIds=new Set(getAccountCards(f,kind).map(c=>c.id));
+       f.cards=f.cards.filter(c=>!linkedIds.has(c.id));
+       if(kind==='sub'){f.account=null;f.accountViewIds=[];}
+       else {f.joint=null;f.jointHolderIds=[];f.jointApplication=null;}
+      });
+      onToast((kind==='sub'?'Sous-compte Famille':'Compte joint')+' clôturé dans la simulation.');
+      onHome();
+    }}>Confirmer la clôture fictive <Check size={16}/></Button>
+   <Notes>Une clôture réelle exige des contrôles et des formalités bancaires qui ne sont pas effectués ici.</Notes>
   </>}
  </div>;
 });
