@@ -56,6 +56,24 @@ export const canViewFamilyCard = (family:Family, viewerId:string, card:FamilyCar
   Boolean(memberOf(family,viewerId) && (eligibleAdmin(family,viewerId)||card.holderId===viewerId));
 export const canManageFamilyCards = eligibleAdmin;
 
+/** Création de carte fictive : titulaire et source doivent rester cohérents. */
+export const canIssueFamilyCard = (family:Family, viewerId:string, source:string, holderId:string):boolean => {
+ const holder=memberOf(family,holderId);
+ if(!holder || !eligibleAdmin(family,viewerId)) return false;
+ if(source.startsWith('pocket:') || family.pockets.some(p=>p.id===source)){
+  const pocket=family.pockets.find(p=>p.id===source||source===`pocket:${p.ownerId}`);
+  return Boolean(pocket && pocket.ownerId===holderId && canManagePocketCards(family,viewerId,holderId));
+ }
+ if(['family','account',family.account?.id].includes(source)){
+  return Boolean(family.account && eligibleAdmin(family,holderId));
+ }
+ if(['joint',family.joint?.id].includes(source)){
+  return Boolean(family.joint && canOperateJointAccount(family,viewerId) &&
+    canOperateJointAccount(family,holderId));
+ }
+ return false;
+};
+
 /** Compte joint : exclusivement le couple adulte Leader / Co-leader de cette famille. */
 export const canRequestJointAccount = (family:Family, viewerId:string):boolean => {
   const viewer=memberOf(family,viewerId);
