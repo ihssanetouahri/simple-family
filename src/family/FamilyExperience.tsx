@@ -509,10 +509,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',member:owner?.name||'Membre',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
  const isAccountRoute=(value:Route|undefined):value is 'sub-account'|'joint-account'=>value==='sub-account'||value==='joint-account';
- // Keep the journey mounted when visiting family member management, so the back arrow
- // restores the exact account screen rather than resetting to account overview.
- const previousFamilyRoute=stack[stack.length-1];
- const mountedAccountRoute=isAccountRoute(route)?route:(route==='members'&&isAccountRoute(previousFamilyRoute)?previousFamilyRoute:null);
+ // Keep account journeys mounted while drilling down into members, profiles, pockets or cards.
+ // Returning through Back must restore the exact internal bank step, not restart the journey.
+ const stackedAccountRoute=[...stack].reverse().find(isAccountRoute)||null;
+ const mountedAccountRoute=isAccountRoute(route)?route:stackedAccountRoute;
  const navigateToMember=(id:string)=>{setSelectedMember(id);go('pocket')};
  const navigateToMemberProfile=(id:string)=>{setSelectedMember(id);go('member')};
  const openMemberCards=(id:string)=>{setSelectedMember(id);setCardsMemberFilter(id);go('cards')};
@@ -733,7 +733,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
         <Panel className="px-4"><ActionLine icon={WalletCards} title="Pockets des membres" subtitle="Soldes et alimentation de chaque pocket" onClick={()=>mainGo('pockets')}/></Panel>
       </>}
 
-      {mountedAccountRoute&&<div className={route==='members'?'hidden':''}>
+      {mountedAccountRoute&&<div className={isAccountRoute(route)?'':'hidden'}>
         <AccountJourneys
           ref={accountJourneyRef}
           key={family.id+mountedAccountRoute}
