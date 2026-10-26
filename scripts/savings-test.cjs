@@ -81,6 +81,33 @@ assert(ui.includes("closeSavingsGoal(f,selectedGoal,'manual')"),'Manual close se
 assert(ui.includes("closeFamilyPot(f,p.id,'target')"),'Full pot closes without repayment');
 assert(ui.includes("closeFamilyPot(f,selectedPot,'manual')"),'Manual pot closes without repayment');
 assert(ui.includes("goalDisplayState(goal,nowDate())"),'Goal state is visible');
+
+const goalUi=ui.slice(ui.indexOf("{route==='goal'&&goal&&"),ui.indexOf("{route==='pots'&&"));
+assert(goalUi.length>3000,'Goal detail route must be present');
+const index={
+ card:goalUi.indexOf('<FamilyProgressPhotoCard'),
+ cta:goalUi.indexOf("goal.status==='active'&&<div className=\"grid grid-cols-2 gap-3\""),
+ schedule:goalUi.indexOf('Heading title="Versements programmés"'),
+ history:goalUi.indexOf('Heading title="Historique des mouvements"'),
+ contributors:goalUi.indexOf('Heading title="Les contributeurs"'),
+ message:goalUi.indexOf("composeFamilyMessage({kind:'goal',title:goal.title})"),
+ manage:goalUi.indexOf('Gérer le projet')
+};
+assert(Object.values(index).every(n=>n>=0),'All savings modules remain accessible');
+const order=['card','cta','schedule','history','contributors','message','manage'];
+assert(order.every((name,i)=>i===0||index[name]>index[order[i-1]]),
+ 'Goal details must show card, immediate actions, planned deposits, history, contributors, chat, then management');
+assert(goalUi.slice(index.card,index.cta).trim().endsWith('detail/>'),
+ 'The main Contribuer/Retirer actions must immediately follow the hero card');
+assert(goalUi.includes("(goal.status==='closed'||goalDisplayState(goal,nowDate()).tone==='orange')"),
+ 'Status card appears for closure or urgent deadlines, not repeated En cours');
+assert(goalUi.includes('goal.settledAmount!==undefined'),
+ 'Settlement information must remain for closed goals');
+assert(goalUi.includes('disabled={!canFundSavingsGoal(family,data.viewerId,goal)}'),
+ 'Funding must retain authorization rules');
+assert(goalUi.includes('disabled={!canWithdrawSavingsGoal(family,data.viewerId,goal)}'),
+ 'Withdrawal must retain authorization rules');
+
 assert(ui.includes("potDisplayState(pot,nowDate())"),'Pot state is visible');
 assert(ui.includes("potContributions(pot)"),'Members contribution breakdown visible');
 assert(ui.includes("validatePocketDebit(family,data.viewerId,source,amount)"),
