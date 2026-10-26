@@ -1039,12 +1039,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <FamilyProgressPhotoCard id={goal.coverId||goal.id} kind="goal" title={goal.title}
          description={`Échéance : ${dateFor(goal.deadline)} · Pour ${initialsFor(goal.ownerId)}`}
          current={goal.balance} target={goal.target} status={goal.status} showAmounts={showAmounts} detail/>
-       <button type="button" onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'goal',title:goal.title}))}
-         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
-         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
-       </button>
+       {goal.status==='active'&&<div className="grid grid-cols-2 gap-3">
+         <PillButton disabled={!canFundSavingsGoal(family,data.viewerId,goal)} onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/> Contribuer</PillButton>
+         <PillButton secondary disabled={!canWithdrawSavingsGoal(family,data.viewerId,goal)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton>
+       </div>}
 
-       <Panel className="p-4 space-y-2">
+       {(goal.status==='closed'||goalDisplayState(goal,nowDate()).tone==='orange')&&<Panel className="p-4 space-y-2">
          <div className="flex justify-between items-center gap-2">
           <span className={'text-[11px] font-extrabold rounded-full px-3 py-1.5 '+(goalDisplayState(goal,nowDate()).tone==='green'?'bg-[#E5F8EE] text-[#178C64]':goalDisplayState(goal,nowDate()).tone==='orange'?'bg-[#FFF2DE] text-[#A66C1F]':'bg-[#F1EAFD] text-[#6E2DCA]')}>
            {goalDisplayState(goal,nowDate()).label}</span>
@@ -1055,12 +1055,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
           <span className="text-[#81728F]">Reversé au propriétaire (simulation)</span>
           <strong className="text-[#178A65]">{showBalance(goal.settledAmount)}</strong>
          </div>}
-        </Panel>
-
-       {goal.status==='active'&&<div className="grid grid-cols-2 gap-3">
-         <PillButton disabled={!canFundSavingsGoal(family,data.viewerId,goal)} onClick={()=>launch('goal-deposit',{amount:''})}><Plus size={16}/> Contribuer</PillButton>
-         <PillButton secondary disabled={!canWithdrawSavingsGoal(family,data.viewerId,goal)} onClick={()=>launch('goal-withdraw',{amount:''})}>Retirer <ArrowRight size={16}/></PillButton>
-       </div>}
+        </Panel>}
 
        <section>
          <Heading title="Versements programmés"/>
@@ -1087,20 +1082,6 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
 
        <section>
-         <Heading title="Les contributeurs" subtitle="Membres habilités à participer"/>
-         <Panel className="px-4">
-           {goalContributions(goal).filter(({memberId})=>family.members.some(m=>m.id===memberId)).map(({memberId:id,total})=>{
-             const member=findMember(family,id);
-             return <div key={id} className="flex items-center gap-3 py-3.5 border-b last:border-none border-[#F0EAF7]">
-               <Avatar size={42} member={member}/>
-               <div className="flex-1 min-w-0"><p className="text-[13px] font-extrabold">{member?.name||'Membre'}</p><p className="text-[11px] text-[#897C96] mt-0.5">{id===goal.ownerId?'Bénéficiaire · ':''}Contributeur habilité</p></div>
-               <div className="shrink-0 text-right"><p className="text-[13px] font-extrabold text-[#5B24BA]">{currency(total)}</p><p className="text-[10px] text-[#9487A1] mt-0.5">Total versé</p></div>
-             </div>;
-           })}
-         </Panel>
-       </section>
-
-       <section>
          <Heading title="Historique des mouvements" right={goal.history.length>2&&
            <button type="button" onClick={()=>setShowAllGoalMovements(v=>!v)}
              className="flex items-center gap-1 text-[#692AD8] text-[12px] font-bold">{showAllGoalMovements?'Réduire':'Voir tout'} <ChevronRight size={15}/></button>}/>
@@ -1114,6 +1095,25 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
            ):<p className="py-4 text-[12px] text-[#81758F]">Aucun mouvement pour le moment.</p>}
          </Panel>
        </section>
+
+       <section>
+         <Heading title="Les contributeurs" subtitle="Membres habilités à participer"/>
+         <Panel className="px-4">
+           {goalContributions(goal).filter(({memberId})=>family.members.some(m=>m.id===memberId)).map(({memberId:id,total})=>{
+             const member=findMember(family,id);
+             return <div key={id} className="flex items-center gap-3 py-3.5 border-b last:border-none border-[#F0EAF7]">
+               <Avatar size={42} member={member}/>
+               <div className="flex-1 min-w-0"><p className="text-[13px] font-extrabold">{member?.name||'Membre'}</p><p className="text-[11px] text-[#897C96] mt-0.5">{id===goal.ownerId?'Bénéficiaire · ':''}Contributeur habilité</p></div>
+               <div className="shrink-0 text-right"><p className="text-[13px] font-extrabold text-[#5B24BA]">{currency(total)}</p><p className="text-[10px] text-[#9487A1] mt-0.5">Total versé</p></div>
+             </div>;
+           })}
+         </Panel>
+       </section>
+
+       <button type="button" onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'goal',title:goal.title}))}
+         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
+         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
+       </button>
 
        {canManageGoal&&<section>
          <button type="button" aria-expanded={goalManageOpen} onClick={()=>setGoalManageOpen(v=>!v)}
