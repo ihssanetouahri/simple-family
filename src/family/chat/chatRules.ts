@@ -22,21 +22,21 @@ export function visibleChats(family:Family,viewerId:string):VisibleChat[]{
 export function getVisibleChat(family:Family,viewerId:string,id:string):VisibleChat|null {
  return visibleChats(family,viewerId).find(room=>room.id===id)||null;
 }
-export function startDirectChat(family:Family,viewerId:string,otherId:string):string|null {
+export function startDirectChat(family:Family,viewerId:string,otherId:string,createdId?:string):string|null {
  if(!findMember(family,viewerId)||!findMember(family,otherId)||otherId===viewerId)return null;
  const same=(family.conversations||[]).find(room=>room.kind==='direct'&&
   room.participantIds.length===2&&room.participantIds.includes(viewerId)&&room.participantIds.includes(otherId));
  if(same)return same.id;
- const created:FamilyConversation={id:uid('direct'),kind:'direct',title:'',createdBy:viewerId,
+ const created:FamilyConversation={id:createdId||uid('direct'),kind:'direct',title:'',createdBy:viewerId,
   participantIds:[viewerId,otherId],messages:[],updatedAt:Date.now()};
  (family.conversations??=[]).unshift(created);
  return created.id;
 }
-export function createGroupChat(family:Family,viewerId:string,title:string,invitees:string[]):string|null {
+export function createGroupChat(family:Family,viewerId:string,title:string,invitees:string[],createdId?:string):string|null {
  if(!findMember(family,viewerId)||!title.trim()||title.trim().length>60)return null;
  const participantIds=[viewerId,...new Set(invitees.filter(id=>id!==viewerId))];
  if(participantIds.length<3||participantIds.some(id=>!findMember(family,id)))return null;
- const group:FamilyConversation={id:uid('group'),kind:'group',title:title.trim(),
+ const group:FamilyConversation={id:createdId||uid('group'),kind:'group',title:title.trim(),
   createdBy:viewerId,participantIds,messages:[],updatedAt:Date.now()};
  (family.conversations??=[]).unshift(group);
  return group.id;
