@@ -15,5 +15,9 @@ export function memberRemovalIssues(f:Family,id:string):string[] {
  if(f.documents.some(d=>d.ownerId===id))issues.push('Réaffecter les documents appartenant au membre.');
  if(f.bookings.some(b=>b.travelerId===id)||f.creditRequests.some(r=>r.applicantId===id))
   issues.push('Traiter les réservations et demandes associées.');
+ if((f.conversations||[]).some(room=>room.participantIds.includes(id)||
+   room.messages.some(msg=>msg.authorId===id))||
+   f.chat.some(msg=>msg.authorId===id))
+  issues.push('Préserver les discussions et historiques liés au membre avant son retrait.');
  return issues;
 }
