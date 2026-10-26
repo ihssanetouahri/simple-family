@@ -14,7 +14,11 @@ export type FamilyPot = {
 export type FamilyCard = { id: string; label: string; last4: string; source: string; holderId: string; active: boolean; };
 export type FamilyInvite = { id: string; name: string; relation: string; simpleOne: boolean; role: Role; };
 export type FamilyAlert = { id: string; type: 'bill'; title: string; beneficiary: string; amount: number; dueDate: string; resolved: boolean; };
-export type ChatMsg = { id: string; authorId: string; text: string; date: string; };
+export type ChatMsg = { id: string; authorId: string; text: string; date: string; createdAt?: number; };
+export type FamilyConversation = {
+ id:string;kind:'direct'|'group';title:string;createdBy:string;
+ participantIds:string[];messages:ChatMsg[];updatedAt:number;
+};
 export type VaultDoc = { id: string; title: string; type: string; expiry: string; ownerId: string; visibleTo: string[]; };
 export type FamilyBooking = { id: string; travelerId: string; destination: string; date: string; amount: number; };
 export type CreditRequest = { id: string; applicantId: string; amount: number; account: string; status: 'En étude'; };
@@ -24,7 +28,7 @@ export type Family = {
   jointHolderIds?: string[];
   jointApplication?: { status:'awaiting'|'review'|'rejected'; requesterId:string; coHolderId:string } | null;
   transactions: FamilyTransaction[]; goals: SavingsGoal[]; pots: FamilyPot[]; cards: FamilyCard[];
-  invites: FamilyInvite[]; alerts: FamilyAlert[]; chat: ChatMsg[]; documents: VaultDoc[];
+  invites: FamilyInvite[]; alerts: FamilyAlert[]; chat: ChatMsg[]; conversations?:FamilyConversation[]; documents: VaultDoc[];
   bookings: FamilyBooking[]; creditRequests: CreditRequest[];
   loyaltyPoints: number; otpThreshold: number; language: 'Français'|'العربية'|'English';
 };
@@ -93,6 +97,14 @@ export function createDemoState(): FamilyState {
       invites:[{id:'invite_amine',name:'Amine',relation:'Fils',simpleOne:true,role:'member'}],
       alerts:[{id:'bill_internet',type:'bill',title:'Facture Internet à régler',beneficiary:'Internet',amount:390,dueDate:dateInDays(3),resolved:false}],
       chat:[{id:'msg1',authorId:'karim',text:'On prévoit les courses samedi ?',date:'18:20'},{id:'msg2',authorId:'lamia',text:'Oui, je prépare la liste 😊',date:'18:21'}],
+      conversations:[
+        {id:'chat_karim_lamia',kind:'direct',title:'',createdBy:'lamia',
+          participantIds:['lamia','karim'],updatedAt:1729440000000,
+          messages:[{id:'dm_1',authorId:'karim',text:'Parfait, je m’en occupe !',date:'Hier'}]},
+        {id:'chat_travel_demo',kind:'group',title:'Voyage en famille',createdBy:'lamia',
+          participantIds:['lamia','karim','yasmine'],updatedAt:1729430000000,
+          messages:[{id:'grp_1',authorId:'yasmine',text:'J’ai trouvé une idée pour notre voyage !',date:'Lun.'}]}
+      ],
       documents:[{id:'doc1',title:'Assurance familiale',type:'Assurance',expiry:'2027-05-31',ownerId:'lamia',visibleTo:['lamia','karim']}],
       bookings:[],creditRequests:[],loyaltyPoints:720
     }
