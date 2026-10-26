@@ -5,7 +5,7 @@ import {
   ReceiptText, Send, Settings2, ShieldCheck, Users, WalletCards, XCircle, Eye,
   ArrowLeftRight, PiggyBank
 } from 'lucide-react';
-import { avatarFor, currency as formatCurrency, findMember, moneyValid, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
+import { avatarFor, currency as formatCurrency, findMember, moneyValid, parseMoney, roundMoney, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
 import {
   canManageFamily, canOperateFamilyAccount, canOperateJointAccount,
   canViewJointAccount, canRequestJointAccount, canViewFamilyAccount,
@@ -78,7 +78,7 @@ const BankCard=({card,holder,label}:{card:FamilyCard;holder?:Member;label:string
 const Field = ({label,value,onChange,children}:{
   label:string;value:string;onChange:(v:string)=>void;children?:React.ReactNode;
 })=><label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#514365]">{label}</span>
-  <input type="number" min="0" inputMode="decimal" value={value} onChange={e=>onChange(e.target.value)}
+  <input type="number" min="0" step="0.01" inputMode="decimal" value={value} onChange={e=>onChange(e.target.value)}
     className="w-full h-12 bg-[#F8F5FE] border border-[#E5DBF3] rounded-2xl px-4 outline-none focus:ring-2 focus:ring-[#C7ABFA] text-[14px]"/>
   {children}</label>;
 const Notes = ({children}:{children:React.ReactNode})=><p className="text-[11px] leading-relaxed text-[#84758F]">{children}</p>;
@@ -91,10 +91,10 @@ function accountBalance(f:Family,source:string) {
  return undefined;
 }
 function adjustBalance(f:Family,source:string,delta:number) {
- if(source==='account'&&f.account)f.account.balance+=delta;
- else if(source==='joint'&&f.joint)f.joint.balance+=delta;
- else if(source.startsWith('simple:')){const m=findMember(f,source.slice(7));if(m)m.simpleBalance+=delta;}
- else if(source.startsWith('pocket:')){const p=f.pockets.find(item=>item.ownerId===source.slice(7));if(p)p.balance+=delta;}
+ if(source==='account'&&f.account)f.account.balance=roundMoney(f.account.balance+delta);
+ else if(source==='joint'&&f.joint)f.joint.balance=roundMoney(f.joint.balance+delta);
+ else if(source.startsWith('simple:')){const m=findMember(f,source.slice(7));if(m)m.simpleBalance=roundMoney(m.simpleBalance+delta);}
+ else if(source.startsWith('pocket:')){const p=f.pockets.find(item=>item.ownerId===source.slice(7));if(p)p.balance=roundMoney(p.balance+delta);}
 }
 export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(function AccountJourneys({kind,family,viewerId,canViewSub,showAmounts=true,onUpdate,onHome,onBack,onToast,onOpenMembers},ref){
   const currency=(amount:number)=>showAmounts?formatCurrency(amount):'•••• DH';
@@ -156,7 +156,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
   [{value:'simple:'+viewerId,label:'Mon compte Simple'},...(admin&&family.account?[{value:'account',label:'Sous-compte Famille'}]:[])];
  const dest=action==='add'?bankKey:action==='pay'?'external':destination||targets[0]?.value||'';
  const sourceBalance=accountBalance(family,source)||0;
- const amountValue=Number(amount.replace(',','.'));
+ const amountValue=parseMoney(amount);
  const validAmount=Number.isFinite(amountValue)&&moneyValid(amountValue);
  const accountCheck=validateAccountOperation(family,kind,action,viewerId,amountValue,dest,beneficiary);
  const canSubmit=accountCheck.ok;
