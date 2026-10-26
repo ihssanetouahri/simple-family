@@ -366,7 +366,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
    <Card className="p-4 space-y-3">
     <div className="flex items-center justify-between">
       <p className="text-[12px] font-extrabold text-[#39274D]">Vos cotitulaires</p>
-      <button type="button" className="text-[11px] font-bold text-[#7430DA] flex items-center gap-1" onClick={()=>back()}>Modifier <ChevronRight size={14}/></button>
+      <button type="button" className="text-[11px] font-bold text-[#7430DA] flex items-center gap-1" onClick={previous}>Modifier <ChevronRight size={14}/></button>
     </div>
     <div className="grid grid-cols-2 gap-2">
       <div className="rounded-[16px] bg-[#F8F4FF] p-2.5">
