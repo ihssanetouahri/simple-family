@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Bell, CreditCard, Home, Menu, Sparkles } from 'lucide-react';
+import { ArrowLeft, Bell, ChevronDown, CreditCard, Home, Menu, Sparkles } from 'lucide-react';
 
 export type Screen = 'HOME' | 'MENU' | 'CARDS' | 'FAMILY' | 'FINANCE_INFO';
 export type Navigate = (screen: Screen) => void;
