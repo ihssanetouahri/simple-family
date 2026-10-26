@@ -31,6 +31,8 @@ import { HouseholdPFMBridge } from './pfm/HouseholdPFMBridge';
 import { memberRemovalIssues } from './quality/familyIntegrity';
 import { validateLinkedBillPayment } from './payments/billRules';
 import { validatePocketDebit } from './pockets/pocketRules';
+import { FamilyChatView } from './chat/FamilyChatView';
+import { FAMILY_ROOM_ID, canManageChatGroup, createGroupChat, getVisibleChat, sendChatMessage, startDirectChat, updateChatGroup, visibleChats } from './chat/chatRules';
 import {
   canManageFamily, isFamilyLeader, canViewJointAccount, canViewFamilyAccount as mayViewFamilyAccount,
   canViewPocket,
@@ -197,6 +199,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [pendingPayment,setPendingPayment]=useState<PendingPayment|null>(null);
  const [otpStage,setOtpStage]=useState(1);
  const [chatInput,setChatInput]=useState('');
+ const [activeChatId,setActiveChatId]=useState<string|null>(null);
  const [tripTravelerId,setTripTravelerId]=useState<string|null>(null);
  const [selectorOpen,setSelectorOpen]=useState(false);
  const [selectorPosition,setSelectorPosition]=useState({top:0,right:12,width:252});
@@ -285,14 +288,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  useEffect(()=>{saveFamilyState(data)},[data]);
  useEffect(()=>{if(route==='dashboard')scrollTop()},[data.activeFamilyId]);
  useEffect(()=>{
-   onChatViewChange?.(route==='chat');
+   onChatViewChange?.(route==='chat'&&Boolean(activeChatId));
    return ()=>onChatViewChange?.(false);
- },[route,onChatViewChange]);
+ },[route,activeChatId,onChatViewChange]);
  useEffect(()=>{
-   if(route!=='chat')return;
+   if(route!=='chat'||!activeChatId)return;
    const scrollable=document.getElementById('simple-scroll-area');
    if(scrollable)scrollable.scrollTop=scrollable.scrollHeight;
- },[route,family?.chat.length]);
+ },[route,activeChatId,activeChatId===FAMILY_ROOM_ID?family?.chat.length:family?.conversations?.find(c=>c.id===activeChatId)?.messages.length]);
  const memberOptions=family?.members.map(m=>({value:m.id,label:`${m.name}${m.simpleOne?' · Simple One':''}`}))||[];
  const visiblePockets=family?.pockets.filter(p=>canViewPocket(family,data.viewerId,p.ownerId))||[];
  const transferOptions=useMemo(()=>{
@@ -584,7 +587,13 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    if(!family||!canChangeMemberRole(family,data.viewerId,memberId,role)){show('Rôle non autorisé.');return;}
    mutate((_d,f)=>{findMember(f,memberId)!.role=role});show('Rôle mis à jour dans la démonstration.');
  }
- function createMessage(e:React.FormEvent){e.preventDefault();if(!chatInput.trim()||!viewer)return;mutate((_d,f)=>f.chat.push({id:uid('msg'),authorId:viewer.id,text:chatInput.trim(),date:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}));setChatInput('');}
+ function createMessage(e:React.FormEvent){
+   e.preventDefault();
+   if(!family||!viewer||!activeChatId||!chatInput.trim()||!getVisibleChat(family,viewer.id,activeChatId))return;
+   const threadId=activeChatId,text=chatInput.trim();
+   mutate((_d,f)=>{sendChatMessage(f,viewer.id,threadId,text)});
+   setChatInput('');
+ }
  function toggleCard(id:string){
   const card=family?.cards.find(c=>c.id===id);
   if(!family||!card||!canToggleFamilyCard(family,data.viewerId,card)){
@@ -603,7 +612,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const context={}; void context;
 
  const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',member:owner?.name||'Membre',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
- const mainGo=(next:Route)=>{if(route===next)return;go(next)};
+ const mainGo=(next:Route)=>{
+   if(next==='chat'){setActiveChatId(null);setChatInput('');}
+   if(route===next)return;
+   go(next);
+ };
  const isAccountRoute=(value:Route|undefined):value is 'sub-account'|'joint-account'=>value==='sub-account'||value==='joint-account';
  // Keep account journeys mounted while drilling down into members, profiles, pockets or cards.
  // Returning through Back must restore the exact internal bank step, not restart the journey.
@@ -619,7 +632,32 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    if(!family?.members.some(m=>m.id===id)||!admin)return;
    setTripTravelerId(id);go('trip');
  };
- const openChatWithDraft=(draft:string)=>{setChatInput(draft);go('chat')};
+ const openChatWithDraft=(draft:string)=>{setActiveChatId(FAMILY_ROOM_ID);setChatInput(draft);go('chat')};
+ const openChatThread=(id:string)=>{
+   if(!family||!getVisibleChat(family,data.viewerId,id))return;
+   setChatInput('');setActiveChatId(id);
+ };
+ const startPrivateConversation=(otherId:string)=>{
+   if(!family||!family.members.some(m=>m.id===otherId&&m.id!==data.viewerId))return;
+   const existing=visibleChats(family,data.viewerId).find(room=>room.kind==='direct'&&
+      room.participantIds.includes(otherId));
+   const id=existing?.id||uid('direct');
+   if(!existing)mutate((_d,f)=>{startDirectChat(f,data.viewerId,otherId,id)});
+   setChatInput('');setActiveChatId(id);
+ };
+ const startGroupConversation=(title:string,participantIds:string[])=>{
+   if(!family||title.trim().length<2||participantIds.length<2||
+      participantIds.some(id=>!family.members.some(m=>m.id===id&&id!==data.viewerId)))return;
+   const id=uid('group');
+   mutate((_d,f)=>{createGroupChat(f,data.viewerId,title,participantIds,id)});
+   setChatInput('');setActiveChatId(id);
+ };
+ const editChatGroup=(id:string,title:string,participants:string[]):boolean=>{
+   if(!family||!canManageChatGroup(family,data.viewerId,id)||!title.trim()||
+      participants.length<1||participants.some(id=>!family.members.some(m=>m.id===id)))return false;
+   mutate((_d,f)=>{updateChatGroup(f,data.viewerId,id,title,participants)});
+   return true;
+ };
  const serviceLinks=family?getFamilyServiceLinks(family,data.viewerId):[];
  const serviceIcons:Record<ServiceLink['kind'],typeof Bell>={
    trip:Plane,goal:Target,pot:Gift,document:FileText,chat:MessageCircle
@@ -1266,21 +1304,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>
      </>}
 
-     {route==='chat'&&<div className="space-y-3">
-        <div className="flex items-center gap-2 px-1 text-[#7A6C90] text-[11px]">
-          <Users size={16} className="text-[#762DDC]"/>
-          <span>{family.members.length} membres · Discussion familiale</span>
-        </div>
-        <div className="space-y-4 pb-3" aria-label="Messages du chat famille">
-          {family.chat.map(msg=><div key={msg.id} className={`flex ${msg.authorId===data.viewerId?'justify-end':'justify-start'}`}>
-            <div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===data.viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-white border border-[#EBE3F5] text-[#352746] rounded-bl-sm'}`}>
-              <p className="text-[10px] font-bold opacity-70 mb-1">{initialsFor(msg.authorId)}</p>
-              <p className="text-[13px] break-words whitespace-pre-wrap">{msg.text}</p>
-              <p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p>
-            </div>
-          </div>)}
-        </div>
-      </div>}
+     {route==='chat'&&<FamilyChatView
+       family={family} viewerId={data.viewerId} activeId={activeChatId}
+       onOpen={openChatThread}
+       onInbox={()=>{setActiveChatId(null);setChatInput('');scrollTop()}}
+       onDirect={startPrivateConversation}
+       onGroup={startGroupConversation}
+       onEditGroup={editChatGroup}
+     />}
       {route==='vault'&&<>
         <Panel className="p-5">
           <div className="flex items-center gap-3">
@@ -1395,7 +1426,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    </div>,
    document.getElementById('simple-device-frame')!
   )}
-  {route==='chat' && document.getElementById('simple-chat-composer-slot') && createPortal(
+  {route==='chat' && activeChatId && family && getVisibleChat(family,data.viewerId,activeChatId) && document.getElementById('simple-chat-composer-slot') && createPortal(
       <div className="simple-family-interactions bg-white/95 backdrop-blur-md border-t border-[#ECE6F6] shadow-[0_-8px_26px_rgba(35,18,70,0.05)] px-5 pt-3 pb-5">
         <form onSubmit={createMessage} className="flex items-center gap-2.5">
           <input aria-label="Écrire un message" value={chatInput} onChange={e=>setChatInput(e.target.value)}
