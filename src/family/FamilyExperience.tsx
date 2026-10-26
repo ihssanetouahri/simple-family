@@ -201,6 +201,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [chatInput,setChatInput]=useState('');
  const [activeChatId,setActiveChatId]=useState<string|null>(null);
  const [chatCreateSignal,setChatCreateSignal]=useState(0);
+ const [chatManageSignal,setChatManageSignal]=useState(0);
  const [tripTravelerId,setTripTravelerId]=useState<string|null>(null);
  const [selectorOpen,setSelectorOpen]=useState(false);
  const [selectorPosition,setSelectorPosition]=useState({top:0,right:12,width:252});
@@ -707,6 +708,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
         (chatHeaderRoom.kind==='direct'?
           <Avatar member={findMember(family!,chatHeaderRoom.participantIds.find(id=>id!==data.viewerId)||'')} size={36}/>:
           <span className="w-9 h-9 rounded-full bg-[#EDE5FF] text-[#6B2BDB] flex items-center justify-center"><Users size={19}/></span>):undefined}
+      onTitleClick={route==='chat'&&chatHeaderRoom?.kind==='group'&&canManageChatGroup(family!,data.viewerId,chatHeaderRoom.id)?()=>setChatManageSignal(i=>i+1):undefined}
       rightAction={route==='chat'&&!chatHeaderRoom?<button type="button"
         onClick={()=>setChatCreateSignal(i=>i+1)}
         aria-label="Nouvelle discussion"
@@ -716,8 +718,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       subtitle={route==='chat'?(chatHeaderRoom?(chatHeaderRoom.kind==='direct'?'Discussion privée':`${chatHeaderRoom.participantIds.length} participants`):undefined):
         route==='goal'?'Projet d’épargne familial':route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
-     {route!=='savings'&&route!=='pot'&&route!=='goal'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
-     {route!=='savings'&&route!=='pot'&&route!=='goal'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
+     {route!=='savings'&&route!=='pot'&&route!=='goal'&&route!=='chat'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
+     {route!=='savings'&&route!=='pot'&&route!=='goal'&&route!=='chat'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
        {family?.members.map(m=><button key={m.id} type="button" onClick={()=>switchViewer(m.id)} className="w-full flex items-center gap-2 p-2 bg-[#F8F5FE] rounded-xl text-left"><Avatar member={m} size={29}/><span className="text-xs font-bold flex-1">{m.name}</span><Tag tone={m.id===data.viewerId?'green':'gray'}>{roleLabel(m.role)}</Tag></button>)}
        <button type="button" className="text-xs font-bold text-[#8C4DDA]" onClick={()=>{setData(createDemoState());toDashboard();setDemoOpen(false);show('Scénario initial restauré.')}}><RotateCcw size={13} className="inline mr-1"/> Restaurer les données fictives</button>
      </Panel>}
@@ -1322,7 +1324,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='chat'&&<FamilyChatView
-       family={family} viewerId={data.viewerId} activeId={activeChatId} createSignal={chatCreateSignal}
+       family={family} viewerId={data.viewerId} activeId={activeChatId} createSignal={chatCreateSignal} manageSignal={chatManageSignal}
        onOpen={openChatThread}
        onInbox={()=>{setActiveChatId(null);setChatInput('');scrollTop()}}
        onDirect={startPrivateConversation}
