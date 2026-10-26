@@ -393,7 +393,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      if(!moneyValid(amount)||amount>goal.target-goal.balance){setError('Montant invalide ou supérieur au reste à atteindre.');return;}
      if((viewer?.simpleBalance||0)<amount){setError('Solde Simple insuffisant.');return;}
      mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;const m=findMember(f,data.viewerId)!;
-       m.simpleBalance-=amount;g.balance+=amount;
+       m.simpleBalance=roundMoney(m.simpleBalance-amount);g.balance=roundMoney(g.balance+amount);
        g.history.unshift({id:uid('gh'),memberId:m.id,amount,date:today(),kind:'deposit'});
        if(g.balance>=g.target)closeSavingsGoal(f,g.id,'reached');
      });
@@ -402,11 +402,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    case 'goal-withdraw':{
      if(!goal||goal.status!=='active'||!canWithdrawSavingsGoal(family,data.viewerId,goal)){setError('Retrait non autorisé.');return;}
      const amount=parseMoney(form.amount||'0');if(!moneyValid(amount)||amount>goal.balance){setError('Montant supérieur à l’épargne disponible.');return;}
-     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.balance-=amount;g.history.unshift({id:uid('gh'),memberId:data.viewerId,amount,date:today(),kind:'withdrawal'});findMember(f,g.ownerId)!.simpleBalance+=amount});close();show('Retrait simulé vers le compte du propriétaire.');break;
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.balance=roundMoney(g.balance-amount);g.history.unshift({id:uid('gh'),memberId:data.viewerId,amount,date:today(),kind:'withdrawal'});findMember(f,g.ownerId)!.simpleBalance=roundMoney(findMember(f,g.ownerId)!.simpleBalance+amount)});close();show('Retrait simulé vers le compte du propriétaire.');break;
    }
    case 'goal-delete':{
      if(!goal||!(admin||goal.creatorId===data.viewerId)){setError('Action non autorisée.');return;}
-     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;const own=findMember(f,g.ownerId);if(own&&g.status==='active')own.simpleBalance+=g.balance;f.goals=f.goals.filter(x=>x.id!==selectedGoal)});close();back();show('Objectif supprimé et fonds restitués (simulation).');break;
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;const own=findMember(f,g.ownerId);if(own&&g.status==='active')own.simpleBalance=roundMoney(own.simpleBalance+g.balance);f.goals=f.goals.filter(x=>x.id!==selectedGoal)});close();back();show('Objectif supprimé et fonds restitués (simulation).');break;
    }
    case 'goal-schedule':{
      if(!goal||goal.status!=='active'||!canScheduleGoal){setError('Modification non autorisée.');return;}
@@ -459,7 +459,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      mutate((_d,f)=>{
        changeBalance(f,source,-amount);
        const p=f.pots.find(x=>x.id===selectedPot)!;
-       p.balance+=amount;
+       p.balance=roundMoney(p.balance+amount);
        p.contributions=[{id:uid('pc'),memberId:data.viewerId,amount,date:today()},...(p.contributions||[])];
        if(p.balance>=p.target)closeFamilyPot(f,p.id,'target');
      });
