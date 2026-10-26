@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, ChevronRight,
-  CreditCard, LockKeyhole, Plus, ShieldCheck, Target, WalletCards
+  CreditCard, LockKeyhole, MessageCircle, Plane, Plus, ShieldCheck, Target, WalletCards, FileText
 } from 'lucide-react';
 import { avatarFor, currency, findMember, roleLabel, type Family } from '../model';
 import {
@@ -26,6 +26,9 @@ type Props = {
  onCards:()=>void;
  onGoal:(id:string)=>void;
  onPermissions:()=>void;
+ onTrip:()=>void;
+ onDocuments:()=>void;
+ onChat:()=>void;
 };
 
 const photos:Record<string,string>={lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar};
@@ -46,7 +49,7 @@ function PermissionRow({label,allowed,detail}:{label:string;allowed:boolean;deta
  </div>;
 }
 
-export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onTopup,onTransfer,onCards,onGoal,onPermissions}:Props) {
+export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onTopup,onTransfer,onCards,onGoal,onPermissions,onTrip,onDocuments,onChat}:Props) {
  const member=findMember(family,memberId);
  if(!member) return <section className={surface+' p-5 text-[13px] text-[#86798F]'}>Ce membre n'appartient plus à la famille.</section>;
  const manager=canManageFamily(family,viewerId);
@@ -141,6 +144,21 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
     </button>)}
    </div>
   </section>}
+
+  <section className="space-y-3">
+   <Heading description="Retrouvez les services utiles sans quitter l’espace familial.">Services pour {member.name}</Heading>
+   <div className={surface+' px-4'}>
+    {manager&&<button type="button" onClick={onTrip} className="w-full flex items-center gap-3 py-3.5 border-b border-[#F0EAF6] text-left">
+      <Plane size={19} className="text-[#6F2BD4]"/><span className="flex-1 text-[12px] font-bold text-[#332543]">Préparer un voyage pour {member.name}</span><ChevronRight size={17} className="text-[#9383A2]"/>
+    </button>}
+    <button type="button" onClick={onDocuments} className="w-full flex items-center gap-3 py-3.5 border-b border-[#F0EAF6] text-left">
+      <FileText size={19} className="text-[#6F2BD4]"/><span className="flex-1 text-[12px] font-bold text-[#332543]">Consulter les documents accessibles</span><ChevronRight size={17} className="text-[#9383A2]"/>
+    </button>
+    <button type="button" onClick={onChat} className="w-full flex items-center gap-3 py-3.5 text-left">
+      <MessageCircle size={19} className="text-[#6F2BD4]"/><span className="flex-1 text-[12px] font-bold text-[#332543]">Échanger dans le chat familial</span><ChevronRight size={17} className="text-[#9383A2]"/>
+    </button>
+   </div>
+  </section>
 
   <section className="space-y-3">
    <Heading description="Des autorisations liées au rôle et aux comptes, distinctes des autres membres.">Droits et accès</Heading>
