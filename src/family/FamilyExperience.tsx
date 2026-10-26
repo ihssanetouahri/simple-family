@@ -1326,7 +1326,6 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      {route==='chat'&&<FamilyChatView
        family={family} viewerId={data.viewerId} activeId={activeChatId} createSignal={chatCreateSignal} manageSignal={chatManageSignal}
        onOpen={openChatThread}
-       onInbox={()=>{setActiveChatId(null);setChatInput('');scrollTop()}}
        onDirect={startPrivateConversation}
        onGroup={startGroupConversation}
        onEditGroup={editChatGroup}
