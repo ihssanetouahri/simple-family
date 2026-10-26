@@ -21,26 +21,26 @@ export function getFamilyServiceLinks(family:Family,viewerId:string):ServiceLink
   .sort((a,b)=>a.date.localeCompare(b.date))[0];
  if(trip){
   result.push({id:`trip:${trip.id}`,kind:'trip',
-   title:'Préparer un séjour familial',
-   subtitle:`${trip.destination} · ${findMember(family,trip.travelerId)?.name||'Membre'} · Réservation fictive`,
+   title:'Suivre votre séjour familial',
+   subtitle:`${trip.destination} · ${findMember(family,trip.travelerId)?.name||'Membre'}`, 
    action:{route:'trip'}});
  }
  const goal=family.goals.find(g=>g.status==='active'&&/vacan|voyage|week.end|séjour/i.test(g.title)
   &&canViewSavingsGoal(family,viewerId,g));
  if(goal) result.push({
-  id:`goal:${goal.id}`,kind:'goal',title:'Préparer votre projet de voyage',
-  subtitle:`${goal.title} · Suivre l’épargne avant le départ`,
+  id:`goal:${goal.id}`,kind:'goal',title:'Suivre votre projet de voyage',
+  subtitle:goal.title,
   action:{route:'goal',id:goal.id}
  });
  const pot=family.pots.find(p=>p.status==='active'&&
   (canViewFamilyPotHistory(family,viewerId,p)||canManageFamilyPot(family,viewerId,p)));
  if(pot)result.push({
-  id:`pot:${pot.id}`,kind:'pot',title:'Organiser une cagnotte en famille',
-  subtitle:`${pot.title} · Voir les contributions`,action:{route:'pot',id:pot.id}
+  id:`pot:${pot.id}`,kind:'pot',title:'Voir votre cagnotte familiale',
+  subtitle:pot.title,action:{route:'pot',id:pot.id}
  });
  const doc=family.documents.find(d=>canViewFamilyDocument(family,viewerId,d));
  if(doc)result.push({id:`doc:${doc.id}`,kind:'document',title:'Retrouver un document partagé',
-  subtitle:`${doc.title} · Accès selon votre profil`,action:{route:'vault'}});
+  subtitle:doc.title,action:{route:'vault'}});
  // Le chat générique reste dans « Explorer tous les services » :
  // les suggestions ne dupliquent pas les entrées classiques du catalogue.
  return result.slice(0,4);
