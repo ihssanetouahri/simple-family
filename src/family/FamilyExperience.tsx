@@ -31,7 +31,7 @@ import {
   canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
   canViewPocket,
   canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal, canFundSavingsGoal, canWithdrawSavingsGoal,
-  canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory,
+  canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory, canViewFamilyDocument,
   canRemoveFamilyMember, canChangeMemberRole,
   canDebitFamilySource, canCreditFamilyDestination, canIssueFamilyCard
 } from './permissions';
@@ -555,6 +555,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  };
  const openChatWithDraft=(draft:string)=>{setChatInput(draft);go('chat')};
  const serviceLinks=family?getFamilyServiceLinks(family,data.viewerId):[];
+ const serviceIcons:Record<ServiceLink['kind'],typeof Bell>={
+   trip:Plane,goal:Target,pot:Gift,document:FileText,chat:MessageCircle
+ };
  const openServiceLink=(link:ServiceLink)=>{
    if(link.action.route==='goal')navigateToGoal(link.action.id);
    else if(link.action.route==='pot')navigateToPot(link.action.id);
@@ -903,6 +906,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <FamilyProgressPhotoCard id={goal.coverId||goal.id} kind="goal" title={goal.title}
          description={`Échéance : ${dateFor(goal.deadline)} · Pour ${initialsFor(goal.ownerId)}`}
          current={goal.balance} target={goal.target} status={goal.status} detail/>
+       <button type="button" onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'goal',title:goal.title}))}
+         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
+         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
+       </button>
 
        <Panel className="p-4 space-y-2">
          <div className="flex justify-between items-center gap-2">
@@ -1113,7 +1120,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
      {route==='services'&&<>
        <Panel className="p-5"><p className="text-xs text-[#8738DB] font-bold">Simple Family</p><h2 className="text-[22px] font-extrabold mt-1">Tous vos services</h2><p className="text-xs text-[#84798F] mt-1">Un seul espace pour les usages bancaires et familiaux du quotidien.</p></Panel>
-       <section><Heading title="Paiements et réservations"/><Panel className="px-4"><ActionLine icon={Send} title="Simple Pay Famille" subtitle="Réservé au Leader et aux Co-leaders" disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/><ActionLine icon={ReceiptText} title="Payer une facture" subtitle="Selon les comptes et droits attribués" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/><ActionLine icon={Plane} title="Simple Trip" subtitle="Réservations pour les membres de la famille" onClick={()=>mainGo('trip')}/></Panel></section>
+       {serviceLinks.length>0&&<section>
+         <Heading title="Pour votre famille" subtitle="Des accès utiles selon vos projets, événements et autorisations"/>
+         <Panel className="px-4">
+           {serviceLinks.map(link=><ActionLine key={link.id} icon={serviceIcons[link.kind]}
+             title={link.title} subtitle={link.subtitle} onClick={()=>openServiceLink(link)}/>)}
+         </Panel>
+       </section>}
+       <section><Heading title="Paiements et réservations"/><Panel className="px-4"><ActionLine icon={Send} title="Simple Pay Famille" subtitle="Réservé au Leader et aux Co-leaders" disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/><ActionLine icon={ReceiptText} title="Payer une facture" subtitle="Selon les comptes et droits attribués" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/><ActionLine icon={Plane} title="Simple Trip" subtitle="Réservations pour les membres de la famille" onClick={openTrip}/></Panel></section>
        <section><Heading title="Vie de famille"/><Panel className="px-4"><ActionLine icon={MessageCircle} title="Chat Famille" subtitle="Échangez avec vos proches" onClick={()=>mainGo('chat')}/><ActionLine icon={LockKeyhole} title="Coffre-fort numérique" subtitle="Documents et accès partagés" onClick={()=>mainGo('vault')}/><ActionLine icon={Gift} title="Cagnottes familiales" subtitle="Contributions et objectifs partagés" onClick={()=>mainGo('pots')}/></Panel></section>
        <section><Heading title="Autres avantages"/><Panel className="px-4"><ActionLine icon={Coins} title="Fidélité Famille" subtitle="Points liés aux opérations éligibles" onClick={()=>mainGo('loyalty')}/><ActionLine icon={Landmark} title="Demande de crédit" subtitle="Selon le profil et les droits" onClick={()=>mainGo('loan')}/></Panel></section>
      </>}
