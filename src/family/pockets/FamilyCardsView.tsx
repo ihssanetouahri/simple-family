@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, CreditCard, Info, LockKeyhole, ShieldCheck, WalletCards } from 'lucide-react';
 import { currency, findMember, type Family, type FamilyCard } from '../model';
-import { canManageFamilyCards, canViewFamilyCard } from '../permissions';
+import { canManageFamilyCards, canToggleFamilyCard, canViewFamilyCard } from '../permissions';
 import { getMemberVisibleCards } from '../members/memberSelectors';
 
 type Props={
@@ -58,7 +58,7 @@ export function FamilyCardsView({family,viewerId,memberFilter,onToggle,onCreate,
       <div className="bg-[#F8F5FC] p-3 rounded-[15px]"><p className="text-[#8B7E98] text-[10px]">État de la carte</p><p className="font-bold mt-1">{card.active?'Active':'Suspendue'}</p></div>
      </div>
      {pocketId&&<button type="button" onClick={()=>onOpenPocket(pocketId)} className="w-full py-2.5 flex justify-between gap-2 text-[#6A2BD1] text-[12px] font-bold">Voir la pocket associée <ChevronRight size={16}/></button>}
-     {manageable?<button type="button" onClick={()=>onToggle(card.id)} className={`min-h-[43px] w-full rounded-full font-bold text-[12px] flex justify-center gap-2 items-center ${card.active?'bg-[#F8EDF2] text-[#AA4660]':'bg-[#EBF7F0] text-[#15855F]'}`}>
+     {canToggleFamilyCard(family,viewerId,card)?<button type="button" onClick={()=>onToggle(card.id)} className={`min-h-[43px] w-full rounded-full font-bold text-[12px] flex justify-center gap-2 items-center ${card.active?'bg-[#F8EDF2] text-[#AA4660]':'bg-[#EBF7F0] text-[#15855F]'}`}>
       {card.active?<LockKeyhole size={17}/>:<ShieldCheck size={17}/>}
       {card.active?'Suspendre cette carte':'Réactiver cette carte'}
      </button>:<p className="rounded-[14px] bg-[#F6F2FB] p-3 text-[11px] text-[#81748F] flex gap-2"><LockKeyhole size={16} className="shrink-0"/>Seuls les responsables autorisés peuvent modifier le statut.</p>}
