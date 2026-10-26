@@ -126,6 +126,40 @@ function Tag({children,tone='violet'}:{children:React.ReactNode;tone?:'violet'|'
 }
 function Panel({children,className=''}:{children:React.ReactNode;className?:string}) {return <section className={`card-simple ${className}`}>{children}</section>}
 function Heading({title,right,subtitle}: {title:string;right?:React.ReactNode;subtitle?:string}) {return <div className="flex items-end justify-between px-1 gap-2 mb-3"><div><h3 className="text-[17px] font-extrabold leading-tight">{title}</h3>{subtitle&&<p className={`${subtle} text-[11px] mt-1`}>{subtitle}</p>}</div>{right}</div>}
+/** Lignes des services : texte lisible et contrasté, sans modifier les ActionLine des autres écrans. */
+function FamilyServiceRow({icon:Icon,title,description,onClick,disabled=false,badge,variant='catalog'}:{
+ icon:React.ComponentType<{size?:number;className?:string}>;
+ title:string;description:string;onClick:()=>void;disabled?:boolean;badge?:string;
+ variant?:'catalog'|'suggestion';
+}) {
+ return <button type="button" onClick={onClick} disabled={disabled}
+   className={`w-full min-h-[70px] px-2 py-3 text-left flex items-center gap-3 rounded-[16px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7934D6] disabled:cursor-not-allowed ${variant==='suggestion'?'hover:bg-white/65':'hover:bg-[#F7F2FF]'}`}>
+   <span className={`w-[42px] h-[42px] rounded-[15px] shrink-0 flex items-center justify-center ${variant==='suggestion'?'bg-white text-[#6B25D3]':'bg-[#F3ECFF] text-[#6B25D3]'}`}>
+     <Icon size={20}/>
+   </span>
+   <span className="flex-1 min-w-0 space-y-1">
+     <span className="flex flex-wrap items-center gap-1.5">
+       <span className={`font-bold text-[14px] leading-snug ${disabled?'text-[#756985]':'text-[#2B1E3C]'}`}>{title}</span>
+       {badge&&<span className="px-2 py-0.5 rounded-full bg-[#EEE8FA] text-[#74548E] text-[10px] font-bold">{badge}</span>}
+     </span>
+     <span className="block text-[12px] leading-[1.45] text-[#675A79]">{description}</span>
+   </span>
+   <ChevronRight size={17} className={`shrink-0 ${disabled?'text-[#B9ACCA]':'text-[#9282AA]'}`}/>
+ </button>
+}
+
+function FamilyServiceCategory({icon:Icon,title,color}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;color:'amber'|'purple'|'green'}) {
+ const styles={
+   amber:'bg-[#FFF0E0] text-[#A96B2A]',
+   purple:'bg-[#F0E8FF] text-[#7130CE]',
+   green:'bg-[#E7F5EF] text-[#26876B]'
+ };
+ return <div className="flex items-center gap-2.5 px-1 mb-3 mt-1">
+   <span className={`w-8 h-8 rounded-[11px] flex items-center justify-center ${styles[color]}`}><Icon size={18}/></span>
+   <h3 className="text-[16px] font-extrabold leading-snug text-[#2C1C40]">{title}</h3>
+ </div>
+}
+
 function PillButton({children,onClick,secondary=false,disabled=false}: {children:React.ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean}) {return <button disabled={disabled} type="button" onClick={onClick} className={`${secondary?'bg-[#F0EAFC] text-[#6225CE]':'btn-simple-primary text-white'} h-[45px] rounded-full px-4 flex items-center justify-center gap-2 font-bold text-[13px] w-full disabled:opacity-40 disabled:cursor-not-allowed`}>{children}</button>}
 function ActionLine({icon:Icon,title,subtitle,onClick,trailing,disabled=false}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle?:string;onClick?:()=>void;trailing?:React.ReactNode;disabled?:boolean}) {return <button disabled={disabled} onClick={onClick} type="button" className="family-hover-row w-full text-left py-3.5 flex items-center gap-3 border-b last:border-b-0 border-[#F1EDF7] disabled:opacity-40"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F4EEFF] text-[#6824DC] flex items-center justify-center"><Icon size={19}/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-bold text-[#221633] truncate">{title}</p>{subtitle&&<p className="text-[11px] text-[#817895] mt-0.5 leading-snug">{subtitle}</p>}</div>{trailing||<ChevronRight size={17} className="text-[#A69EB9] shrink-0"/>}</button>}
 function Input({label,value,onChange,type='text',placeholder='',min,required=false,readOnly=false}:{label:string;value?:string;onChange:(v:string)=>void;type?:string;placeholder?:string;min?:string;required?:boolean;readOnly?:boolean}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><input required={required} min={min} step={type==='number'?'0.01':undefined} inputMode={type==='number'?'decimal':undefined} type={type} readOnly={readOnly} value={value??''} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]"/></label>}
@@ -145,6 +179,7 @@ function AlertItem({icon:Icon,title,subtitle,badge,onClick,tone='violet'}:{icon:
 export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;onChatViewChange?:(active:boolean)=>void}) {
  const [data,setData]=useState<FamilyState>(loadFamilyState);
  const [route,setRoute]=useState<Route>('dashboard');
+ const [showAllServiceSuggestions,setShowAllServiceSuggestions]=useState(false);
  const [stack,setStack]=useState<Route[]>([]);
  const accountJourneyRef=useRef<AccountJourneyHandle>(null);
  const [modal,setModal]=useState<ModalKind>(null);
@@ -1164,21 +1199,70 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='services'&&<>
-       <Panel className="p-5"><p className="text-xs text-[#8738DB] font-bold">Simple Family</p><h2 className="text-[22px] font-extrabold mt-1">Tous vos services</h2><p className="text-xs text-[#84798F] mt-1">Retrouvez vos suggestions du moment, puis explorez l'ensemble des services familiaux.</p></Panel>
-       {serviceLinks.length>0&&<section>
-         <Heading title="Suggestions pour votre famille" subtitle="Des raccourcis vers vos projets et documents en cours, adaptés à votre profil"/>
-         <Panel className="px-4">
-           {serviceLinks.map(link=><ActionLine key={link.id} icon={serviceIcons[link.kind]}
-             title={link.title} subtitle={link.subtitle} onClick={()=>openServiceLink(link)}/>)}
-         </Panel>
-       </section>}
-       <section>
-         <Heading title="Explorer tous les services" subtitle="Catalogue complet, organisé par type de service"/>
-         <div className="space-y-4">
-          <section><Heading title="Paiements et réservations"/><Panel className="px-4"><ActionLine icon={Send} title="Simple Pay Famille" subtitle="Réservé au Leader et aux Co-leaders" disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/><ActionLine icon={ReceiptText} title="Payer une facture" subtitle="Selon les comptes et droits attribués" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/><ActionLine icon={Plane} title="Simple Trip" subtitle="Réservations pour les membres de la famille" onClick={openTrip}/></Panel></section>
-       <section><Heading title="Vie de famille"/><Panel className="px-4"><ActionLine icon={MessageCircle} title="Chat Famille" subtitle="Échangez avec vos proches" onClick={()=>mainGo('chat')}/><ActionLine icon={LockKeyhole} title="Coffre-fort numérique" subtitle="Documents et accès partagés" onClick={()=>mainGo('vault')}/><ActionLine icon={Gift} title="Cagnottes familiales" subtitle="Contributions et objectifs partagés" onClick={()=>mainGo('pots')}/></Panel></section>
-       <section><Heading title="Autres avantages"/><Panel className="px-4"><ActionLine icon={Coins} title="Fidélité Famille" subtitle="Points liés aux opérations éligibles" onClick={()=>mainGo('loyalty')}/><ActionLine icon={Landmark} title="Demande de crédit" subtitle="Selon le profil et les droits" onClick={()=>mainGo('loan')}/></Panel></section>
+       <p className="px-1 pt-1 pb-1 text-[13px] leading-relaxed text-[#645775]">Retrouvez les services utiles à votre famille.</p>
+
+       {serviceLinks.length>0&&<section className="space-y-3">
+         <div className="flex items-center justify-between gap-2 px-1">
+           <h2 className="text-[17px] leading-tight font-extrabold text-[#2C1C40]">Pour votre famille</h2>
+           {serviceLinks.length>2&&<button type="button"
+             aria-expanded={showAllServiceSuggestions} aria-controls="family-service-suggestions"
+             onClick={()=>setShowAllServiceSuggestions(v=>!v)}
+             className="min-h-[36px] inline-flex items-center gap-1 text-[12px] font-bold text-[#6E2ACE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7934D6] rounded-md">
+             {showAllServiceSuggestions?'Voir moins':'Voir tout'} <ChevronRight size={15} className={showAllServiceSuggestions?'rotate-90':''}/>
+           </button>}
          </div>
+         <div id="family-service-suggestions" className="rounded-[24px] border border-[#E4D9F9] bg-[#F2ECFE] p-2 shadow-[0_4px_14px_rgba(87,44,142,0.05)]">
+           {serviceLinks.slice(0,showAllServiceSuggestions?serviceLinks.length:2).map((link,i)=><React.Fragment key={link.id}>
+             {i>0&&<div className="mx-2 border-t border-white/80"/>}
+             <FamilyServiceRow variant="suggestion" icon={serviceIcons[link.kind]}
+               title={link.title} description={link.subtitle} onClick={()=>openServiceLink(link)}/>
+           </React.Fragment>)}
+         </div>
+       </section>}
+
+       <section className="space-y-5 pt-1">
+         <h2 className="px-1 text-[18px] leading-tight font-extrabold text-[#2C1C40]">Tous les services</h2>
+
+         <section>
+           <FamilyServiceCategory icon={WalletCards} color="amber" title="Paiements et réservations"/>
+           <div className="bg-white rounded-[24px] border border-[#ECE5F5] p-2 shadow-[0_5px_16px_rgba(72,30,132,0.045)]">
+             <FamilyServiceRow icon={Send} title="Simple Pay Famille"
+               description="Envoyer de l'argent à vos proches"
+               badge={!admin?'Accès responsable':!family.account?'Compte requis':undefined}
+               disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/>
+             <div className="mx-2 border-t border-[#F0EAF7]"/>
+             <FamilyServiceRow icon={ReceiptText} title="Payer une facture"
+               description="Régler les dépenses communes" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/>
+             <div className="mx-2 border-t border-[#F0EAF7]"/>
+             <FamilyServiceRow icon={Plane} title="Simple Trip"
+               description="Préparer un voyage en famille" onClick={openTrip}/>
+           </div>
+         </section>
+
+         <section>
+           <FamilyServiceCategory icon={Users} color="purple" title="Vie de famille"/>
+           <div className="bg-white rounded-[24px] border border-[#ECE5F5] p-2 shadow-[0_5px_16px_rgba(72,30,132,0.045)]">
+             <FamilyServiceRow icon={MessageCircle} title="Chat Famille"
+               description="Échanger avec vos proches" onClick={()=>mainGo('chat')}/>
+             <div className="mx-2 border-t border-[#F0EAF7]"/>
+             <FamilyServiceRow icon={LockKeyhole} title="Coffre-fort numérique"
+               description="Retrouver les documents partagés" onClick={()=>mainGo('vault')}/>
+             <div className="mx-2 border-t border-[#F0EAF7]"/>
+             <FamilyServiceRow icon={Gift} title="Cagnottes familiales"
+               description="Créer et suivre une cagnotte" onClick={()=>mainGo('pots')}/>
+           </div>
+         </section>
+
+         <section>
+           <FamilyServiceCategory icon={Landmark} color="green" title="Avantages et financement"/>
+           <div className="bg-white rounded-[24px] border border-[#ECE5F5] p-2 shadow-[0_5px_16px_rgba(72,30,132,0.045)]">
+             <FamilyServiceRow icon={Coins} title="Fidélité Famille"
+               description="Suivre vos points et avantages" onClick={()=>mainGo('loyalty')}/>
+             <div className="mx-2 border-t border-[#F0EAF7]"/>
+             <FamilyServiceRow icon={Landmark} title="Demande de crédit"
+               description="Explorer une demande de financement" onClick={()=>mainGo('loan')}/>
+           </div>
+         </section>
        </section>
      </>}
 
