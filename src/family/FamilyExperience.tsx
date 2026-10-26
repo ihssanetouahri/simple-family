@@ -19,6 +19,7 @@ import karimAvatar from '../assets/images/karim.jpg';
 import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
 import { familyCoverSprite } from './coverSprite';
+import { getFamilyFollowUps, type FamilyFollowUp, type FamilyFollowUpKind } from './alerts/followUps';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 import { MemberProfile } from './members/MemberProfile';
 import { PocketDetail } from './pockets/PocketDetail';
@@ -126,7 +127,6 @@ function Input({label,value,onChange,type='text',placeholder='',min,required=fal
 function SelectInput({label,value,onChange,options}:{label:string;value?:string;onChange:(v:string)=>void;options:{value:string;label:string}[]}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><select value={value??''} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]">{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>}
 function Progress({value,total,tone='violet'}:{value:number;total:number;tone?:'violet'|'green'|'amber'}) { const colors={violet:'bg-[#7926EB]',green:'bg-[#18AB7F]',amber:'bg-[#F4A344]'}; return <div className="h-2.5 rounded-full bg-[#EEEAF4] overflow-hidden"><div className={`h-full rounded-full ${colors[tone]} transition-all`} style={{width:`${Math.min(100,Math.max(0,total?value/total*100:0))}%`}}/></div> }
 const dateFor = (date:string) => date ? new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'À définir';
-const daysUntil = (date:string) => {const today=new Date();today.setHours(12,0,0,0);return Math.max(0,Math.round((new Date(date+'T12:00:00').getTime()-today.getTime())/86400000));};
 
 function AlertItem({icon:Icon,title,subtitle,badge,onClick,tone='violet'}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle:string;badge?:string;onClick:()=>void;tone?:'violet'|'amber'}) {
  return <button type="button" onClick={onClick} className="family-hover-row w-full flex items-center gap-3 py-3.5 text-left border-b last:border-b-0 border-[#F0EBF6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
@@ -544,16 +544,23 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    const n=new Set(g.history.filter(h=>h.kind==='deposit').map(h=>h.memberId)).size;
    return n?`Projet familial · ${n} contributeur${n>1?'s':''}`:'Projet familial · Contributions ouvertes';
  };
- const upcomingFollowUpGoal=visibleGoals.find(g=>{
-   if(g.status!=='active'||g.balance>=g.target||!g.deadline)return false;
-   const days=(new Date(g.deadline+'T12:00:00').getTime()-Date.now())/86400000;
-   return days>=0&&days<=30;
- })||null;
- const dueBill=admin?family?.alerts.find(a=>a.type==='bill'&&!a.resolved)||null:null;
- const pendingInvite=admin?family?.invites[0]||null:null;
- const displayUpcomingGoal=Boolean(upcomingFollowUpGoal&&(Number(Boolean(dueBill))+Number(Boolean(pendingInvite))<2));
- const hasFamilyFollowUps=Boolean(dueBill||pendingInvite||displayUpcomingGoal);
- const openDueBill=(bill:Family['alerts'][number])=>launch('pay-bill',{from:'account',beneficiary:bill.beneficiary,amount:String(bill.amount),alertId:bill.id});
+ const familyFollowUps=family?getFamilyFollowUps(family,data.viewerId,nowDate()):[];
+ const homeFollowUps=familyFollowUps.slice(0,2);
+ const followUpIcons:Record<FamilyFollowUpKind,typeof Bell>={
+   bill:CalendarClock,'family-invite':UserPlus,'joint-awaiting':HeartHandshake,
+   'joint-review':ShieldCheck,'joint-rejected':HeartHandshake,'pot-invite':Gift,
+   'goal-deadline':Target,'pot-deadline':CalendarDays,'document-expiry':FileText
+ };
+ const openFollowUp=(item:FamilyFollowUp)=>{
+   const action=item.action;
+   if(action.route==='pay-bill'){
+     const bill=family?.alerts.find(a=>a.id===action.id&&!a.resolved);
+     if(!bill||!admin)return;
+     launch('pay-bill',{from:'account',beneficiary:bill.beneficiary,amount:String(bill.amount),alertId:bill.id});
+   } else if(action.route==='goal')navigateToGoal(action.id);
+   else if(action.route==='pot')navigateToPot(action.id);
+   else mainGo(action.route);
+ };
 
  return <div className="simple-family-interactions min-h-full flex flex-col bg-simple-canvas relative">
    {route==='dashboard' ? <div className="sticky top-0 z-30 bg-[#F6F3FE]/85 backdrop-blur-md px-5 pt-3 pb-3">
@@ -599,13 +606,13 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          
        </div>
 
-       {/* Alertes fictives, actionnables et visibles uniquement quand elles sont en attente. */}
-       {hasFamilyFollowUps&&<section>
+       {/* Deux rappels contextuels sur la Home ; liste complète dans « Voir tout ». */}
+       {familyFollowUps.length>0&&<section>
          <Heading title="À suivre en famille" right={<button type="button" onClick={()=>mainGo('alerts')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          <Panel className="px-4">
-           {dueBill&&<AlertItem icon={CalendarClock} title={dueBill.title} subtitle={`${currency(dueBill.amount)} · Échéance le ${dateFor(dueBill.dueDate)}`} badge={`J-${daysUntil(dueBill.dueDate)}`} tone="amber" onClick={()=>openDueBill(dueBill)}/>}
-           {pendingInvite&&<AlertItem icon={UserPlus} title="Invitation en attente" subtitle={`${pendingInvite.name} · Gérer son invitation`} onClick={()=>mainGo('members')}/>}
-           {displayUpcomingGoal&&upcomingFollowUpGoal&&<AlertItem icon={CalendarDays} title={upcomingFollowUpGoal.title} subtitle={`Échéance le ${dateFor(upcomingFollowUpGoal.deadline)} · Suivre le projet`} onClick={()=>navigateToGoal(upcomingFollowUpGoal.id)}/>}
+           {homeFollowUps.map(item=><AlertItem key={item.id} icon={followUpIcons[item.kind]}
+             title={item.title} subtitle={item.subtitle} badge={item.badge}
+             tone={item.priority==='urgent'?'amber':'violet'} onClick={()=>openFollowUp(item)}/>)}
          </Panel>
        </section>}
 
@@ -694,20 +701,24 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='alerts'&&<>
-        <Panel className="p-5 space-y-1">
+        <Panel className="p-5 space-y-2">
           <h2 className="text-[18px] font-extrabold">Les alertes de ma famille</h2>
-          <p className="text-[12px] text-[#81758F] leading-relaxed">Retrouvez les actions importantes à suivre avec votre famille.</p>
+          <p className="text-[12px] text-[#81758F] leading-relaxed">Retrouvez les actions importantes à suivre avec votre famille, selon vos droits.</p>
+          {familyFollowUps.length>0&&<div className="flex flex-wrap gap-2 pt-1">
+            <Tag tone="violet">{familyFollowUps.length} à suivre</Tag>
+            {familyFollowUps.some(item=>item.priority==='urgent')&&<Tag tone="amber">{familyFollowUps.filter(item=>item.priority==='urgent').length} prioritaire(s)</Tag>}
+          </div>}
         </Panel>
-        {hasFamilyFollowUps?<Panel className="px-4">
-          {admin&&family.alerts.filter(a=>a.type==='bill'&&!a.resolved).map(a=><AlertItem key={a.id} icon={CalendarClock} title={a.title} subtitle={`${currency(a.amount)} · Échéance le ${dateFor(a.dueDate)}`} badge={`J-${daysUntil(a.dueDate)}`} tone="amber" onClick={()=>openDueBill(a)}/>)}
-          {admin&&family.invites.map(inv=><AlertItem key={inv.id} icon={UserPlus} title="Invitation en attente" subtitle={`${inv.name} · Gérer son invitation`} onClick={()=>mainGo('members')}/>)}
-          {upcomingFollowUpGoal&&<AlertItem icon={CalendarDays} title={upcomingFollowUpGoal.title} subtitle={`Échéance le ${dateFor(upcomingFollowUpGoal.deadline)}`} onClick={()=>navigateToGoal(upcomingFollowUpGoal.id)}/>}
+        {familyFollowUps.length>0?<Panel className="px-4">
+          {familyFollowUps.map(item=><AlertItem key={item.id} icon={followUpIcons[item.kind]}
+            title={item.title} subtitle={item.subtitle} badge={item.badge}
+            tone={item.priority==='urgent'?'amber':'violet'} onClick={()=>openFollowUp(item)}/>)}
         </Panel>:<Panel className="p-6 space-y-2 text-center">
           <CheckCircle2 size={26} className="mx-auto text-[#20A475]"/>
           <h3 className="text-[14px] font-extrabold">Tout est à jour !</h3>
-          <p className="text-[12px] text-[#81758F]">Aucune action urgente pour votre famille actuellement.</p>
+          <p className="text-[12px] text-[#81758F]">Aucune action à suivre avec votre profil actuellement.</p>
         </Panel>}
-        <p className="px-1 text-[11px] text-[#897B9A]">Scénario de démonstration : ces alertes et leurs échéances sont fictives.</p>
+        <p className="px-1 text-[11px] text-[#897B9A]">Événements et échéances calculés à partir du scénario fictif. Aucune notification bancaire réelle n’est envoyée.</p>
       </>}
 
       {route==='members' && <>
