@@ -41,10 +41,8 @@ export function getFamilyServiceLinks(family:Family,viewerId:string):ServiceLink
  const doc=family.documents.find(d=>canViewFamilyDocument(family,viewerId,d));
  if(doc)result.push({id:`doc:${doc.id}`,kind:'document',title:'Retrouver un document partagé',
   subtitle:`${doc.title} · Accès selon votre profil`,action:{route:'vault'}});
- if(family.chat.length>0){
-  result.push({id:'chat:family',kind:'chat',title:'Reprendre la discussion familiale',
-   subtitle:'Échanger avec les membres de votre famille',action:{route:'chat'}});
- }
+ // Le chat générique reste dans « Explorer tous les services » :
+ // les suggestions ne dupliquent pas les entrées classiques du catalogue.
  return result.slice(0,4);
 }
 /** Les textes sont des brouillons sans montants, informations de comptes ni secrets. */
