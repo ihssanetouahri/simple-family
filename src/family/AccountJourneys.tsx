@@ -20,7 +20,7 @@ import familyPhoto from '../assets/images/family_photo.jpg';
 
 type Kind = 'sub' | 'joint';
 type Action = 'add' | 'transfer' | 'pay';
-type View = 'overview' | 'intro' | 'sub-config' | 'approval' | 'coholder' | 'identity' | 'terms' | 'opening' | 'opening-success'
+type View = 'overview' | 'intro' | 'sub-config' | 'approval' | 'coholder' | 'terms' | 'opening' | 'opening-success'
   | 'money' | 'review' | 'money-success' | 'history' | 'transaction'
   | 'members' | 'person' | 'cards' | 'card' | 'documents' | 'settings' | 'closure';
 type Props = {
@@ -347,7 +347,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
    <Button disabled={!admin} onClick={createSub}>Confirmer la création fictive <ArrowRight size={17}/></Button>
   </>}
   {view==='coholder'&&<>
-   <MiniHead heading="Choisir votre cotitulaire" desc="Sélectionnez le membre adulte avec qui vous souhaitez ouvrir ce compte."/>
+   <MiniHead heading="Choisir votre cotitulaire" desc="Étape 1 sur 2 · Sélectionnez le membre adulte avec qui vous souhaitez ouvrir ce compte."/>
    <Card className="p-4 space-y-3">
     <SectionHead title="Membre éligible"/>
     {membersEligible.length?membersEligible.map(m=><PersonTile key={m.id} member={m}
@@ -359,23 +359,29 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
     <Users size={21} className="text-[#712BDA] shrink-0"/>
     <Notes>Le rôle de Leader ou Co-leader dans « Ma famille » ne remplace pas le statut bancaire de cotitulaire.</Notes>
    </Card>
-   <Button disabled={!openingHolder} onClick={()=>jump('identity')}>Continuer <ArrowRight size={16}/></Button>
-  </>}
-  {view==='identity'&&<>
-   <MiniHead heading="Vérifier les informations" desc="Retrouvez les deux personnes associées à la demande."/>
-   <Card className="p-4 space-y-3">
-    <div><p className="text-[11px] font-bold text-[#82718F] mb-2">Premier cotitulaire</p><PersonTile member={viewer} label="Demandeur · Vous"/></div>
-    <div><p className="text-[11px] font-bold text-[#82718F] mb-2">Deuxième cotitulaire</p>
-     <PersonTile member={findMember(family,openingHolder)} label="Conjoint · À confirmer"/></div>
-   </Card>
-   <Card className="flex gap-3 bg-[#F1EBFD] border-[#E1D2FA] items-start">
-    <ShieldCheck size={20} className="text-[#742ADA] shrink-0"/>
-    <Notes>Les informations sont fictives. Dans un parcours réel, l'identification et l'éligibilité des deux cotitulaires seront vérifiées par la banque.</Notes>
-   </Card>
-   <Button onClick={()=>jump('terms')}>Continuer <ArrowRight size={16}/></Button>
+   <Button disabled={!openingHolder} onClick={()=>jump('terms')}>Vérifier les conditions <ArrowRight size={16}/></Button>
   </>}
   {view==='terms'&&<>
-   <MiniHead heading="Conditions du compte joint" desc="Prenez connaissance des règles de fonctionnement avant de poursuivre."/>
+   <MiniHead heading="Vérifier et confirmer" desc="Étape 2 sur 2 · Vérifiez les cotitulaires et confirmez la demande fictive."/>
+   <Card className="p-4 space-y-3">
+    <div className="flex items-center justify-between">
+      <p className="text-[12px] font-extrabold text-[#39274D]">Vos cotitulaires</p>
+      <button type="button" className="text-[11px] font-bold text-[#7430DA] flex items-center gap-1" onClick={()=>back()}>Modifier <ChevronRight size={14}/></button>
+    </div>
+    <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-[16px] bg-[#F8F4FF] p-2.5">
+       <PersonAvatar member={viewer} size={41}/>
+       <p className="font-bold text-[12px] mt-1 truncate">{viewer?.name}</p>
+       <Notes>Demandeur</Notes>
+      </div>
+      <div className="rounded-[16px] bg-[#F8F4FF] p-2.5">
+       <PersonAvatar member={findMember(family,openingHolder)} size={41}/>
+       <p className="font-bold text-[12px] mt-1 truncate">{findMember(family,openingHolder)?.name}</p>
+       <Notes>À confirmer</Notes>
+      </div>
+    </div>
+    <Notes>L'identité et l'éligibilité seront vérifiées par la banque dans un parcours réel.</Notes>
+   </Card>
    <Card className="p-4 space-y-4">
     <div className="flex items-center gap-3">
      <span className="w-11 h-11 flex items-center justify-center rounded-2xl bg-[#F1E8FF] text-[#6F2BD7]"><FileText size={21}/></span>
@@ -395,7 +401,7 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
    <Button disabled={!termsAccepted||!firstSignature} onClick={requestJoint}>Envoyer la demande à {findMember(family,openingHolder)?.name||'mon conjoint'} <Send size={16}/></Button>
   </>}
   {view==='opening'&&<>
-   <MiniHead heading="Suivi de l'ouverture" desc="Suivez la demande et simulez les validations de chaque cotitulaire."/>
+   <MiniHead heading="Suivi de la demande" desc="La demande est envoyée. L'accord du deuxième cotitulaire et la validation bancaire restent nécessaires."/>
    <Card className="p-5 space-y-4">
     <div className="flex items-center justify-between gap-3">
      <div><p className="text-[11px] text-[#80738D]">Compte joint</p><h3 className="font-extrabold text-[17px] mt-1">Ouverture à deux</h3></div>
@@ -408,8 +414,8 @@ export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(func
     <div className="border-t border-[#EFE9F7] pt-3 flex items-start gap-3">
      <span className={'w-9 h-9 rounded-full flex items-center justify-center shrink-0 '+(application?.status==='review'?'bg-[#E6F8EE] text-[#208965]':application?.status==='rejected'?'bg-[#FFF0F3] text-[#B34B6C]':'bg-[#FFF3E1] text-[#B77E22]')}>
       {application?.status==='review'?<Check size={18}/>:application?.status==='rejected'?<XCircle size={18}/>:<CalendarDays size={18}/>}</span>
-     <div><p className="font-extrabold text-[13px]">{application?.status==='awaiting'?'En attente de confirmation':application?.status==='review'?'Les deux accords ont été simulés':application?.status==='rejected'?'Demande refusée':'Demande indisponible'}</p>
-      <Notes>{application?.status==='awaiting'?'Le deuxième cotitulaire doit donner son accord.':application?.status==='review'?'La validation bancaire reste à simuler.':'Vous pouvez recommencer avec une nouvelle demande.'}</Notes></div>
+     <div><p className="font-extrabold text-[13px]">{application?.status==='awaiting'?'Accord du deuxième cotitulaire en attente':application?.status==='review'?'En attente de validation bancaire fictive':application?.status==='rejected'?'Demande refusée':'Demande indisponible'}</p>
+      <Notes>{application?.status==='awaiting'?`Une réponse est attendue de ${findMember(family,application.coHolderId)?.name||'votre cotitulaire'}.`:application?.status==='review'?'Les deux accords fictifs sont enregistrés.':'Le demandeur peut recommencer.'}</Notes></div>
     </div>
    </Card>
    {application?.status==='awaiting'&&<Card className="p-4 space-y-3">
