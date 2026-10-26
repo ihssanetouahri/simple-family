@@ -65,9 +65,9 @@ function FamilyPhotoCover({id, kind, label}: {id:string;kind:'goal'|'pot';label:
 }
 
 // Compact, swipeable circular-progress card shared by goals and cagnottes.
-function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick,detail=false,status}:{
+function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick,detail=false,status,showAmounts=true}:{
   id:string;kind:'goal'|'pot';title:string;description:string;current:number;target:number;
-  onClick?:()=>void;detail?:boolean;status?:'active'|'closed'
+  onClick?:()=>void;detail?:boolean;status?:'active'|'closed';showAmounts?:boolean
 }) {
   const progress=target>0?Math.max(0,Math.min(100,Math.round(current/target*100))):0;
   const isPot=kind==='pot';
@@ -91,11 +91,11 @@ function FamilyProgressPhotoCard({id,kind,title,description,current,target,onCli
     <div className="border-t border-[#F0EAF6] mt-3 pt-3 text-left grid grid-cols-2 gap-2">
       <div className="min-w-0">
         <p className="text-[10px] text-[#8C809C]">{isPot?'Collecté':'Épargné'}</p>
-        <p className="text-[13px] font-extrabold text-[#352547] mt-1 whitespace-nowrap">{currency(current)}</p>
+        <p className="text-[13px] font-extrabold text-[#352547] mt-1 whitespace-nowrap">{showAmounts?currency(current):'•••• DH'}</p>
       </div>
       <div className="min-w-0 text-right">
         <p className="text-[10px] text-[#8C809C]">Reste {isPot?'à collecter':'à épargner'}</p>
-        <p className="text-[13px] font-extrabold mt-1 whitespace-nowrap" style={{color:accent}}>{currency(remaining)}</p>
+        <p className="text-[13px] font-extrabold mt-1 whitespace-nowrap" style={{color:accent}}>{showAmounts?currency(remaining):'•••• DH'}</p>
       </div>
     </div>
   </>;
@@ -706,7 +706,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          {visibleGoals.some(g=>g.status==='active')?
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Projets d’épargne, faire défiler horizontalement">
              {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
-               description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} onClick={()=>navigateToGoal(g.id)}/>)}
+               description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} showAmounts={showAmounts} onClick={()=>navigateToGoal(g.id)}/>)}
            </div>:
            <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
              <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
@@ -719,7 +719,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          {family.pots.some(p=>p.status==='active')?
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Cagnottes, faire défiler horizontalement">
              {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
-               description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} onClick={()=>navigateToPot(p.id)}/>)}
+               description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} showAmounts={showAmounts} onClick={()=>navigateToPot(p.id)}/>)}
            </div>:
            <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
              <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
@@ -823,6 +823,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       {mountedAccountRoute&&<div className={isAccountRoute(route)?'':'hidden'}>
         <AccountJourneys
           ref={accountJourneyRef}
+          showAmounts={showAmounts}
           key={family.id+mountedAccountRoute}
           kind={mountedAccountRoute==='sub-account'?'sub':'joint'} family={family}
           viewerId={data.viewerId} canViewSub={canViewFamilyAccount}
@@ -932,7 +933,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      {route==='goal'&&goal&&visibleGoals.some(g=>g.id===goal.id)&&<>
        <FamilyProgressPhotoCard id={goal.coverId||goal.id} kind="goal" title={goal.title}
          description={`Échéance : ${dateFor(goal.deadline)} · Pour ${initialsFor(goal.ownerId)}`}
-         current={goal.balance} target={goal.target} status={goal.status} detail/>
+         current={goal.balance} target={goal.target} status={goal.status} showAmounts={showAmounts} detail/>
        <button type="button" onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'goal',title:goal.title}))}
          className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
          <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
@@ -1031,7 +1032,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
      {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3" aria-label="Toutes les cagnottes">
        {family.pots.map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
-         description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} onClick={()=>navigateToPot(p.id)}/>)}
+         description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} showAmounts={showAmounts} onClick={()=>navigateToPot(p.id)}/>)}
        </div><PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
      {route==='pot'&&pot&&<>
        <div className="flex items-center justify-between px-1">
@@ -1053,7 +1054,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
        <FamilyProgressPhotoCard id={pot.id} kind="pot" title={pot.title}
          description={pot.description||'Une collecte pour partager un beau moment ensemble.'}
-         current={pot.balance} target={pot.target} status={pot.status} detail/>
+         current={pot.balance} target={pot.target} status={pot.status} showAmounts={showAmounts} detail/>
        {(canManagePot||canSeePotHistory)&&<button type="button"
          onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
          className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
