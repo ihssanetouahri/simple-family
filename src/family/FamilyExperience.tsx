@@ -66,9 +66,9 @@ function FamilyPhotoCover({id, kind, label}: {id:string;kind:'goal'|'pot';label:
 }
 
 // Compact, swipeable circular-progress card shared by goals and cagnottes.
-function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick,detail=false,status,showAmounts=true}:{
+function FamilyProgressPhotoCard({id,kind,title,description,current,target,onClick,detail=false,status,statusLabel,statusTone,showAmounts=true}:{
   id:string;kind:'goal'|'pot';title:string;description:string;current:number;target:number;
-  onClick?:()=>void;detail?:boolean;status?:'active'|'closed';showAmounts?:boolean
+  onClick?:()=>void;detail?:boolean;status?:'active'|'closed';statusLabel?:string;statusTone?:'violet'|'green'|'amber';showAmounts?:boolean
 }) {
   const progress=target>0?Math.max(0,Math.min(100,Math.round(current/target*100))):0;
   const isPot=kind==='pot';
@@ -104,7 +104,7 @@ function FamilyProgressPhotoCard({id,kind,title,description,current,target,onCli
   // visual content in a full-width, non-interactive summary above the actions.
   return detail
     ? <section aria-label={title} className="relative w-full rounded-[27px] bg-white border border-[#EDE5F7] p-5 text-center shadow-[0_5px_16px_rgba(72,30,132,0.06)]">
-        {status&&<div className="absolute right-4 top-4"><Tag tone={status==='closed'?'green':'violet'}>{status==='closed'?'Clôturé':'En cours'}</Tag></div>}
+        {status&&<div className="absolute right-4 top-4"><Tag tone={statusTone||(status==='closed'?'green':'violet')}>{statusLabel||(status==='closed'?'Clôturé':'En cours')}</Tag></div>}
         {cardContent}
       </section>
     : <button type="button" onClick={onClick}
@@ -1060,20 +1060,19 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
        <FamilyProgressPhotoCard id={pot.id} kind="pot" title={pot.title}
          description={pot.description||'Une collecte pour partager un beau moment ensemble.'}
-         current={pot.balance} target={pot.target} status={pot.status} showAmounts={showAmounts} detail/>
+         current={pot.balance} target={pot.target} status={pot.status}
+         statusLabel={pot.status==='closed'?'Collecte clôturée':potDisplayState(pot,nowDate()).label}
+         statusTone={potDisplayState(pot,nowDate()).tone==='orange'?'amber':potDisplayState(pot,nowDate()).tone==='green'?'green':'violet'}
+         showAmounts={showAmounts} detail/>
        {(canManagePot||canSeePotHistory)&&<button type="button"
          onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
          className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
          <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
        </button>}
-       <Panel className="p-4 space-y-2">
-         <div className="flex justify-between items-center gap-2">
-          <span className={'text-[11px] font-extrabold rounded-full px-3 py-1.5 '+(potDisplayState(pot,nowDate()).tone==='green'?'bg-[#E5F8EE] text-[#178C64]':potDisplayState(pot,nowDate()).tone==='orange'?'bg-[#FFF2DE] text-[#A66C1F]':'bg-[#F1EAFD] text-[#6E2DCA]')}>
-           {potDisplayState(pot,nowDate()).label}</span>
-          <span className="text-[11px] text-[#81728F]">{pot.members.length} participant{pot.members.length>1?'s':''}</span>
-         </div>
-         <p className="text-[12px] leading-relaxed text-[#716580]">{potDisplayState(pot,nowDate()).description}</p>
-       </Panel>
+       {(pot.status==='closed'||potDisplayState(pot,nowDate()).tone==='orange')&&
+         <p className="px-3 py-2 rounded-[14px] bg-[#F8F5FF] text-[11px] leading-relaxed text-[#786A87]">
+           {potDisplayState(pot,nowDate()).description}
+         </p>}
        {pot.deadline&&<p className="text-[11px] text-[#86768F] flex gap-1.5 items-center justify-center"><CalendarDays size={14}/> Fin prévue : {dateFor(pot.deadline)}</p>}
 
        {(pot.pendingInvites||[]).includes(data.viewerId)&&pot.status==='active'&&<Panel className="p-4 border-[#D8C8F5] bg-[#F7F2FF] space-y-3">
