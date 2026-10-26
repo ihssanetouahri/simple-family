@@ -10,13 +10,12 @@ import karimAvatar from '../../assets/images/karim.jpg';
 import yasmineAvatar from '../../assets/images/yasmine.jpg';
 
 type Props={
- family:Family;viewerId:string;activeId:string|null;createSignal:number;
- onOpen:(id:string)=>void;onInbox:()=>void;
+ family:Family;viewerId:string;activeId:string|null;createSignal:number;manageSignal:number;
+ onOpen:(id:string)=>void;
  onDirect:(memberId:string)=>void;onGroup:(title:string,memberIds:string[])=>void;
  onEditGroup:(id:string,title:string,memberIds:string[])=>boolean;
 };
 type Sheet='new'|'direct'|'group'|'manage'|'settings'|null;
-const tile='rounded-[22px] border border-[#EAE2F5] bg-white shadow-[0_5px_16px_rgba(70,30,130,0.04)]';
 const purple='text-[#6729C9]';
 const portraits:Record<string,string>={lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar};
 function Avatar({name,group=false,memberId,size=52}:{name:string;group?:boolean;memberId?:string;size?:number}) {
@@ -28,12 +27,14 @@ function Avatar({name,group=false,memberId,size=52}:{name:string;group?:boolean;
  </div>;
 }
 
-export function FamilyChatView({family,viewerId,activeId,createSignal,onOpen,onInbox,onDirect,onGroup,onEditGroup}:Props){
+export function FamilyChatView({family,viewerId,activeId,createSignal,manageSignal,onOpen,onDirect,onGroup,onEditGroup}:Props){
  const [sheet,setSheet]=useState<Sheet>(null);
  const [search,setSearch]=useState('');
  const [selected,setSelected]=useState<string[]>([]);
  const [groupName,setGroupName]=useState('');
  const [error,setError]=useState('');
+ const lastCreateSignal=React.useRef(createSignal);
+ const lastManageSignal=React.useRef(manageSignal);
  const chats=visibleChats(family,viewerId);
  const active=activeId?getVisibleChat(family,viewerId,activeId):null;
  const eligible=Boolean(findMember(family,viewerId));
@@ -42,8 +43,18 @@ export function FamilyChatView({family,viewerId,activeId,createSignal,onOpen,onI
  const manager=canManageFamily(family,viewerId);
  useEffect(()=>{setSheet(null);setError('');},[activeId,viewerId,family.id]);
  useEffect(()=>{
-   if(createSignal>0&&!activeId){setSheet('new');setError('');}
- },[createSignal]);
+   if(createSignal!==lastCreateSignal.current&&!activeId){
+     setSheet('new');setError('');
+   }
+   lastCreateSignal.current=createSignal;
+ },[createSignal,activeId]);
+ useEffect(()=>{
+   if(manageSignal!==lastManageSignal.current&&active&&editable){
+     setSelected(active.participantIds.filter(id=>id!==active.createdBy));
+     setGroupName(active.title);setError('');setSheet('manage');
+   }
+   lastManageSignal.current=manageSignal;
+ },[manageSignal,activeId]);
  const open=(next:Sheet)=>{
    if(next==='group'){setSelected([]);setGroupName('');}
    if(next==='manage'&&active){setSelected(active.participantIds.filter(id=>id!==active.createdBy));setGroupName(active.title);}
