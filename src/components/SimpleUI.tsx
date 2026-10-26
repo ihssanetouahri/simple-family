@@ -23,13 +23,14 @@ export const SimpleRobotIcon: React.FC<{ size?: number; color?: string }> = ({ s
   </svg>
 );
 
-export const MobileHeader: React.FC<{ title: string; subtitle?: string; onBack: () => void }> = ({ title, subtitle, onBack }) => (
+export const MobileHeader: React.FC<{ title: string; subtitle?: string; onBack: () => void; rightAction?: React.ReactNode; avatar?:React.ReactNode }> = ({ title, subtitle, onBack, rightAction, avatar }) => (
   <header className="sticky top-0 z-30 bg-[#F6F3FE]/85 backdrop-blur-md px-5 pt-3 pb-2.5 flex items-center justify-between">
     <div className="flex items-center gap-2.5 min-w-0">
       <button type="button" onClick={onBack} aria-label="Retour" className="family-hover-control w-10 h-10 rounded-full bg-white shadow-[0_4px_14px_rgba(20,17,31,0.06)] flex items-center justify-center text-[#14111F]"><ArrowLeft size={20} /></button>
-      <div><h1 className="text-[18px] font-bold text-[#14111F] leading-tight">{title}</h1>{subtitle && <p className="text-[12px] text-[#7D7693] mt-0.5">{subtitle}</p>}</div>
+      {avatar&&<span className="shrink-0">{avatar}</span>}
+      <div className="min-w-0"><h1 className="text-[18px] font-bold text-[#14111F] leading-tight truncate">{title}</h1>{subtitle && <p className="text-[12px] text-[#7D7693] mt-0.5 truncate">{subtitle}</p>}</div>
     </div>
-    <button type="button" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm" aria-label="Notifications" title="Notifications - maquette" disabled><Bell size={18} /></button>
+    {rightAction??<button type="button" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm" aria-label="Notifications" title="Notifications - maquette" disabled><Bell size={18} /></button>}
   </header>
 );
 
