@@ -785,6 +785,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='member' && owner && <MemberProfile
+       key={owner.id}
        family={family}
        memberId={owner.id}
        viewerId={data.viewerId}
