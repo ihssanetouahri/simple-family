@@ -85,7 +85,7 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
    </div>}
   </section>
 
-  <nav aria-label="Sections de la fiche membre" className="sticky top-0 z-20 bg-[#F6F3FE]/95 backdrop-blur-sm rounded-[18px] p-1.5 border border-[#E9E0F6]">
+  <nav aria-label="Sections de la fiche membre" className="sticky top-[62px] z-20 bg-[#F6F3FE]/95 backdrop-blur-sm rounded-[18px] p-1.5 border border-[#E9E0F6]">
    <div className="grid grid-cols-3 gap-1" role="tablist" aria-label="Détails du membre">
     {([{id:'finances',label:'Finances'},{id:'services',label:'Services'},{id:'access',label:'Accès'}] as const).map(tab=>
      <button type="button" key={tab.id} role="tab" id={`member-tab-${tab.id}`}
