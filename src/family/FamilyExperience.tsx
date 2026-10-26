@@ -709,12 +709,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
           <Avatar member={findMember(family!,chatHeaderRoom.participantIds.find(id=>id!==data.viewerId)||'')} size={36}/>:
           <span className="w-9 h-9 rounded-full bg-[#EDE5FF] text-[#6B2BDB] flex items-center justify-center"><Users size={19}/></span>):undefined}
       onTitleClick={route==='chat'&&chatHeaderRoom?.kind==='group'&&canManageChatGroup(family!,data.viewerId,chatHeaderRoom.id)?()=>setChatManageSignal(i=>i+1):undefined}
-      rightAction={route==='chat'&&!chatHeaderRoom?<button type="button"
+      rightAction={route==='chat'?(chatHeaderRoom?<span className="w-10 h-10 shrink-0" aria-hidden="true"/>:<button type="button"
         onClick={()=>setChatCreateSignal(i=>i+1)}
         aria-label="Nouvelle discussion"
         className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-[#6928D5] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C2BDE]">
         <SquarePen size={20}/>
-      </button>:undefined}
+      </button>):undefined}
       subtitle={route==='chat'?(chatHeaderRoom?(chatHeaderRoom.kind==='direct'?'Discussion privée':`${chatHeaderRoom.participantIds.length} participants`):undefined):
         route==='goal'?'Projet d’épargne familial':route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
