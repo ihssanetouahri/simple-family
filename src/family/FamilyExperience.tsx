@@ -26,6 +26,7 @@ import { MemberProfile } from './members/MemberProfile';
 import { PocketDetail } from './pockets/PocketDetail';
 import { closeFamilyPot, closeSavingsGoal, goalDisplayState, goalContributions, potContributions, potDisplayState } from './savings/savingsRules';
 import { FamilyCardsView } from './pockets/FamilyCardsView';
+import { FamilyPreviewCarousel } from './components/FamilyPreviewCarousel';
 import { HouseholdPFMBridge } from './pfm/HouseholdPFMBridge';
 import { memberRemovalIssues } from './quality/familyIntegrity';
 import { validateLinkedBillPayment } from './payments/billRules';
@@ -655,6 +656,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
                </button>
                <div className="flex -space-x-2" aria-label="Aperçu des membres">
                  {family.members.slice(0,3).map(m=><Avatar key={m.id} member={m} size={34}/>)}
+                 {family.members.length>3&&<button type="button" onClick={()=>mainGo('members')}
+                   aria-label={`Voir les ${family.members.length-3} autres membres`}
+                   className="relative shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center bg-white/25 text-white border-2 border-white/80 text-[11px] font-extrabold backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                   +{family.members.length-3}
+                 </button>}
                </div>
              </div>
            </div>
@@ -710,10 +716,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          {visibleGoals.some(g=>g.status==='active')?
-           <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Projets d’épargne, faire défiler horizontalement">
+           <FamilyPreviewCarousel label="Projets d’épargne, faire défiler horizontalement">
              {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
                description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} showAmounts={showAmounts} onClick={()=>navigateToGoal(g.id)}/>)}
-           </div>:
+           </FamilyPreviewCarousel>:
            <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
              <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
                <button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer un projet <ArrowRight size={14} className="inline"/></button>
@@ -723,10 +729,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Nos cagnottes" right={<button type="button" onClick={()=>mainGo('pots')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
          {family.pots.some(p=>p.status==='active')?
-           <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Cagnottes, faire défiler horizontalement">
+           <FamilyPreviewCarousel label="Cagnottes, faire défiler horizontalement">
              {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
                description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} showAmounts={showAmounts} onClick={()=>navigateToPot(p.id)}/>)}
-           </div>:
+           </FamilyPreviewCarousel>:
            <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
              <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
                <button type="button" onClick={()=>mainGo('pots')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer une cagnotte <ArrowRight size={14} className="inline"/></button>
@@ -1158,17 +1164,22 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      </>}
 
      {route==='services'&&<>
-       <Panel className="p-5"><p className="text-xs text-[#8738DB] font-bold">Simple Family</p><h2 className="text-[22px] font-extrabold mt-1">Tous vos services</h2><p className="text-xs text-[#84798F] mt-1">Un seul espace pour les usages bancaires et familiaux du quotidien.</p></Panel>
+       <Panel className="p-5"><p className="text-xs text-[#8738DB] font-bold">Simple Family</p><h2 className="text-[22px] font-extrabold mt-1">Tous vos services</h2><p className="text-xs text-[#84798F] mt-1">Retrouvez vos suggestions du moment, puis explorez l'ensemble des services familiaux.</p></Panel>
        {serviceLinks.length>0&&<section>
-         <Heading title="Pour votre famille" subtitle="Des accès utiles selon vos projets, événements et autorisations"/>
+         <Heading title="Suggestions pour votre famille" subtitle="Des raccourcis vers vos projets et documents en cours, adaptés à votre profil"/>
          <Panel className="px-4">
            {serviceLinks.map(link=><ActionLine key={link.id} icon={serviceIcons[link.kind]}
              title={link.title} subtitle={link.subtitle} onClick={()=>openServiceLink(link)}/>)}
          </Panel>
        </section>}
-       <section><Heading title="Paiements et réservations"/><Panel className="px-4"><ActionLine icon={Send} title="Simple Pay Famille" subtitle="Réservé au Leader et aux Co-leaders" disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/><ActionLine icon={ReceiptText} title="Payer une facture" subtitle="Selon les comptes et droits attribués" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/><ActionLine icon={Plane} title="Simple Trip" subtitle="Réservations pour les membres de la famille" onClick={openTrip}/></Panel></section>
+       <section>
+         <Heading title="Explorer tous les services" subtitle="Catalogue complet, organisé par type de service"/>
+         <div className="space-y-4">
+          <Heading title="Paiements et réservations"/><Panel className="px-4"><ActionLine icon={Send} title="Simple Pay Famille" subtitle="Réservé au Leader et aux Co-leaders" disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/><ActionLine icon={ReceiptText} title="Payer une facture" subtitle="Selon les comptes et droits attribués" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/><ActionLine icon={Plane} title="Simple Trip" subtitle="Réservations pour les membres de la famille" onClick={openTrip}/></Panel></section>
        <section><Heading title="Vie de famille"/><Panel className="px-4"><ActionLine icon={MessageCircle} title="Chat Famille" subtitle="Échangez avec vos proches" onClick={()=>mainGo('chat')}/><ActionLine icon={LockKeyhole} title="Coffre-fort numérique" subtitle="Documents et accès partagés" onClick={()=>mainGo('vault')}/><ActionLine icon={Gift} title="Cagnottes familiales" subtitle="Contributions et objectifs partagés" onClick={()=>mainGo('pots')}/></Panel></section>
        <section><Heading title="Autres avantages"/><Panel className="px-4"><ActionLine icon={Coins} title="Fidélité Famille" subtitle="Points liés aux opérations éligibles" onClick={()=>mainGo('loyalty')}/><ActionLine icon={Landmark} title="Demande de crédit" subtitle="Selon le profil et les droits" onClick={()=>mainGo('loan')}/></Panel></section>
+         </div>
+       </section>
      </>}
 
      {route==='chat'&&<div className="space-y-3">
