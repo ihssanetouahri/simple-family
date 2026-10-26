@@ -1,13 +1,16 @@
 import React, {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
-import {ArrowLeft, Check, ChevronRight, LockKeyhole, MessageCircle, Plus,
- Search, Settings2, ShieldCheck, SquarePen, UserRound, Users, X} from 'lucide-react';
+import {Check, ChevronRight, LockKeyhole, MessageCircle, MoreHorizontal,
+ Search, ShieldCheck, UserRound, Users, X} from 'lucide-react';
 import {findMember, type Family} from '../model';
 import {canManageFamily} from '../permissions';
-import {canManageChatGroup, getVisibleChat, visibleChats, FAMILY_ROOM_ID} from './chatRules';
+import {canManageChatGroup, getVisibleChat, visibleChats} from './chatRules';
+import lamiaAvatar from '../../assets/images/lamia_avatar.jpg';
+import karimAvatar from '../../assets/images/karim.jpg';
+import yasmineAvatar from '../../assets/images/yasmine.jpg';
 
 type Props={
- family:Family;viewerId:string;activeId:string|null;
+ family:Family;viewerId:string;activeId:string|null;createSignal:number;
  onOpen:(id:string)=>void;onInbox:()=>void;
  onDirect:(memberId:string)=>void;onGroup:(title:string,memberIds:string[])=>void;
  onEditGroup:(id:string,title:string,memberIds:string[])=>boolean;
@@ -15,13 +18,17 @@ type Props={
 type Sheet='new'|'direct'|'group'|'manage'|'settings'|null;
 const tile='rounded-[22px] border border-[#EAE2F5] bg-white shadow-[0_5px_16px_rgba(70,30,130,0.04)]';
 const purple='text-[#6729C9]';
-function Avatar({name,group=false}:{name:string;group?:boolean}) {
- return <div className="w-12 h-12 shrink-0 rounded-full bg-[#EDE5FF] text-[#7130CE] flex items-center justify-center">
-   {group?<Users size={21}/>:<span className="font-extrabold text-[15px]">{name.slice(0,1).toUpperCase()}</span>}
+const portraits:Record<string,string>={lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar};
+function Avatar({name,group=false,memberId,size=52}:{name:string;group?:boolean;memberId?:string;size?:number}) {
+ const src=!group&&memberId?portraits[memberId]:undefined;
+ return <div style={{width:size,height:size}} className="shrink-0 rounded-full overflow-hidden bg-[#E9DFFF] text-[#7130CE] flex items-center justify-center">
+   {src?<img src={src} alt="" className="h-full w-full object-cover"/>:
+    group?<Users size={size>44?23:18}/>:
+    <span className="font-extrabold text-[16px]">{name.slice(0,1).toUpperCase()}</span>}
  </div>;
 }
 
-export function FamilyChatView({family,viewerId,activeId,onOpen,onInbox,onDirect,onGroup,onEditGroup}:Props){
+export function FamilyChatView({family,viewerId,activeId,createSignal,onOpen,onInbox,onDirect,onGroup,onEditGroup}:Props){
  const [sheet,setSheet]=useState<Sheet>(null);
  const [search,setSearch]=useState('');
  const [selected,setSelected]=useState<string[]>([]);
@@ -34,6 +41,9 @@ export function FamilyChatView({family,viewerId,activeId,onOpen,onInbox,onDirect
  const editable=Boolean(active&&canManageChatGroup(family,viewerId,active.id));
  const manager=canManageFamily(family,viewerId);
  useEffect(()=>{setSheet(null);setError('');},[activeId,viewerId,family.id]);
+ useEffect(()=>{
+   if(createSignal>0&&!activeId){setSheet('new');setError('');}
+ },[createSignal]);
  const open=(next:Sheet)=>{
    if(next==='group'){setSelected([]);setGroupName('');}
    if(next==='manage'&&active){setSelected(active.participantIds.filter(id=>id!==active.createdBy));setGroupName(active.title);}
@@ -58,86 +68,72 @@ export function FamilyChatView({family,viewerId,activeId,onOpen,onInbox,onDirect
  if(!eligible)return <p className="text-[12px] text-[#81728F] p-5">Accès réservé aux membres de la famille.</p>;
 
  return <div className="space-y-4 pb-5 text-[#2B1D3C]">
- {active?<><div className={tile+' p-4 space-y-3'}>
-    <div className="flex items-center gap-3">
-      <button type="button" onClick={onInbox} aria-label="Toutes les discussions"
-        className="w-9 h-9 shrink-0 rounded-full bg-[#F5F0FD] text-[#6D2CCE] flex items-center justify-center"><ArrowLeft size={18}/></button>
-      <Avatar name={active.title} group={active.kind!=='direct'}/>
-      <div className="min-w-0 flex-1">
-        <p className="font-extrabold text-[15px] truncate">{active.title}</p>
-        <p className="text-[11px] text-[#80718E]">{active.kind==='direct'?'Discussion privée':`${active.participantIds.length} participants · ${active.kind==='family'?'Groupe principal':'Groupe privé'}`}</p>
-      </div>
-      {editable&&<button type="button" onClick={()=>open('manage')} aria-label="Gérer le groupe"
-        className="w-10 h-10 flex justify-center items-center rounded-full bg-[#F2EAFF] text-[#6D28D4]"><Settings2 size={19}/></button>}
-    </div>
-    {active.kind==='direct'&&<div className="rounded-[13px] bg-[#F6F3FC] px-3 py-2 text-[11px] text-[#796B89] flex gap-2">
-      <LockKeyhole size={15} className="shrink-0"/> Cette discussion est accessible uniquement à ses deux participants.
-    </div>}
-  </div>
-  <div className="space-y-4 py-1 pb-3" aria-label={`Messages de ${active.title}`}>
-    {active.messages.length===0&&<div className={tile+' p-6 text-center space-y-2'}>
-      <MessageCircle className="text-[#7A37D8] mx-auto" size={26}/>
-      <p className="text-[13px] font-bold">Votre discussion commence ici</p>
-      <p className="text-[12px] text-[#827590]">Écrivez un premier message avec le champ en bas de l'écran.</p>
-    </div>}
-    {active.messages.map(msg=><div key={msg.id} className={`flex ${msg.authorId===viewerId?'justify-end':'justify-start'}`}>
-      <div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-white border border-[#EBE3F5] text-[#352746] rounded-bl-sm'}`}>
-        {active.kind!=='direct'&&<p className="text-[10px] font-bold opacity-70 mb-1">{findMember(family,msg.authorId)?.name||'Ancien membre'}</p>}
-        <p className="text-[13px] break-words whitespace-pre-wrap">{msg.text}</p>
-        <p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p>
-      </div>
-    </div>)}
-  </div>
- </>:<>
-  <div className={tile+' p-4'}>
-    <div className="flex items-center justify-between gap-3">
-      <div><h2 className="text-[20px] font-extrabold">Discussions</h2>
-        <p className="text-[12px] text-[#857792] mt-1">Restez proches, même à distance.</p>
-      </div>
-      <button type="button" onClick={()=>open('new')} aria-label="Nouvelle discussion"
-        className="h-11 w-11 rounded-full bg-[#6B2BDB] text-white flex items-center justify-center shadow-md">
-        <SquarePen size={20}/>
-      </button>
-    </div>
-    <label className="mt-4 rounded-[14px] flex gap-2 items-center h-11 px-3 bg-[#F6F3FB] border border-[#EAE3F3]">
-      <Search size={17} className="text-[#9687A7]"/><span className="sr-only">Rechercher une discussion</span>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher une discussion"
-        className="bg-transparent text-[13px] text-[#322444] min-w-0 flex-1 outline-none placeholder:text-[#9487A1]"/>
-    </label>
-  </div>
-  <div className="space-y-2">
-    <div className="px-1 flex items-center justify-between"><h3 className="font-extrabold text-[16px]">Vos discussions</h3>
-      <span className="text-[11px] text-[#91829D]">{matched.length} conversation{matched.length>1?'s':''}</span>
-    </div>
-    {matched.length===0?<div className={tile+' p-5 text-center text-[#82738D] text-[12px]'}>Aucune discussion trouvée.</div>:
-    <div className={tile+' px-3 py-1'}>
-      {matched.map((chat,i)=><React.Fragment key={chat.id}>
-       {i>0&&<div className="border-t border-[#F0EAF7] mx-1"/>}
-       <button type="button" onClick={()=>onOpen(chat.id)} className="w-full min-h-[76px] flex gap-3 items-center text-left py-3 rounded-xl hover:bg-[#F8F5FE] px-1">
-        <Avatar name={chat.title} group={chat.kind!=='direct'}/>
-        <div className="flex-1 min-w-0 space-y-1">
-          <p className="text-[14px] font-bold truncate">{chat.title}</p>
-          <p className="text-[12px] text-[#80718E] truncate">
-            {chat.messages.length? `${findMember(family,chat.messages.at(-1)?.authorId||'')?.name||'Membre'} : ${chat.messages.at(-1)?.text||''}`:
-            chat.kind==='direct'?'Démarrer la conversation':'Aucun message pour le moment'}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-[10px] text-[#92849F]">{chat.messages.at(-1)?.date||''}</span>
-          <ChevronRight size={17} className="text-[#AB9CB9]"/>
-        </div>
-       </button>
-      </React.Fragment>)}
-    </div>}
-  </div>
-  <button type="button" onClick={()=>open('new')}
-    className="w-full min-h-[46px] rounded-full bg-[#6B2BDB] text-white font-bold text-[13px] flex justify-center items-center gap-2">
-    <Plus size={17}/> Nouvelle discussion
-  </button>
-  {manager&&<button type="button" onClick={()=>open('settings')}
-    className="w-full rounded-[14px] border border-[#E8DFF3] min-h-[43px] text-[#6E2DCB] text-[12px] font-bold flex justify-center items-center gap-2">
-    <ShieldCheck size={17}/> Paramètres des discussions
-  </button>}
+ {active?<div className="space-y-4">
+   {active.kind==='group'&&editable&&<button type="button" onClick={()=>open('manage')}
+     className="w-full flex items-center justify-between rounded-xl bg-[#F4EEFF] px-3 py-2.5 text-[#6E2EC9] text-[12px] font-semibold">
+      <span>{active.participantIds.length} participants · Gérer le groupe</span>
+      <ChevronRight size={16}/>
+   </button>}
+   {active.kind==='direct'&&<p className="text-center text-[11px] text-[#857892]">
+     Discussion entre vous et {active.title}
+   </p>}
+   <div className="space-y-4 py-1 pb-3" aria-label={`Messages de ${active.title}`}>
+     {active.messages.length===0&&<div className="py-12 text-center space-y-2">
+       <div className="mx-auto w-14 h-14 rounded-full bg-[#EDE4FE] text-[#7835DE] flex items-center justify-center"><MessageCircle size={26}/></div>
+       <p className="text-[14px] font-bold">Commencez la discussion</p>
+       <p className="text-[12px] text-[#827590]">Envoyez votre premier message.</p>
+     </div>}
+     {active.messages.map(msg=><div key={msg.id} className={`flex ${msg.authorId===viewerId?'justify-end':'justify-start'}`}>
+       <div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-white border border-[#EBE3F5] text-[#352746] rounded-bl-sm'}`}>
+         {active.kind!=='direct'&&<p className="text-[10px] font-bold opacity-70 mb-1">{findMember(family,msg.authorId)?.name||'Ancien membre'}</p>}
+         <p className="text-[13px] break-words whitespace-pre-wrap">{msg.text}</p>
+         <p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p>
+       </div>
+     </div>)}
+   </div>
+ </div>:<>
+   <label className="flex gap-2.5 items-center h-[46px] px-4 rounded-full bg-white border border-[#EAE2F4] shadow-[0_2px_10px_rgba(52,22,110,0.025)]">
+     <Search size={19} className="text-[#91849F] shrink-0"/>
+     <span className="sr-only">Rechercher une conversation</span>
+     <input value={search} onChange={e=>setSearch(e.target.value)}
+       placeholder="Rechercher une conversation"
+       className="bg-transparent text-[13px] text-[#322444] min-w-0 flex-1 outline-none placeholder:text-[#8C8099]"/>
+   </label>
+   <div className="flex items-center justify-between min-h-[30px] px-1">
+     <p className="text-[12px] text-[#857892]">{matched.length} conversation{matched.length>1?'s':''}</p>
+     {manager&&<button type="button" onClick={()=>open('settings')}
+       aria-label="Paramètres des discussions"
+       className="h-9 w-9 flex items-center justify-center rounded-full text-[#857295] hover:bg-[#EDE5FC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7833DA]">
+       <MoreHorizontal size={21}/>
+     </button>}
+   </div>
+   {matched.length===0?<div className="py-12 text-center text-[13px] text-[#81738D]">
+     Aucune conversation trouvée.
+   </div>:<div className="-mx-5" role="list" aria-label="Discussions accessibles">
+     {matched.map((chat,i)=>{
+       const last=chat.messages.at(-1);
+       const author=last?findMember(family,last.authorId):undefined;
+       const other=chat.kind==='direct'?chat.participantIds.find(id=>id!==viewerId):undefined;
+       const preview=last?
+         (chat.kind==='direct'?(last.authorId===viewerId?'Vous : ': ''):
+           `${last.authorId===viewerId?'Vous':author?.name||'Membre'} : `)+last.text:
+         (chat.kind==='direct'?'Commencer la discussion':'Aucun message pour le moment');
+       return <React.Fragment key={chat.id}>
+         <button type="button" role="listitem" onClick={()=>onOpen(chat.id)}
+           className="w-full flex items-center text-left gap-3 min-h-[78px] px-5 py-3 hover:bg-white/65 active:bg-[#EEE7FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7833DA]">
+           <Avatar name={chat.title} memberId={other} group={chat.kind!=='direct'}/>
+           <span className="flex-1 min-w-0">
+             <span className="flex items-baseline justify-between gap-2">
+               <span className="text-[14px] font-bold leading-snug text-[#281938] truncate">{chat.title}</span>
+               <span className="text-[11px] text-[#8F839B] shrink-0 tabular-nums">{last?.date||''}</span>
+             </span>
+             <span className="block text-[12px] leading-snug text-[#81768F] truncate mt-1.5">{preview}</span>
+           </span>
+         </button>
+         {i<matched.length-1&&<div className="border-t border-[#E9E3F1] ml-[88px] mr-5"/>}
+       </React.Fragment>;
+     })}
+   </div>}
  </>}
  {sheet&&document.getElementById('simple-device-frame')&&createPortal(
    <div role="dialog" aria-modal="true" aria-label="Options des discussions"
