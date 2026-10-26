@@ -32,7 +32,15 @@ export type FamilyState = { families: Family[]; activeFamilyId: string | null; v
 export const uid = (prefix='id') => `${prefix}_${Math.random().toString(36).slice(2,9)}`;
 export const today = () => new Date().toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'});
 export const currency = (n: number) => new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2,minimumFractionDigits:0}).format(n) + ' DH';
-export const parseMoney = (value: string) => Number(value.replace(',','.'));
+/** Les sommes du prototype sont exprimées au centime : jamais de décimales cachées. */
+export const roundMoney = (amount:number):number =>
+  Math.round((amount + Math.sign(amount)*Number.EPSILON)*100)/100;
+export const parseMoney = (value:string):number => {
+  const normalized=value.trim().replace(',','.');
+  // Refuser une précision supérieure au centime au lieu de l'arrondir silencieusement.
+  if(!/^[+-]?(?:\d+|\d*\.\d{1,2})$/.test(normalized))return NaN;
+  return roundMoney(Number(normalized));
+};
 export const avatarFor = (memberId: string) => memberId === 'lamia' ? 'lamia' : memberId === 'karim' ? 'karim' : memberId === 'yasmine' ? 'yasmine' : '';
 export const roleLabel = (role:Role) => role === 'leader' ? 'Leader' : role === 'coleader' ? 'Co-leader' : 'Membre';
 const dateInDays = (days: number) => {
