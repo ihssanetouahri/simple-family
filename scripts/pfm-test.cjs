@@ -83,6 +83,8 @@ assert(ui.includes("onGoals={navigateToGoal}"),'PFM must link to existing goal d
 assert(ui.includes("onPot={navigateToPot}"),'PFM must link to existing pot detail');
 assert(ui.includes('title="Comprendre les dépenses partagées"'),'Account section offers link to PFM');
 assert(ui.includes("family.joint?(canViewJointAccount(family,data.viewerId)?showBalance"),'Shared account card protects joint balance');
+assert(ui.includes("{canViewJointAccount(family,data.viewerId)&&<button"),'Home must hide joint balance card from non-cotitular managers');
+assert(ui.includes("[family.jointApplication.requesterId,family.jointApplication.coHolderId].includes(data.viewerId)"),'Home must hide joint application status from other administrators');
 assert(ui.includes("onClick={()=>mainGo('pfm')}"),'Protected Home keeps PFM entrypoint');
 assert(bridge.includes('getHouseholdInsight(family,viewerId)'),'PFM must use shared account scope');
 assert(bridge.includes('showAmounts?currency(n)'),'Mon foyer must honor balance masking');
