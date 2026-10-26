@@ -60,6 +60,7 @@ assert(source.includes("onClick={()=>mainGo('pfm')}"),'PFM home entry remains');
 assert(source.includes('showAmounts?currency(viewer.simpleBalance)'), 'Account balance selector must honor masking');
 assert(source.includes('showAmounts?currency(p.balance)'), 'Pocket balance selector must honor masking');
 assert(source.includes('const issues=memberRemovalIssues(family,selectedMember)'),'Member removal blocks data loss');
+assert(source.includes("canViewJointAccount(family,data.viewerId)?[{value:'joint',label:'Compte joint'}]"),'Card creation source must respect joint co-ownership');
 assert(source.includes('f.accountViewIds=f.accountViewIds.filter(id=>id!==selectedMember)'),
  'Member removal revokes read-only account access');
 assert(account.includes("canRespondJointApplication(family,viewerId)"),'Second holder must confirm on own demo profile');
