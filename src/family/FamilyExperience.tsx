@@ -185,8 +185,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const canSeePotHistory=Boolean(family&&pot&&canViewFamilyPotHistory(family,data.viewerId,pot));
  const potInviteCandidates=family?.members.filter(m=>pot&&!pot.members.includes(m.id)&&!(pot.pendingInvites||[]).includes(m.id))||[];
  const potFundingOptions=family&&viewer?[
-  {value:`simple:${data.viewerId}`,label:`Mon compte Simple · ${currency(viewer.simpleBalance)}`},
-  ...family.pockets.filter(p=>p.ownerId===data.viewerId).map(p=>({value:`pocket:${data.viewerId}`,label:`Mon pocket · ${currency(p.balance)}`}))
+  {value:`simple:${data.viewerId}`,label:`Mon compte Simple · ${showAmounts?currency(viewer.simpleBalance):'•••• DH'}`},
+  ...family.pockets.filter(p=>p.ownerId===data.viewerId).map(p=>({value:`pocket:${data.viewerId}`,label:`Mon pocket · ${showAmounts?currency(p.balance):'•••• DH'}`}))
  ]:[];
  const show=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(''),3500)};
  const scrollTop=()=>{const el=document.getElementById('simple-scroll-area');if(el)el.scrollTop=0};
@@ -259,11 +259,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const visiblePockets=family?.pockets.filter(p=>canViewPocket(family,data.viewerId,p.ownerId))||[];
  const transferOptions=useMemo(()=>{
    if(!family||!viewer)return [];
-   const opts=[{value:`simple:${viewer.id}`,label:`Mon compte Simple · ${currency(viewer.simpleBalance)}`}];
-   if(admin&&family.account) opts.push({value:'account',label:`Sous-compte Famille · ${currency(family.account.balance)}`});
+   const opts=[{value:`simple:${viewer.id}`,label:`Mon compte Simple · ${showAmounts?currency(viewer.simpleBalance):'•••• DH'}`}];
+   if(admin&&family.account) opts.push({value:'account',label:`Sous-compte Famille · ${showAmounts?currency(family.account.balance):'•••• DH'}`});
    if(canViewJointAccount(family,data.viewerId)) opts.push({value:'joint',label:`Compte joint · ${showAmounts?currency(family.joint!.balance):'•••• DH'}`});
    family.pockets.filter(p=>canViewPocket(family,viewer.id,p.ownerId)).forEach(p=>{
-     const m=findMember(family,p.ownerId);opts.push({value:`pocket:${p.ownerId}`,label:`Pocket ${m?.name||''} · ${currency(p.balance)}`});
+     const m=findMember(family,p.ownerId);opts.push({value:`pocket:${p.ownerId}`,label:`Pocket ${m?.name||''} · ${showAmounts?currency(p.balance):'•••• DH'}`});
    });
    return opts;
  },[family,viewer,admin,showAmounts,data.viewerId]);
