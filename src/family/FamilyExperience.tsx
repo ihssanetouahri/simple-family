@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, Bell, BookOpen, CalendarDays, CalendarClock, Check,
+  ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, CalendarDays, CalendarClock, Check,
   CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3, CreditCard, Crown, FileText,
   Gift, HeartHandshake, Home, Landmark, LockKeyhole, MessageCircle, MoreHorizontal, Plus,
   ReceiptText, RotateCcw, Send, Settings2, ShieldCheck, Sparkles, Target, Trash2, Users,
