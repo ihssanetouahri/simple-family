@@ -53,7 +53,9 @@ assert(!draft.includes(' DH'),'Prepared drafts must not include balances by defa
 const ui=source('src/family/FamilyExperience.tsx');
 const member=source('src/family/members/MemberProfile.tsx');
 assert(ui.includes("const serviceLinks=family?getFamilyServiceLinks(family,data.viewerId):[];"));
-assert(ui.includes('serviceLinks.map(link=><ActionLine'),'Contextual service cards appear in hub');
+assert(ui.includes("serviceLinks.slice(0,showAllServiceSuggestions?serviceLinks.length:2).map((link,i)=><React.Fragment"),
+ 'Suggestions must be displayed through an expandable contextual list');
+assert(ui.includes('<FamilyServiceRow variant="suggestion"'),'Contextual cards use the new readable typography');
 assert(ui.includes("label:'Autres',icon:MoreHorizontal"),'Four existing shortcuts remain intact');
 assert(ui.includes("onChat={()=>mainGo('chat')}"));
 assert(ui.includes('onTrip={()=>openTripForMember(owner.id)}'));
