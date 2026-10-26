@@ -50,6 +50,7 @@ function PermissionRow({label,allowed,detail}:{label:string;allowed:boolean;deta
 }
 
 export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onTopup,onTransfer,onCards,onGoal,onPermissions,onTrip,onDocuments,onChat}:Props) {
+ const [activeTab,setActiveTab]=React.useState<'finances'|'services'|'access'>('finances');
  const member=findMember(family,memberId);
  if(!member) return <section className={surface+' p-5 text-[13px] text-[#86798F]'}>Ce membre n'appartient plus à la famille.</section>;
  const manager=canManageFamily(family,viewerId);
@@ -84,7 +85,20 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
    </div>}
   </section>
 
-  <section className="space-y-3">
+  <nav aria-label="Sections de la fiche membre" className="sticky top-0 z-20 bg-[#F6F3FE]/95 backdrop-blur-sm rounded-[18px] p-1.5 border border-[#E9E0F6]">
+   <div className="grid grid-cols-3 gap-1" role="tablist" aria-label="Détails du membre">
+    {([{id:'finances',label:'Finances'},{id:'services',label:'Services'},{id:'access',label:'Accès'}] as const).map(tab=>
+     <button type="button" key={tab.id} role="tab" id={`member-tab-${tab.id}`}
+       aria-selected={activeTab===tab.id} aria-controls={`member-panel-${tab.id}`}
+       onClick={()=>setActiveTab(tab.id)}
+       className={`min-h-[43px] rounded-[13px] text-[12px] font-extrabold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7B31DC] ${activeTab===tab.id?'bg-[#6B2CD2] text-white shadow-sm':'text-[#75638C] hover:bg-white'}`}>
+       {tab.label}
+     </button>)}
+   </div>
+  </nav>
+
+  <div role="tabpanel" id="member-panel-finances" aria-labelledby="member-tab-finances" hidden={activeTab!=='finances'} className={activeTab==='finances'?'space-y-5':''}>
+   {activeTab==='finances'&&<>  <section className="space-y-3">
    <Heading description="Un espace dédié à chaque membre, avec des actions adaptées à vos droits.">Sa pocket</Heading>
    {pocket&&canSeeMemberPocket?
     <div className="rounded-[25px] bg-gradient-to-br from-[#35106C] to-[#7537DF] p-5 text-white shadow-[0_9px_25px_rgba(65,22,129,0.16)]">
@@ -145,7 +159,11 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
    </div>
   </section>}
 
-  <section className="space-y-3">
+
+   </>}
+  </div>
+  <div role="tabpanel" id="member-panel-services" aria-labelledby="member-tab-services" hidden={activeTab!=='services'} className={activeTab==='services'?'space-y-5':''}>
+   {activeTab==='services'&&<>  <section className="space-y-3">
    <Heading description="Retrouvez les services utiles sans quitter l’espace familial.">Services pour {member.name}</Heading>
    <div className={surface+' px-4'}>
     {manager&&<button type="button" onClick={onTrip} className="w-full flex items-center gap-3 py-3.5 border-b border-[#F0EAF6] text-left">
@@ -160,7 +178,11 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
    </div>
   </section>
 
-  <section className="space-y-3">
+
+   </>}
+  </div>
+  <div role="tabpanel" id="member-panel-access" aria-labelledby="member-tab-access" hidden={activeTab!=='access'} className={activeTab==='access'?'space-y-5':''}>
+   {activeTab==='access'&&<>  <section className="space-y-3">
    <Heading description="Des autorisations liées au rôle et aux comptes, distinctes des autres membres.">Droits et accès</Heading>
    <div className={surface+' px-4'}>
     <PermissionRow label="Consulter sa pocket" allowed={canSeeMemberPocket} detail="Accès depuis votre profil de démonstration"/>
@@ -173,5 +195,7 @@ export function MemberProfile({family,memberId,viewerId,showAmounts,onPocket,onT
     <LockKeyhole size={17} className="shrink-0 text-[#7A50BC]"/><p>Ce profil utilise des données fictives. Les plafonds Simple One et les autorisations bancaires réelles restent soumis aux règles de la banque.</p>
    </div>
   </section>
+   </>}
+  </div>
  </div>;
 }
