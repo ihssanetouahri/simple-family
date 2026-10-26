@@ -11,7 +11,7 @@ import {
 import { MobileHeader, SimpleButton, type Navigate } from '../components/SimpleUI';
 import {
   avatarFor, createDemoState, currency, findMember, loadFamilyState,
-  moneyValid, parseMoney, roleLabel, saveFamilyState, today, uid,
+  moneyValid, parseMoney, roundMoney, roleLabel, saveFamilyState, today, uid,
   type Family, type FamilyState, type Member, type Role
 } from './model';
 import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
@@ -28,6 +28,7 @@ import { closeFamilyPot, closeSavingsGoal, goalDisplayState, goalContributions, 
 import { FamilyCardsView } from './pockets/FamilyCardsView';
 import { HouseholdPFMBridge } from './pfm/HouseholdPFMBridge';
 import { memberRemovalIssues } from './quality/familyIntegrity';
+import { validateLinkedBillPayment } from './payments/billRules';
 import { validatePocketDebit } from './pockets/pocketRules';
 import {
   canManageFamily, isFamilyLeader, canViewJointAccount, canViewFamilyAccount as mayViewFamilyAccount,
@@ -126,7 +127,7 @@ function Panel({children,className=''}:{children:React.ReactNode;className?:stri
 function Heading({title,right,subtitle}: {title:string;right?:React.ReactNode;subtitle?:string}) {return <div className="flex items-end justify-between px-1 gap-2 mb-3"><div><h3 className="text-[17px] font-extrabold leading-tight">{title}</h3>{subtitle&&<p className={`${subtle} text-[11px] mt-1`}>{subtitle}</p>}</div>{right}</div>}
 function PillButton({children,onClick,secondary=false,disabled=false}: {children:React.ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean}) {return <button disabled={disabled} type="button" onClick={onClick} className={`${secondary?'bg-[#F0EAFC] text-[#6225CE]':'btn-simple-primary text-white'} h-[45px] rounded-full px-4 flex items-center justify-center gap-2 font-bold text-[13px] w-full disabled:opacity-40 disabled:cursor-not-allowed`}>{children}</button>}
 function ActionLine({icon:Icon,title,subtitle,onClick,trailing,disabled=false}:{icon:React.ComponentType<{size?:number;className?:string}>;title:string;subtitle?:string;onClick?:()=>void;trailing?:React.ReactNode;disabled?:boolean}) {return <button disabled={disabled} onClick={onClick} type="button" className="family-hover-row w-full text-left py-3.5 flex items-center gap-3 border-b last:border-b-0 border-[#F1EDF7] disabled:opacity-40"><div className="w-10 h-10 shrink-0 rounded-2xl bg-[#F4EEFF] text-[#6824DC] flex items-center justify-center"><Icon size={19}/></div><div className="min-w-0 flex-1"><p className="text-[13px] font-bold text-[#221633] truncate">{title}</p>{subtitle&&<p className="text-[11px] text-[#817895] mt-0.5 leading-snug">{subtitle}</p>}</div>{trailing||<ChevronRight size={17} className="text-[#A69EB9] shrink-0"/>}</button>}
-function Input({label,value,onChange,type='text',placeholder='',min,required=false}:{label:string;value?:string;onChange:(v:string)=>void;type?:string;placeholder?:string;min?:string;required?:boolean}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><input required={required} min={min} type={type} value={value??''} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]"/></label>}
+function Input({label,value,onChange,type='text',placeholder='',min,required=false,readOnly=false}:{label:string;value?:string;onChange:(v:string)=>void;type?:string;placeholder?:string;min?:string;required?:boolean;readOnly?:boolean}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><input required={required} min={min} step={type==='number'?'0.01':undefined} inputMode={type==='number'?'decimal':undefined} type={type} readOnly={readOnly} value={value??''} placeholder={placeholder} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]"/></label>}
 function SelectInput({label,value,onChange,options}:{label:string;value?:string;onChange:(v:string)=>void;options:{value:string;label:string}[]}) {return <label className="block space-y-1.5"><span className="text-[12px] font-bold text-[#554967]">{label}</span><select value={value??''} onChange={e=>onChange(e.target.value)} className="w-full h-11 rounded-2xl bg-[#F8F6FD] border border-[#E9E1F4] text-[#241536] px-3.5 text-[13px] outline-none focus:ring-2 focus:ring-[#C9AFFB]">{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>}
 function Progress({value,total,tone='violet'}:{value:number;total:number;tone?:'violet'|'green'|'amber'}) { const colors={violet:'bg-[#7926EB]',green:'bg-[#18AB7F]',amber:'bg-[#F4A344]'}; return <div className="h-2.5 rounded-full bg-[#EEEAF4] overflow-hidden"><div className={`h-full rounded-full ${colors[tone]} transition-all`} style={{width:`${Math.min(100,Math.max(0,total?value/total*100:0))}%`}}/></div> }
 const dateFor = (date:string) => date ? new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'À définir';
@@ -276,18 +277,23 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    return undefined;
  }
  function changeBalance(f:Family,ref:string,delta:number){
-   if(ref==='account'&&f.account)f.account.balance+=delta;
-   if(ref==='joint'&&f.joint)f.joint.balance+=delta;
-   if(ref.startsWith('simple:')){const m=findMember(f,ref.slice(7));if(m)m.simpleBalance+=delta;}
-   if(ref.startsWith('pocket:')){const p=f.pockets.find(p=>p.ownerId===ref.slice(7));if(p)p.balance+=delta;}
+   if(ref==='account'&&f.account)f.account.balance=roundMoney(f.account.balance+delta);
+   if(ref==='joint'&&f.joint)f.joint.balance=roundMoney(f.joint.balance+delta);
+   if(ref.startsWith('simple:')){const m=findMember(f,ref.slice(7));if(m)m.simpleBalance=roundMoney(m.simpleBalance+delta);}
+   if(ref.startsWith('pocket:')){const p=f.pockets.find(p=>p.ownerId===ref.slice(7));if(p)p.balance=roundMoney(p.balance+delta);}
  }
  function commitPayment(payment:PendingPayment){
+  if(payment.alertId&&family){
+    const bill=family.alerts.find(a=>a.id===payment.alertId);
+    const validation=validateLinkedBillPayment(family,payment.alertId,bill?.beneficiary||'',payment.amount);
+    if('reason' in validation){setError(validation.reason);return;}
+  }
   mutate((_d,f)=>{
     changeBalance(f,payment.from,-payment.amount);
     if(payment.to!=='external')changeBalance(f,payment.to,payment.amount);
     f.transactions.unshift({id:uid('tx'),date:today(),title:payment.label,amount:payment.to==='external'?-payment.amount:payment.amount,category:payment.category,source:payment.from,target:payment.to});
     if(payment.to==='external')f.loyaltyPoints+=Math.floor(payment.amount/50); // illustrative, not a business rule
-    if(payment.alertId){const alert=f.alerts.find(a=>a.id===payment.alertId);if(alert)alert.resolved=true;}
+    if(payment.alertId){const alert=f.alerts.find(a=>a.id===payment.alertId);if(alert&&validateLinkedBillPayment(f,payment.alertId,alert.beneficiary,payment.amount).ok)alert.resolved=true;}
   });
   close();show(`${payment.label} · ${currency(payment.amount)} (simulation)`);
  }
@@ -359,8 +365,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'simple-pay':case 'pay-bill':{
       const amount=parseMoney(form.amount||'0');
-      const linkedBill=modal==='pay-bill'?family.alerts.find(a=>a.id===form.alertId&&a.beneficiary===form.beneficiary&&a.amount===amount):undefined;
-      requestPayment({from:form.from||'account',to:'external',amount,label:modal==='simple-pay'?`Simple Pay · ${form.beneficiary||'Destinataire'}`:`Facture · ${form.beneficiary||'Service'}`,category:modal==='simple-pay'?'Simple Pay':'Factures',alertId:linkedBill?.id});break;
+      if(modal==='pay-bill'&&form.alertId){const result=validateLinkedBillPayment(family,form.alertId,form.beneficiary||'',amount);if('reason' in result){setError(result.reason);return;}}
+      requestPayment({from:form.from||'account',to:'external',amount,label:modal==='simple-pay'?`Simple Pay · ${form.beneficiary||'Destinataire'}`:`Facture · ${form.beneficiary||'Service'}`,category:modal==='simple-pay'?'Simple Pay':'Factures',alertId:modal==='pay-bill'&&form.alertId?form.alertId:undefined});break;
    }
    case 'create-card':{
      if(!admin){setError('Seul un Leader ou Co-leader peut attribuer une carte familiale.');return;}
@@ -1329,7 +1335,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='open-account'&&<p className="text-sm text-[#7F748F]">Le sous-compte Famille est facultatif, unique par famille, et sera initialisé à 0 DH. Les opérations réelles nécessitent l'intégration bancaire.</p>}
        {modal==='open-joint'&&<p className="text-sm text-[#7F748F]">Le compte joint est réservé à un couple Leader / Co-leader. La vérification du couple et les validations réelles sont hors de ce prototype.</p>}
        {modal==='transfer'&&<><SelectInput label="Depuis" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions}/><SelectInput label="Vers" value={form.to||transferOptions[1]?.value||transferOptions[0]?.value} onChange={v=>setField('to',v)} options={transferOptions}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 300"/><Input label="Libellé (facultatif)" value={form.label} onChange={v=>setField('label',v)} placeholder="Argent de poche"/></>}
-       {(modal==='pay-bill'||modal==='simple-pay')&&<><SelectInput label="Compte à débiter" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions.filter(o=>modal==='pay-bill'||o.value==='account')}/><Input label={modal==='simple-pay'?'Destinataire':'Organisme / facture'} value={form.beneficiary} onChange={v=>setField('beneficiary',v)} placeholder={modal==='simple-pay'?'Bénéficiaire':'Électricité, Internet…'}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)}/></>}
+       {(modal==='pay-bill'||modal==='simple-pay')&&<><SelectInput label="Compte à débiter" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions.filter(o=>modal==='pay-bill'||o.value==='account')}/><Input label={modal==='simple-pay'?'Destinataire':'Organisme / facture'} value={form.beneficiary} onChange={v=>setField('beneficiary',v)} placeholder={modal==='simple-pay'?'Bénéficiaire':'Électricité, Internet…'}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)} readOnly={modal==='pay-bill'&&Boolean(form.alertId)}/>{modal==='pay-bill'&&form.alertId&&<p className="text-[11px] text-[#82758E]">Montant exact de la facture prérempli. Les paiements partiels ne sont pas prévus dans cette démonstration.</p>}</>}
        {modal==='create-card'&&<><Input label="Nom de la carte" value={form.label} onChange={v=>setField('label',v)} placeholder="Carte courses"/><SelectInput label="Compte ou pocket associé" value={form.source} onChange={v=>setField('source',v)} options={[...(family?.account?[{value:'family',label:'Sous-compte Famille'}]:[]),...(family&&canViewJointAccount(family,data.viewerId)?[{value:'joint',label:'Compte joint'}]:[]),...(family?.pockets||[]).map(p=>({value:`pocket:${p.ownerId}`,label:`Pocket ${initialsFor(p.ownerId)}`}))]}/><SelectInput label="Titulaire de la carte" value={form.holder} onChange={v=>setField('holder',v)} options={memberOptions}/></>}
        {modal==='new-goal'&&<><Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/><Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)}/><Input label="Date de fin" type="date" min={nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)}/><SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/><div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p><div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]"><input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)s.add(m.id);else s.delete(m.id);setField('contributors',[...s].join(','))}}/>{m.name}</label>)}</div></div></>}
        {(modal==='goal-deposit'||modal==='goal-withdraw'||modal==='limit')&&<>
