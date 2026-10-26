@@ -27,6 +27,7 @@ import { PocketDetail } from './pockets/PocketDetail';
 import { closeFamilyPot, closeSavingsGoal, goalDisplayState, goalContributions, potContributions, potDisplayState } from './savings/savingsRules';
 import { FamilyCardsView } from './pockets/FamilyCardsView';
 import { HouseholdPFMBridge } from './pfm/HouseholdPFMBridge';
+import { memberRemovalIssues } from './quality/familyIntegrity';
 import { validatePocketDebit } from './pockets/pocketRules';
 import {
   canManageFamily, isFamilyLeader, canViewJointAccount, canViewFamilyAccount as mayViewFamilyAccount,
@@ -501,9 +502,21 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'member-delete':{
      if(!admin||selectedMember===data.viewerId){setError('Suppression non autorisée.');return;}
-     const toRemove=findMember(family,selectedMember);if(!toRemove||!canRemoveFamilyMember(family,data.viewerId,selectedMember)){setError('La suppression d’un Co-leader est réservée au Leader.');return;}
-     mutate((_d,f)=>{const member=findMember(f,selectedMember)!;const p=f.pockets.find(x=>x.ownerId===member.id);if(p)member.simpleBalance+=p.balance;
-       f.pockets=f.pockets.filter(x=>x.ownerId!==member.id);f.members=f.members.filter(x=>x.id!==member.id);f.cards=f.cards.filter(c=>c.holderId!==member.id&&c.source!==`pocket:${member.id}`);});close();go('members');show('Membre retiré, pocket clôturé et fonds simulés reversés.');break;
+     const toRemove=findMember(family,selectedMember);
+     if(!toRemove||!canRemoveFamilyMember(family,data.viewerId,selectedMember)){
+       setError('La suppression de ce membre n’est pas autorisée.');return;
+     }
+     const issues=memberRemovalIssues(family,selectedMember);
+     if(issues.length){setError('Retrait indisponible : '+issues.join(' '));return;}
+     mutate((_d,f)=>{
+       f.pockets=f.pockets.filter(p=>p.ownerId!==selectedMember);
+       f.members=f.members.filter(m=>m.id!==selectedMember);
+       f.accountViewIds=f.accountViewIds.filter(id=>id!==selectedMember);
+       f.cards=f.cards.filter(c=>c.holderId!==selectedMember&&c.source!==`pocket:${selectedMember}`);
+       for(const p of f.pots)p.pendingInvites=(p.pendingInvites||[]).filter(id=>id!==selectedMember);
+       for(const d of f.documents)d.visibleTo=d.visibleTo.filter(id=>id!==selectedMember);
+     });
+     close();go('members');show('Membre retiré et accès révoqués dans la démo.');break;
    }
    case 'family-delete':{
      if(!leader){setError('Seul le Leader peut supprimer la famille.');return;}
@@ -1384,7 +1397,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
         {modal==='new-document'&&<><Input label="Titre du document" value={form.title} onChange={v=>setField('title',v)} placeholder="Assurance, attestation…"/><SelectInput label="Type" value={form.type||'Autre'} onChange={v=>setField('type',v)} options={['Autre','Assurance','Identité','Scolarité','Logement'].map(x=>({value:x,label:x}))}/><Input label="Date d’expiration (facultative)" type="date" value={form.expiry} onChange={v=>setField('expiry',v)}/><p className="text-xs font-bold">Personnes autorisées</p>{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 text-xs"><input type="checkbox" className="accent-[#722DDD]" checked={(form.visibleTo||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.visibleTo||'').split(',').filter(Boolean));e.target.checked?s.add(m.id):s.delete(m.id);setField('visibleTo',[...s].join(','))}}/>{m.name}</label>)}<p className="text-[11px] text-[#83768F]">Ce prototype ne stocke pas les fichiers eux-mêmes.</p></>}
        {modal==='new-trip'&&<><SelectInput label="Voyageur" value={form.traveler||data.viewerId} onChange={v=>setField('traveler',v)} options={memberOptions}/><Input label="Destination" value={form.destination} onChange={v=>setField('destination',v)} placeholder="Marrakech…"/><Input label="Date" type="date" value={form.date} onChange={v=>setField('date',v)}/><Input label="Budget indicatif (DH)" value={form.amount} onChange={v=>setField('amount',v)} type="number"/></>}
        {modal==='new-credit'&&<><Input label="Montant souhaité (DH)" value={form.amount} onChange={v=>setField('amount',v)} type="number" min="1"/><SelectInput label="Compte associé" value={form.account||`simple:${data.viewerId}`} onChange={v=>setField('account',v)} options={[{value:`simple:${data.viewerId}`,label:'Mon compte Simple'},...(admin&&family?.account?[{value:'account',label:'Sous-compte Famille'}]:[]),...(family&&canViewJointAccount(family,data.viewerId)?[{value:'joint',label:'Compte joint'}]:[])]}/><p className="text-xs text-[#867991]">Aucune demande bancaire réelle ne sera transmise.</p></>}
-       {(modal==='goal-delete'||modal==='member-delete'||modal==='family-delete')&&<div className="bg-[#FFF4F7] p-4 rounded-2xl"><p className="text-[13px] text-[#A13F66] font-semibold">Cette action modifie les données locales du prototype.</p><p className="text-[11px] text-[#94667B] mt-1">{modal==='member-delete'?'Le pocket du membre sera clôturé.':modal==='goal-delete'?'Le solde de l’épargne active sera simulé comme reversé au propriétaire.':'La famille disparaîtra de cette démonstration.'}</p></div>}
+       {(modal==='goal-delete'||modal==='member-delete'||modal==='family-delete')&&<div className="bg-[#FFF4F7] p-4 rounded-2xl"><p className="text-[13px] text-[#A13F66] font-semibold">Cette action modifie les données locales du prototype.</p><p className="text-[11px] text-[#94667B] mt-1">{modal==='member-delete'?'Le retrait est bloqué tant que des fonds ou des engagements sont associés au membre.':modal==='goal-delete'?'Le solde de l’épargne active sera simulé comme reversé au propriétaire.':'La famille disparaîtra de cette démonstration.'}</p></div>}
        {error&&<p role="alert" className="text-xs text-[#BE3463] bg-[#FFF0F4] rounded-xl px-3 py-2">{error}</p>}
        <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='goal-close'?'Clôturer le projet':modal==='goal-edit'?'Enregistrer les modifications':modal==='goal-schedule'?'Enregistrer la programmation':modal==='pot-close'?'Clôturer la collecte':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
        <button type="button" onClick={close} className="w-full text-xs font-bold py-2 text-[#8B7F98]">Annuler</button>
