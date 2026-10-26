@@ -34,7 +34,7 @@ import {
   canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal, canFundSavingsGoal, canWithdrawSavingsGoal,
   canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory, canViewFamilyDocument,
   canRemoveFamilyMember, canChangeMemberRole,
-  canDebitFamilySource, canCreditFamilyDestination, canIssueFamilyCard
+  canDebitFamilySource, canCreditFamilyDestination, canIssueFamilyCard, canToggleFamilyCard
 } from './permissions';
 
 type Route = 'dashboard'|'members'|'member'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
@@ -261,12 +261,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    if(!family||!viewer)return [];
    const opts=[{value:`simple:${viewer.id}`,label:`Mon compte Simple · ${currency(viewer.simpleBalance)}`}];
    if(admin&&family.account) opts.push({value:'account',label:`Sous-compte Famille · ${currency(family.account.balance)}`});
-   if(admin&&family.joint) opts.push({value:'joint',label:`Compte joint · ${currency(family.joint.balance)}`});
+   if(canViewJointAccount(family,data.viewerId)) opts.push({value:'joint',label:`Compte joint · ${showAmounts?currency(family.joint!.balance):'•••• DH'}`});
    family.pockets.filter(p=>canViewPocket(family,viewer.id,p.ownerId)).forEach(p=>{
      const m=findMember(family,p.ownerId);opts.push({value:`pocket:${p.ownerId}`,label:`Pocket ${m?.name||''} · ${currency(p.balance)}`});
    });
    return opts;
- },[family,viewer,admin]);
+ },[family,viewer,admin,showAmounts,data.viewerId]);
  function currentBalance(f:Family,ref:string):number|undefined {
    if(ref==='account')return f.account?.balance;
    if(ref==='joint')return f.joint?.balance;
