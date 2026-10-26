@@ -97,7 +97,7 @@ assert(Object.values(index).every(n=>n>=0),'All savings modules remain accessibl
 const order=['card','cta','schedule','history','contributors','message','manage'];
 assert(order.every((name,i)=>i===0||index[name]>index[order[i-1]]),
  'Goal details must show card, immediate actions, planned deposits, history, contributors, chat, then management');
-assert(goalUi.slice(index.card,index.cta).trim().endsWith('detail/>'),
+assert(/detail\/>\s*\{$/.test(goalUi.slice(index.card,index.cta).trim()),
  'The main Contribuer/Retirer actions must immediately follow the hero card');
 assert(goalUi.includes("(goal.status==='closed'||goalDisplayState(goal,nowDate()).tone==='orange')"),
  'Status card appears for closure or urgent deadlines, not repeated En cours');
