@@ -1,5 +1,5 @@
 /** Cycle de vie des objectifs d'épargne et cagnottes : prototype local, aucune opération bancaire réelle. */
-import { findMember, today, type Family, type SavingsGoal, type FamilyPot } from '../model';
+import { findMember, roundMoney, today, type Family, type SavingsGoal, type FamilyPot } from '../model';
 
 export function deadlineState(date:string|undefined, status:'active'|'closed', at:string):'closed'|'none'|'overdue'|'soon'|'future' {
  if(status==='closed')return 'closed';
@@ -54,7 +54,7 @@ export function closeSavingsGoal(family:Family,id:string,reason:'reached'|'manua
  const owner=findMember(family,goal.ownerId);
  if(!owner)return false;
  const refund=Math.max(0,goal.balance);
- owner.simpleBalance+=refund;
+ owner.simpleBalance=roundMoney(owner.simpleBalance+refund);
  goal.status='closed';
  goal.closedReason=reason;
  goal.closedAt=today();
