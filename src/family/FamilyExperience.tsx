@@ -20,6 +20,7 @@ import yasmineAvatar from '../assets/images/yasmine.jpg';
 import familyPhoto from '../assets/images/family_photo.jpg';
 import { familyCoverSprite } from './coverSprite';
 import { getFamilyFollowUps, type FamilyFollowUp, type FamilyFollowUpKind } from './alerts/followUps';
+import { canCreateFamilyBooking, composeFamilyMessage, getFamilyServiceLinks, type ServiceLink } from './services/serviceLinks';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 import { MemberProfile } from './members/MemberProfile';
 import { PocketDetail } from './pockets/PocketDetail';
@@ -157,6 +158,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [pendingPayment,setPendingPayment]=useState<PendingPayment|null>(null);
  const [otpStage,setOtpStage]=useState(1);
  const [chatInput,setChatInput]=useState('');
+ const [tripTravelerId,setTripTravelerId]=useState<string|null>(null);
  const [selectorOpen,setSelectorOpen]=useState(false);
  const [selectorPosition,setSelectorPosition]=useState({top:0,right:12,width:252});
  const familySelectorButtonRef=useRef<HTMLButtonElement>(null);
@@ -477,12 +479,20 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    }
    case 'new-document':{
      if(!form.title?.trim()){setError('Le nom du document est requis.');return;}
-     mutate((_d,f)=>f.documents.push({id:uid('doc'),title:form.title.trim(),type:form.type||'Autre',expiry:form.expiry||'',ownerId:data.viewerId,visibleTo:(form.visibleTo||data.viewerId).split(',')}));close();show('Fiche document ajoutée (fichier non hébergé).');break;
+     const visibleTo=[...new Set([data.viewerId,...(form.visibleTo||'').split(',').filter(id=>family.members.some(m=>m.id===id))])];
+     mutate((_d,f)=>f.documents.push({id:uid('doc'),title:form.title.trim(),type:form.type||'Autre',expiry:form.expiry||'',ownerId:data.viewerId,visibleTo}));close();show('Fiche document ajoutée (fichier non hébergé).');break;
    }
    case 'new-trip':{
-     if(!admin){setError('Réservations réservées aux Leader et Co-leaders.');return;}
-     if(!form.destination?.trim()||!form.date){setError('Destination et date requises.');return;}
-     mutate((_d,f)=>f.bookings.push({id:uid('trip'),travelerId:form.traveler||data.viewerId,destination:form.destination.trim(),date:form.date,amount:parseMoney(form.amount||'0')||0}));close();show('Réservation fictive ajoutée, sans paiement.');break;
+     const travelerId=form.traveler||data.viewerId;
+     if(!canCreateFamilyBooking(family,data.viewerId,travelerId)){
+       setError('Cette réservation nécessite un responsable et un voyageur de la famille.');return;
+     }
+     if(!form.destination?.trim()||!form.date||form.date<nowDate()){
+       setError('Indiquez une destination et une date de voyage valide.');return;
+     }
+     const amount=form.amount?.trim()?parseMoney(form.amount):0;
+     if(!Number.isFinite(amount)||amount<0){setError('Le budget indicatif doit être positif ou nul.');return;}
+     mutate((_d,f)=>f.bookings.push({id:uid('trip'),travelerId,destination:form.destination.trim(),date:form.date,amount}));close();show('Réservation fictive ajoutée, sans paiement.');break;
    }
    case 'new-credit':{
      const amount=parseMoney(form.amount||'0');if(!moneyValid(amount)){setError('Montant invalide.');return;}
@@ -538,6 +548,19 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const openMemberCards=(id:string)=>{setSelectedMember(id);setCardsMemberFilter(id);go('cards')};
  const navigateToGoal=(id:string)=>{setSelectedGoal(id);setGoalManageOpen(false);setShowAllGoalMovements(false);go('goal')};
  const navigateToPot=(id:string)=>{setSelectedPot(id);setPotMenuOpen(false);setShowAllPotContributions(false);go('pot')};
+ const openTrip=()=>{setTripTravelerId(null);go('trip')};
+ const openTripForMember=(id:string)=>{
+   if(!family?.members.some(m=>m.id===id)||!admin)return;
+   setTripTravelerId(id);go('trip');
+ };
+ const openChatWithDraft=(draft:string)=>{setChatInput(draft);go('chat')};
+ const serviceLinks=family?getFamilyServiceLinks(family,data.viewerId):[];
+ const openServiceLink=(link:ServiceLink)=>{
+   if(link.action.route==='goal')navigateToGoal(link.action.id);
+   else if(link.action.route==='pot')navigateToPot(link.action.id);
+   else if(link.action.route==='trip')openTrip();
+   else mainGo(link.action.route);
+ };
  const balances={family:family?.account?.balance||0,joint:family?.joint?.balance||0};void balances;
  const goalHomeLabel=(g:Family['goals'][number])=>{
    if(g.contributors.length<=1)return `Objectif d’épargne · ${initialsFor(g.ownerId)}`;
@@ -683,7 +706,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          <Panel className="px-3 py-4">
            <div className="grid grid-cols-4 gap-1.5">
              {[{label:'Chat familial',icon:MessageCircle,screen:'chat'},{label:'Simple Trip',icon:Plane,screen:'trip'},{label:'Documents',icon:LockKeyhole,screen:'vault'},{label:'Autres',icon:MoreHorizontal,screen:'services'}].map(item=>
-               <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="family-hover-service w-full min-w-0 min-h-[76px] rounded-2xl px-0.5 py-1 flex flex-col items-center justify-start gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
+               <button type="button" key={item.label} onClick={()=>item.screen==='trip'?openTrip():mainGo(item.screen as Route)} className="family-hover-service w-full min-w-0 min-h-[76px] rounded-2xl px-0.5 py-1 flex flex-col items-center justify-start gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
                  <span className="w-11 h-11 rounded-[16px] bg-[#F2EAFE] text-[#6E28D7] flex items-center justify-center"><item.icon size={20}/></span>
                  <span className="text-[10px] font-bold text-center leading-tight text-[#554568] break-words">{item.label}</span>
                </button>)}
@@ -739,6 +762,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        onCards={()=>openMemberCards(owner.id)}
        onGoal={navigateToGoal}
        onPermissions={()=>mainGo('preferences')}
+       onTrip={()=>openTripForMember(owner.id)}
+       onDocuments={()=>mainGo('vault')}
+       onChat={()=>mainGo('chat')}
      />}
 
      {route==='accounts' && <>
