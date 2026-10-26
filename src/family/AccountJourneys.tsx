@@ -5,7 +5,7 @@ import {
   ReceiptText, Send, Settings2, ShieldCheck, Users, WalletCards, XCircle, Eye,
   ArrowLeftRight, PiggyBank
 } from 'lucide-react';
-import { avatarFor, currency, findMember, moneyValid, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
+import { avatarFor, currency as formatCurrency, findMember, moneyValid, roleLabel, today, uid, type Family, type FamilyCard, type Member } from './model';
 import {
   canManageFamily, canOperateFamilyAccount, canOperateJointAccount,
   canViewJointAccount, canRequestJointAccount, canViewFamilyAccount,
@@ -24,7 +24,7 @@ type View = 'overview' | 'intro' | 'sub-config' | 'approval' | 'coholder' | 'ide
   | 'money' | 'review' | 'money-success' | 'history' | 'transaction'
   | 'members' | 'person' | 'cards' | 'card' | 'documents' | 'settings' | 'closure';
 type Props = {
-  kind: Kind; family: Family; viewerId: string; canViewSub: boolean;
+  kind: Kind; family: Family; viewerId: string; canViewSub: boolean; showAmounts?:boolean;
   onUpdate: (fn:(family:Family)=>void)=>void;
   onHome:()=>void; onBack:()=>void; onToast:(message:string)=>void; onOpenMembers:()=>void;
 };
@@ -96,7 +96,8 @@ function adjustBalance(f:Family,source:string,delta:number) {
  else if(source.startsWith('simple:')){const m=findMember(f,source.slice(7));if(m)m.simpleBalance+=delta;}
  else if(source.startsWith('pocket:')){const p=f.pockets.find(item=>item.ownerId===source.slice(7));if(p)p.balance+=delta;}
 }
-export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(function AccountJourneys({kind,family,viewerId,canViewSub,onUpdate,onHome,onBack,onToast,onOpenMembers},ref){
+export const AccountJourneys = React.forwardRef<AccountJourneyHandle,Props>(function AccountJourneys({kind,family,viewerId,canViewSub,showAmounts=true,onUpdate,onHome,onBack,onToast,onOpenMembers},ref){
+  const currency=(amount:number)=>showAmounts?formatCurrency(amount):'•••• DH';
  const viewer=findMember(family,viewerId);
  const admin=canManageFamily(family,viewerId);
  const coholders=family.jointHolderIds||[];
