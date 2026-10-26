@@ -52,9 +52,24 @@ export const canOperatePocket = canViewPocket;
 export const canManagePocketCards = (family:Family, viewerId:string, ownerId:string):boolean =>
   Boolean(memberOf(family,ownerId) && eligibleAdmin(family,viewerId));
 export const canUsePocketCard = canViewPocket;
-export const canViewFamilyCard = (family:Family, viewerId:string, card:FamilyCard):boolean =>
-  Boolean(memberOf(family,viewerId) && (eligibleAdmin(family,viewerId)||card.holderId===viewerId));
+/** La visibilité d'une carte dépend aussi de son compte source, pas du seul rôle familial. */
+export const canViewFamilyCard = (family:Family, viewerId:string, card:FamilyCard):boolean => {
+ if(!memberOf(family,viewerId))return false;
+ if(card.source==='joint'||card.source===family.joint?.id) {
+  return Boolean(family.joint&&canViewJointAccount(family,viewerId));
+ }
+ if(['family','account',family.account?.id].includes(card.source)){
+  return Boolean(family.account&&canViewFamilyAccount(family,viewerId)&&
+    (eligibleAdmin(family,viewerId)||card.holderId===viewerId));
+ }
+ const pocket=family.pockets.find(p=>p.id===card.source||card.source===`pocket:${p.ownerId}`);
+ if(pocket)return canViewPocket(family,viewerId,pocket.ownerId)&&
+   (eligibleAdmin(family,viewerId)||card.holderId===viewerId);
+ return false;
+};
 export const canManageFamilyCards = eligibleAdmin;
+export const canToggleFamilyCard = (family:Family, viewerId:string, card:FamilyCard):boolean =>
+  Boolean(eligibleAdmin(family,viewerId) && canViewFamilyCard(family,viewerId,card));
 
 /** Création de carte fictive : titulaire et source doivent rester cohérents. */
 export const canIssueFamilyCard = (family:Family, viewerId:string, source:string, holderId:string):boolean => {
