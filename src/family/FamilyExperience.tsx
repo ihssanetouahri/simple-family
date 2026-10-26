@@ -238,6 +238,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   else navigate('HOME');
  };
  const handleBack=()=>{
+  if(route==='chat'&&activeChatId){setActiveChatId(null);setChatInput('');scrollTop();return;}
   if((route==='sub-account'||route==='joint-account')&&accountJourneyRef.current?.goBack())return;
   back();
  };
