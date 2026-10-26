@@ -45,7 +45,7 @@ assert(!list('lamia').some(x=>x.kind==='goal'&&x.action.id===goal.id),
  'Closed travel project no longer suggested');
 
 const draft=links.composeFamilyMessage({kind:'pot',title:'Anniversaire'});
-assert(draft.includes('Anniversaire')&&draft.endsWith(' ?')===false);
+assert(draft.includes('Anniversaire')&&draft.trim().endsWith('?'));
 assert(links.composeFamilyMessage({kind:'goal',title:'Vacances en famille'}).includes('Vacances en famille'));
 assert(links.composeFamilyMessage({kind:'trip',destination:'Agadir',travelerName:'Karim'}).includes('Agadir'));
 assert(!draft.includes(' DH'),'Prepared drafts must not include balances by default');
