@@ -1027,6 +1027,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <FamilyProgressPhotoCard id={pot.id} kind="pot" title={pot.title}
          description={pot.description||'Une collecte pour partager un beau moment ensemble.'}
          current={pot.balance} target={pot.target} status={pot.status} detail/>
+       {(canManagePot||canSeePotHistory)&&<button type="button"
+         onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
+         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
+         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
+       </button>}
        <Panel className="p-4 space-y-2">
          <div className="flex justify-between items-center gap-2">
           <span className={'text-[11px] font-extrabold rounded-full px-3 py-1.5 '+(potDisplayState(pot,nowDate()).tone==='green'?'bg-[#E5F8EE] text-[#178C64]':potDisplayState(pot,nowDate()).tone==='orange'?'bg-[#FFF2DE] text-[#A66C1F]':'bg-[#F1EAFD] text-[#6E2DCA]')}>
@@ -1147,8 +1152,76 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
           </div>)}
         </div>
       </div>}
-      {route==='vault'&&<><Panel className="p-5"><div className="flex gap-3"><div className="w-12 h-12 rounded-2xl flex justify-center items-center bg-[#F1EAFF] text-[#7631DD]"><LockKeyhole size={23}/></div><div className="flex-1"><h2 className="text-lg font-extrabold">Documents de famille</h2><p className="text-xs text-[#8B7F98]">Centralisez les références utiles.</p></div></div></Panel>{family.documents.filter(d=>leader||d.visibleTo.includes(data.viewerId)||d.ownerId===data.viewerId).map(d=><Panel className="p-4 flex items-center gap-3" key={d.id}><FileText size={23} className="text-[#7132DC]"/><div className="flex-1"><strong className="text-[13px]">{d.title}</strong><p className="text-[11px] text-[#897D96]">{d.type}{d.expiry?` · Expire le ${dateFor(d.expiry)}`:''}</p><p className="text-[10px] text-[#887C97]">Accessible à {leader?'Leader / personnes autorisées':d.visibleTo.length+' membre(s)'}</p></div></Panel>)}<PillButton onClick={()=>launch('new-document',{type:'Autre',visibleTo:data.viewerId})}><Plus size={17}/>Ajouter une fiche document</PillButton><p className="text-xs text-[#897D97]">Aucun fichier n’est chargé ou hébergé par ce prototype ; il stocke uniquement des métadonnées locales.</p></>}
-     {route==='trip'&&<><Panel className="p-5 space-y-3"><div className="text-4xl">🌍</div><h2 className="text-[21px] font-extrabold">Voyagez en famille</h2><p className="text-xs text-[#867A92]">Le Leader et les Co-leaders peuvent réserver pour les membres, dont les enfants. Simulation sans connexion à Simple Trip.</p></Panel>{family.bookings.map(b=><Panel key={b.id} className="p-4"><div className="flex gap-3"><Plane size={20} className="text-[#7432DF]"/><div><p className="text-sm font-bold">{b.destination}</p><p className="text-xs text-[#877A96]">{initialsFor(b.travelerId)} · {dateFor(b.date)}</p></div></div></Panel>)}{admin&&<PillButton onClick={()=>launch('new-trip',{traveler:data.viewerId,date:'2027-07-15'})}>Simuler une réservation <ArrowRight size={15}/></PillButton>}{!admin&&<p className="text-xs text-[#897D96]">Seul un Leader ou Co-leader peut réserver pour un membre de la famille.</p>}</>}
+      {route==='vault'&&<>
+        <Panel className="p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#F1EAFF] text-[#7631DD] flex items-center justify-center"><LockKeyhole size={23}/></div>
+            <div className="flex-1"><h2 className="text-lg font-extrabold">Documents de famille</h2>
+              <p className="text-xs text-[#8B7F98] mt-1">Retrouvez les références partagées selon vos autorisations.</p>
+            </div>
+          </div>
+        </Panel>
+        {family.documents.filter(d=>canViewFamilyDocument(family,data.viewerId,d)).map(d=>
+          <Panel className="p-4 flex items-center gap-3" key={d.id}>
+            <FileText size={23} className="text-[#7132DC] shrink-0"/>
+            <div className="flex-1 min-w-0"><strong className="text-[13px]">{d.title}</strong>
+              <p className="text-[11px] text-[#897D96]">{d.type}{d.expiry?` · Expire le ${dateFor(d.expiry)}`:''}</p>
+              <p className="text-[10px] text-[#887C97]">Fiche visible uniquement par les personnes autorisées</p>
+            </div>
+          </Panel>)}
+        {!family.documents.some(d=>canViewFamilyDocument(family,data.viewerId,d))&&
+          <Panel className="p-5 text-[12px] text-[#81738D]">Aucun document accessible avec votre profil.</Panel>}
+        <PillButton onClick={()=>launch('new-document',{type:'Autre',visibleTo:data.viewerId})}>
+          <Plus size={17}/> Ajouter une fiche document
+        </PillButton>
+        <p className="text-xs text-[#897D97]">Aucun fichier n’est chargé ou hébergé par ce prototype ; seules des métadonnées locales sont utilisées.</p>
+       </>}
+       {route==='trip'&&<>
+        <Panel className="p-5 space-y-3">
+          <div className="text-4xl">🌍</div>
+          <h2 className="text-[21px] font-extrabold">Voyagez en famille</h2>
+          <p className="text-xs text-[#867A92]">Préparez le séjour avec vos proches. Les réservations restent fictives, sans connexion à Simple Trip.</p>
+          {tripTravelerId&&admin&&<div className="rounded-[15px] bg-[#F1EAFE] text-[#7033B9] px-3 py-2 text-[12px] font-bold">
+            Voyage pour {findMember(family,tripTravelerId)?.name||'un membre de la famille'}
+          </div>}
+        </Panel>
+        <section className="space-y-3">
+          <Heading title="Vos réservations fictives"/>
+          {family.bookings.filter(b=>admin||b.travelerId===data.viewerId).map(b=>
+            <Panel key={b.id} className="p-4 space-y-3">
+              <div className="flex gap-3 items-center">
+                <Plane size={20} className="text-[#7432DF] shrink-0"/>
+                <div className="flex-1"><p className="text-sm font-bold">{b.destination}</p>
+                  <p className="text-xs text-[#877A96]">{initialsFor(b.travelerId)} · {dateFor(b.date)}</p>
+                </div>
+              </div>
+              <button type="button"
+                onClick={()=>openChatWithDraft(composeFamilyMessage({
+                  kind:'trip',destination:b.destination,travelerName:initialsFor(b.travelerId)
+                }))}
+                className="w-full flex items-center justify-between text-[#6C2FD2] text-[12px] font-bold border-t border-[#F0EAF7] pt-3">
+                Préparer un message dans le chat <MessageCircle size={17}/>
+              </button>
+            </Panel>)}
+          {!family.bookings.some(b=>admin||b.travelerId===data.viewerId)&&
+            <Panel className="p-4 text-[12px] text-[#82758D]">Aucune réservation fictive accessible pour le moment.</Panel>}
+          {admin&&<PillButton onClick={()=>launch('new-trip',{
+            traveler:tripTravelerId||data.viewerId,date:nowDate()
+          })}>
+            Simuler une réservation <ArrowRight size={15}/>
+          </PillButton>}
+          {!admin&&<p className="text-xs text-[#897D96]">Les réservations sont créées par un Leader ou Co-leader. Vous pouvez consulter celles dont vous êtes le voyageur.</p>}
+        </section>
+        <section className="space-y-2">
+          <Heading title="Préparer le voyage ensemble"/>
+          <Panel className="px-4">
+            {visibleGoals.filter(g=>g.status==='active'&&/vacan|voyage|week.end|séjour/i.test(g.title)).slice(0,2).map(g=>
+              <ActionLine key={g.id} icon={Target} title={g.title} subtitle="Suivre notre objectif d’épargne" onClick={()=>navigateToGoal(g.id)}/>)}
+            <ActionLine icon={FileText} title="Documents utiles" subtitle="Consulter les fiches accessibles avant le départ" onClick={()=>mainGo('vault')}/>
+            <ActionLine icon={MessageCircle} title="Chat familial" subtitle="Se coordonner sans quitter Ma famille" onClick={()=>mainGo('chat')}/>
+          </Panel>
+        </section>
+       </>}
      {route==='loyalty'&&<><Panel className="p-6 text-center bg-gradient-to-br from-[#4A1A94] to-[#7A37E9] text-white border-none"><Gift size={31} className="mx-auto"/><p className="text-sm text-white/75 mt-3">Fidélité Famille</p><p className="text-[38px] font-extrabold mt-1">{family.loyaltyPoints.toLocaleString('fr-FR')}</p><p className="text-sm">Points illustratifs</p></Panel><Panel className="px-4"><ActionLine icon={CreditCard} title="Paiements éligibles" subtitle="Points selon le barème métier à valider"/><ActionLine icon={Target} title="Objectifs atteints" subtitle="Possibles bonus de fidélité"/><ActionLine icon={Sparkles} title="Défis familiaux" subtitle="Éligibilité et récompenses à définir"/></Panel><p className="text-xs text-[#8A7D95]">Les règles de calcul sont fictives. Les virements entre membres et les contributions ne génèrent pas de points dans le cadrage.</p></>}
      {route==='loan'&&<><Panel className="p-5"><h2 className="text-xl font-extrabold">Demander un crédit</h2><p className="text-xs text-[#867991] mt-2">Chaque membre peut initier une demande. Les comptes associés dépendent de son rôle ; les avantages conjoints sont soumis à vérification.</p></Panel>{family.creditRequests.filter(req=>req.applicantId===data.viewerId||admin).map(req=><Panel key={req.id} className="p-4"><Tag tone="amber">{req.status}</Tag><p className="text-base font-extrabold mt-2">{currency(req.amount)}</p><p className="text-xs text-[#857A94]">Demande fictive · {initialsFor(req.applicantId)}</p></Panel>)}<PillButton onClick={()=>launch('new-credit',{account:`simple:${data.viewerId}`})}>Simuler une demande <ArrowRight size={16}/></PillButton>{family.members.some(m=>m.role==='coleader'&&m.relation==='Conjoint')&&<Panel className="p-4 space-y-1"><p className="text-sm font-bold">Avantages conjoints</p><p className="text-xs text-[#85788F]">Le cadrage prévoit l’héritage de conventions éligibles entre conjoints vérifiés. Aucune convention, taux ou éligibilité n’est inventé dans cette démonstration.</p></Panel>}<p className="text-xs text-[#887C95]">Aucun scoring ni vérification bancaire ; ce formulaire ne constitue pas une demande réelle.</p></>}
 
