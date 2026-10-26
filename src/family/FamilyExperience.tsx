@@ -1062,7 +1062,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <FamilyProgressPhotoCard id={pot.id} kind="pot" title={pot.title}
          description={pot.description||'Une collecte pour partager un beau moment ensemble.'}
          current={pot.balance} target={pot.target} status={pot.status}
-         statusLabel={pot.status==='closed'?'Collecte clôturée':potDisplayState(pot,nowDate()).label}
+         statusLabel={pot.status==='closed'?(pot.closedReason==='target'?'Objectif atteint':'Collecte clôturée'):potDisplayState(pot,nowDate()).label}
          statusTone={potDisplayState(pot,nowDate()).tone==='orange'?'amber':potDisplayState(pot,nowDate()).tone==='green'?'green':'violet'}
          showAmounts={showAmounts} detail/>
        {(canManagePot||canSeePotHistory)&&<button type="button"
