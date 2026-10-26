@@ -7,7 +7,7 @@ const read=(p)=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 const carouselFile='src/family/components/FamilyPreviewCarousel.tsx';
 const carouselSource=read(carouselFile);
 const compiled=ts.transpileModule(carouselSource,{compilerOptions:{
- module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true
 }}).outputText;
 const mod={exports:{}};
 vm.runInNewContext(compiled,{module:mod,exports:mod.exports,
