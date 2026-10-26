@@ -26,9 +26,10 @@ import { MemberProfile } from './members/MemberProfile';
 import { PocketDetail } from './pockets/PocketDetail';
 import { closeFamilyPot, closeSavingsGoal, goalDisplayState, goalContributions, potContributions, potDisplayState } from './savings/savingsRules';
 import { FamilyCardsView } from './pockets/FamilyCardsView';
+import { HouseholdPFMBridge } from './pfm/HouseholdPFMBridge';
 import { validatePocketDebit } from './pockets/pocketRules';
 import {
-  canManageFamily, isFamilyLeader, canViewFamilyAccount as mayViewFamilyAccount,
+  canManageFamily, isFamilyLeader, canViewJointAccount, canViewFamilyAccount as mayViewFamilyAccount,
   canViewPocket,
   canUseSimplePayFamily, canViewSavingsGoal, canEditSavingsGoal, canFundSavingsGoal, canWithdrawSavingsGoal,
   canManageFamilyPot, canContributeToFamilyPot, canViewFamilyPotHistory, canViewFamilyDocument,
@@ -785,12 +786,15 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
               <span className="w-12 h-12 rounded-2xl bg-[#F2EAFE] text-[#7028DB] flex items-center justify-center shrink-0"><HeartHandshake size={23}/></span>
               <span className="min-w-0 flex-1"><span className="font-extrabold text-[14px] block">Compte joint</span>
                 <span className="block text-[11px] text-[#81758E] mt-1">Compte bancaire détenu par deux cotitulaires</span>
-                <span className="block text-[16px] font-extrabold mt-2">{family.joint?showBalance(family.joint.balance):family.jointApplication?'Ouverture en cours':'À ouvrir'}</span>
+                <span className="block text-[16px] font-extrabold mt-2">{family.joint?(canViewJointAccount(family,data.viewerId)?showBalance(family.joint.balance):'Accès restreint'):family.jointApplication&&[family.jointApplication.requesterId,family.jointApplication.coHolderId].includes(data.viewerId)?'Ouverture en cours':'À ouvrir'}</span>
               </span><ChevronRight size={18} className="text-[#8D79AC] shrink-0"/>
             </button>
           </div>
         </section>
-        <Panel className="px-4"><ActionLine icon={WalletCards} title="Pockets des membres" subtitle="Soldes et alimentation de chaque pocket" onClick={()=>mainGo('pockets')}/></Panel>
+        <Panel className="px-4">
+          <ActionLine icon={WalletCards} title="Pockets des membres" subtitle="Soldes et alimentation de chaque pocket" onClick={()=>mainGo('pockets')}/>
+          <ActionLine icon={BarChart3} title="Comprendre les dépenses partagées" subtitle="Aperçu PFM · uniquement les comptes consultables" onClick={()=>mainGo('pfm')}/>
+        </Panel>
       </>}
 
       {mountedAccountRoute&&<div className={isAccountRoute(route)?'':'hidden'}>
@@ -1225,15 +1229,14 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      {route==='loyalty'&&<><Panel className="p-6 text-center bg-gradient-to-br from-[#4A1A94] to-[#7A37E9] text-white border-none"><Gift size={31} className="mx-auto"/><p className="text-sm text-white/75 mt-3">Fidélité Famille</p><p className="text-[38px] font-extrabold mt-1">{family.loyaltyPoints.toLocaleString('fr-FR')}</p><p className="text-sm">Points illustratifs</p></Panel><Panel className="px-4"><ActionLine icon={CreditCard} title="Paiements éligibles" subtitle="Points selon le barème métier à valider"/><ActionLine icon={Target} title="Objectifs atteints" subtitle="Possibles bonus de fidélité"/><ActionLine icon={Sparkles} title="Défis familiaux" subtitle="Éligibilité et récompenses à définir"/></Panel><p className="text-xs text-[#8A7D95]">Les règles de calcul sont fictives. Les virements entre membres et les contributions ne génèrent pas de points dans le cadrage.</p></>}
      {route==='loan'&&<><Panel className="p-5"><h2 className="text-xl font-extrabold">Demander un crédit</h2><p className="text-xs text-[#867991] mt-2">Chaque membre peut initier une demande. Les comptes associés dépendent de son rôle ; les avantages conjoints sont soumis à vérification.</p></Panel>{family.creditRequests.filter(req=>req.applicantId===data.viewerId||admin).map(req=><Panel key={req.id} className="p-4"><Tag tone="amber">{req.status}</Tag><p className="text-base font-extrabold mt-2">{currency(req.amount)}</p><p className="text-xs text-[#857A94]">Demande fictive · {initialsFor(req.applicantId)}</p></Panel>)}<PillButton onClick={()=>launch('new-credit',{account:`simple:${data.viewerId}`})}>Simuler une demande <ArrowRight size={16}/></PillButton>{family.members.some(m=>m.role==='coleader'&&m.relation==='Conjoint')&&<Panel className="p-4 space-y-1"><p className="text-sm font-bold">Avantages conjoints</p><p className="text-xs text-[#85788F]">Le cadrage prévoit l’héritage de conventions éligibles entre conjoints vérifiés. Aucune convention, taux ou éligibilité n’est inventé dans cette démonstration.</p></Panel>}<p className="text-xs text-[#887C95]">Aucun scoring ni vérification bancaire ; ce formulaire ne constitue pas une demande réelle.</p></>}
 
-     {route==='pfm'&&<>
-       <Panel className="p-5 space-y-2"><span className="text-[11px] text-[#7F36E2] font-extrabold">APERÇU PFM · DISTINCT</span><h2 className="text-[21px] font-extrabold">Comprendre les finances de {family.name.toLowerCase()}</h2><p className="text-xs text-[#8A8096]">Une lecture financière des données autorisées ; les comptes et droits restent gérés dans Ma famille.</p></Panel>
-       <div className="grid grid-cols-2 gap-3"><Panel className="p-4"><p className="text-xs text-[#857995]">Dépenses illustratives</p><p className="text-lg font-extrabold text-[#E18A4E] mt-2">{canViewFamilyAccount?currency(Math.abs(family.transactions.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0))):'Non autorisé'}</p></Panel><Panel className="p-4"><p className="text-xs text-[#857995]">Épargne en cours</p><p className="text-lg font-extrabold text-[#19A57C] mt-2">{currency(visibleGoals.filter(g=>g.status==='active').reduce((s,g)=>s+g.balance,0))}</p></Panel></div>
-       <Panel className="p-4"><Heading title="Dépenses par catégorie"/>{!canViewFamilyAccount&&<p className="text-xs text-[#8D819B]">Vous n’avez pas l’autorisation de consulter les opérations de ce compte.</p>}{[...new Set((canViewFamilyAccount?family.transactions:[]).filter(t=>t.amount<0).map(t=>t.category))].map(category=>{const spend=Math.abs(family.transactions.filter(t=>t.category===category&&t.amount<0).reduce((s,t)=>s+t.amount,0));const total=Math.abs(family.transactions.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0));return <div key={category} className="mb-4"><div className="flex justify-between text-xs mb-1.5"><span>{category}</span><strong>{currency(spend)}</strong></div><Progress value={spend} total={total}/></div>})}</Panel>
-       <Panel className="p-4 space-y-2"><p className="text-sm font-bold">Vos objectifs familiaux</p>{visibleGoals.filter(g=>g.status==='active').map(g=><button key={g.id} onClick={()=>navigateToGoal(g.id)} className="flex justify-between w-full text-xs py-2"><span>{g.title}</span><strong className="text-[#7A32E0]">{Math.round(g.balance/g.target*100)} %</strong></button>)}</Panel>
-       <div className="rounded-[22px] bg-[#EFE7FC] p-4"><p className="text-[12px] text-[#75698E]">Ici, la passerelle est une prévisualisation : le véritable parcours « Mon foyer » reste dans le prototype PFM original, séparé de ce code.</p></div>
-     </>}
+     {route==='pfm'&&<HouseholdPFMBridge
+       family={family} viewerId={data.viewerId} showAmounts={showAmounts}
+       onAccounts={()=>mainGo('accounts')} onSavings={()=>mainGo('savings')}
+       onGoals={navigateToGoal} onPots={()=>mainGo('pots')} onPot={navigateToPot}
+       onMembers={()=>mainGo('members')}
+     />}
 
-     {route==='preferences'&&<>
+          {route==='preferences'&&<>
        <Panel className="px-4"><ActionLine icon={Users} title="Gérer les membres" subtitle="Rôles, invitations, rattachements" onClick={()=>mainGo('members')}/>{admin&&<ActionLine icon={PenLine} title="Nom et identité" subtitle="Modifier le nom de votre famille" onClick={()=>launch('rename',{name:family.name,emoji:family.emoji})}/>}<ActionLine icon={ShieldCheck} title="Seuil de double validation" subtitle={`${currency(family.otpThreshold)} · Hypothèse de démo, pas une règle validée`} onClick={()=>show('Seuil affiché à titre de scénario UX ; sa valeur est à définir par les métiers.')}/></Panel>
        {admin&&family.account&&<Panel className="p-4 space-y-3"><h3 className="text-sm font-extrabold">Visibilité du sous-compte Famille</h3><p className="text-xs text-[#8B7F97]">Accordez ou retirez la consultation du solde et de l’historique. Les droits d’opération restent réservés aux administrateurs.</p>{family.members.filter(m=>m.role==='member').map(m=><label key={m.id} className="flex items-center justify-between text-xs"><span>{m.name}</span><input type="checkbox" className="accent-[#732CDF]" checked={family.accountViewIds.includes(m.id)} onChange={e=>mutate((_d,f)=>{if(e.target.checked){f.accountViewIds=[...new Set([...f.accountViewIds,m.id])]}else f.accountViewIds=f.accountViewIds.filter(id=>id!==m.id)})}/></label>)}</Panel>}
        <Panel className="p-4"><h3 className="text-sm font-extrabold">Langue de la famille</h3><p className="text-xs text-[#8B7F97] mt-1 mb-3">Seuls Leader et Co-leaders peuvent changer la langue. La traduction exhaustive n'est pas implémentée dans ce prototype.</p><select disabled={!admin} aria-label="Langue" value={family.language} onChange={e=>{mutate((_d,f)=>{f.language=e.target.value as Family['language']});show('Préférence enregistrée ; traduction réelle non incluse.')}} className="w-full h-11 rounded-2xl border border-[#EBE2F7] bg-[#F9F6FF] px-3 text-sm"><option>Français</option><option>العربية</option><option>English</option></select></Panel>
