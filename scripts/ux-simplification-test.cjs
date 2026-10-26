@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const member=fs.readFileSync('src/family/members/MemberProfile.tsx','utf8');
+const joint=fs.readFileSync('src/family/AccountJourneys.tsx','utf8');
+const pot=fs.readFileSync('src/family/FamilyExperience.tsx','utf8');
+assert(member.includes('role="tablist"'));
+assert(member.includes('member-panel-finances'));
+assert(member.includes('member-panel-services'));
+assert(member.includes('member-panel-access'));
+assert(pot.includes('key={owner.id}'));
+assert(joint.includes('Étape 1 sur 2'));
+assert(joint.includes('Étape 2 sur 2'));
+assert(!joint.includes("jump('identity')"));
+assert(joint.includes('canRespondJointApplication(family,viewerId)'));
+assert(pot.includes('statusLabel={pot.status==='));
+assert(pot.includes('Contributions par participant'));
+console.log('UX simplification checks passed');
