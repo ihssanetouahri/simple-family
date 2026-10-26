@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {ArrowLeft, Check, ChevronRight, LockKeyhole, MessageCircle, Plus,
  Search, Settings2, ShieldCheck, SquarePen, UserRound, Users, X} from 'lucide-react';
 import {findMember, type Family} from '../model';
@@ -138,8 +139,9 @@ export function FamilyChatView({family,viewerId,activeId,onOpen,onInbox,onDirect
     <ShieldCheck size={17}/> Paramètres des discussions
   </button>}
  </>}
- {sheet&&<div role="dialog" aria-modal="true" aria-label="Options des discussions"
-    className="fixed inset-0 z-[90] bg-[#24143A]/40 flex items-end justify-center"
+ {sheet&&document.getElementById('simple-device-frame')&&createPortal(
+   <div role="dialog" aria-modal="true" aria-label="Options des discussions"
+    className="simple-family-interactions absolute inset-0 z-[90] bg-[#24143A]/40 flex items-end justify-center"
     onClick={()=>setSheet(null)}>
    <div onClick={e=>e.stopPropagation()} className="w-full max-w-[430px] max-h-[78vh] overflow-y-auto bg-white rounded-t-[28px] p-5 pb-8 space-y-4 shadow-xl">
     <div className="w-12 h-1 bg-[#E0D7ED] rounded-full mx-auto"/>
@@ -199,6 +201,6 @@ export function FamilyChatView({family,viewerId,activeId,onOpen,onInbox,onDirect
       <p>Les règles de supervision des enfants Simple One sont à confirmer avec les métiers. Aucun contrôle parental réel n'est activé ici.</p>
     </div>}
    </div>
- </div>}
+ </div>,document.getElementById('simple-device-frame')!)}
  </div>;
 }
