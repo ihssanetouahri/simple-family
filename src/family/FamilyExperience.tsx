@@ -334,6 +334,19 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       if(!form.name?.trim()){setError('Saisissez un nom.');return;}
       mutate((_d,f)=>{f.name=form.name.trim();f.emoji=form.emoji||f.emoji});close();show('Famille mise à jour.');break;
    }
+   case 'new-chat':{
+     const picked=[...new Set((form.participants||'').split(',').filter(id=>id!==data.viewerId&&family.members.some(m=>m.id===id)))];
+     if(!picked.length){setError('Sélectionnez au moins un membre de votre famille.');return;}
+     const isDirect=picked.length===1;
+     const participantIds=[data.viewerId,...picked];
+     const existing=isDirect?(family.chatThreads||[]).find(t=>t.kind==='direct'&&t.participantIds.length===2&&participantIds.every(id=>t.participantIds.includes(id))):undefined;
+     if(existing){close();openChat(existing.id);break;}
+     const title=isDirect?'':form.title?.trim()||'';
+     if(!isDirect&&!title){setError('Donnez un nom à votre groupe.');return;}
+     const id=uid('chat');
+     mutate((_d,f)=>{f.chatThreads=[...(f.chatThreads||[]),{id,kind:isDirect?'direct':'group',title,participantIds,messages:[]}]});
+     close();openChat(id);show(isDirect?'Discussion privée créée.':'Groupe de discussion créé.');break;
+   }
    case 'invite':{
       if(!admin){setError('Action réservée aux administrateurs.');return;}
       if(!form.name?.trim()){setError('Indiquez le prénom du membre.');return;}
@@ -1170,13 +1183,27 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       <div className="flex items-start justify-between gap-2 mb-4"><div><h3 className="text-[19px] font-extrabold">{({
        'new-family':'Créer ma famille','join-family':'Rejoindre une famille','invite':'Inviter un membre','rename':'Personnaliser ma famille','open-account':'Créer un sous-compte Famille',
        'open-joint':'Ouvrir un compte joint','transfer':'Effectuer un virement','simple-pay':'Simple Pay Famille','pay-bill':'Payer une facture','create-card':'Nouvelle carte virtuelle',
-       'new-goal':'Nouvel objectif d’épargne','goal-deposit':'Contribuer à l’objectif','goal-withdraw':'Retirer de l’épargne','goal-delete':'Supprimer l’objectif',
+       'new-chat':'Nouvelle discussion','new-goal':'Nouvel objectif d’épargne','goal-deposit':'Contribuer à l’objectif','goal-withdraw':'Retirer de l’épargne','goal-delete':'Supprimer l’objectif',
        'goal-schedule':'Programmer une contribution','goal-edit':'Modifier le projet','goal-close':'Clôturer le projet','new-pot':'Créer une cagnotte','pot-deposit':'Participer à la cagnotte','pot-invite':'Inviter à la cagnotte','pot-edit':'Modifier la cagnotte','pot-close':'Clôturer la cagnotte','new-document':'Ajouter un document',
        'new-trip':'Réserver pour un membre','new-credit':'Demande de crédit digitale','member-delete':'Retirer ce membre','family-delete':'Supprimer la famille',
        'limit':'Modifier le plafond','otp':'Double validation (simulation)'
       } as Record<string,string>)[modal]}</h3><p className="text-[11px] text-[#887B95] mt-1">Parcours de démonstration · données fictives</p></div><button type="button" aria-label="Fermer" onClick={close} className="w-8 h-8 shrink-0 bg-[#F6F2FB] rounded-full flex items-center justify-center"><X size={17}/></button></div>
       {modal==='join-family'? <div className="space-y-4"><div className="rounded-2xl bg-[#F7F2FF] p-4 text-[13px] leading-relaxed text-[#55446B]"><UserPlus size={23} className="text-[#7430DF] mb-2"/><p className="font-bold mb-1">Rejoindre une famille sur invitation</p><p>Demandez à l’administrateur de la famille de vous inviter. Dans ce prototype, l’envoi et la réception d’invitations entre comptes ne sont pas connectés ; les invitations sont simulées dans « Membres et accès ».</p></div><PillButton onClick={close}>Compris <Check size={16}/></PillButton></div> : modal==='otp'? <div className="space-y-4"><div className="bg-[#F4EFFF] rounded-2xl p-4 text-sm"><ShieldCheck size={23} className="text-[#752CE2] mb-2"/><p className="font-bold">{otpStage===1?'Validation 1/2 · Leader':'Validation 2/2 · Co-leader'}</p><p className="text-[#7E708E] mt-1 text-xs">Montant : {currency(pendingPayment?.amount||0)}. Aucun OTP réel n’est envoyé.</p></div><PillButton onClick={()=>{if(otpStage===1)setOtpStage(2);else if(pendingPayment)commitPayment(pendingPayment)}}>{otpStage===1?'Simuler validation Leader':'Simuler validation Co-leader'} <Check size={16}/></PillButton></div> :
       <form className="space-y-4" onSubmit={submit}>
+       {modal==='new-chat'&&<div className="space-y-3">
+         <p className="text-[12px] text-[#736581]">Choisissez un membre pour une discussion privée, ou plusieurs pour créer un groupe.</p>
+         <div className="space-y-2">
+           {family.members.filter(m=>m.id!==data.viewerId).map(m=><label key={m.id} className="flex items-center gap-3 p-3 rounded-2xl bg-[#F9F6FE] border border-[#F0EAF6] cursor-pointer">
+             <Avatar member={m} size={34}/>
+             <span className="flex-1 min-w-0 text-[13px] font-bold">{m.name}</span>
+             <input type="checkbox" className="w-4 h-4 accent-[#762ADC]" checked={(form.participants||'').split(',').includes(m.id)}
+               onChange={e=>{const ids=new Set((form.participants||'').split(',').filter(Boolean));if(e.target.checked)ids.add(m.id);else ids.delete(m.id);setField('participants',[...ids].join(','))}}/>
+           </label>)}
+         </div>
+         {(form.participants||'').split(',').filter(Boolean).length>1&&
+           <Input label="Nom du groupe" value={form.title} onChange={v=>setField('title',v)} placeholder="Ex. Organisation des vacances" required/>}
+         <p className="text-[11px] text-[#897C98]">Cette discussion sera visible uniquement par les membres sélectionnés, et par vous.</p>
+       </div>}
        {modal==='new-family'&&<><Input label="Nom de la famille" value={form.name} onChange={v=>setField('name',v)} placeholder="Ex. Notre famille" required/><SelectInput label="Illustration" value={form.emoji||'💜'} onChange={v=>setField('emoji',v)} options={['💜','🏡','🌿','🌸'].map(x=>({value:x,label:x+' Famille'}))}/><label className="flex items-start gap-3 p-3 bg-[#F8F4FF] rounded-2xl"><input type="checkbox" checked={form.openAccount==='true'} onChange={e=>setField('openAccount',String(e.target.checked))} className="mt-1 accent-[#722DDD]"/><span className="text-xs"><strong>Créer un sous-compte Famille maintenant</strong><br/><span className="text-[#84778F]">Facultatif : ouverture possible plus tard. Un pocket est créé automatiquement pour vous.</span></span></label></>}
        {modal==='rename'&&<><Input label="Nom de la famille" value={form.name} onChange={v=>setField('name',v)}/><SelectInput label="Icône" value={form.emoji} onChange={v=>setField('emoji',v)} options={['💜','🏡','🌿','🌸'].map(x=>({value:x,label:x}))}/></>}
        {modal==='invite'&&<><Input label="Prénom du membre" value={form.name} onChange={v=>setField('name',v)} placeholder="Ex. Amine" required/><SelectInput label="Lien familial" value={form.relation||'Proche'} onChange={v=>setField('relation',v)} options={['Conjoint','Fils','Fille','Parent','Proche','Autre'].map(x=>({value:x,label:x}))}/><SelectInput label="Type de compte" value={form.simpleOne||'false'} onChange={v=>{setField('simpleOne',v);if(v==='true')setField('role','member')}} options={[{value:'false',label:'Simple'},{value:'true',label:'Simple One (enfant)'}]}/><SelectInput label="Rôle dans la famille" value={form.role||'member'} onChange={v=>setField('role',v)} options={[{value:'member',label:'Membre'},...(form.simpleOne==='true'?[]:[{value:'coleader',label:'Co-leader'}])]}/><p className="text-xs text-[#83778F]">Un membre invité peut accepter ou refuser. Dans cette version, l'acceptation est simulée depuis « Membres ».</p></>}
@@ -1255,7 +1282,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='new-credit'&&<><Input label="Montant souhaité (DH)" value={form.amount} onChange={v=>setField('amount',v)} type="number" min="1"/><SelectInput label="Compte associé" value={form.account||`simple:${data.viewerId}`} onChange={v=>setField('account',v)} options={[{value:`simple:${data.viewerId}`,label:'Mon compte Simple'},...(admin&&family?.account?[{value:'account',label:'Sous-compte Famille'}]:[]),...(admin&&family?.joint?[{value:'joint',label:'Compte joint'}]:[])]}/><p className="text-xs text-[#867991]">Aucune demande bancaire réelle ne sera transmise.</p></>}
        {(modal==='goal-delete'||modal==='member-delete'||modal==='family-delete')&&<div className="bg-[#FFF4F7] p-4 rounded-2xl"><p className="text-[13px] text-[#A13F66] font-semibold">Cette action modifie les données locales du prototype.</p><p className="text-[11px] text-[#94667B] mt-1">{modal==='member-delete'?'Le pocket du membre sera clôturé.':modal==='goal-delete'?'Le solde de l’épargne active sera simulé comme reversé au propriétaire.':'La famille disparaîtra de cette démonstration.'}</p></div>}
        {error&&<p role="alert" className="text-xs text-[#BE3463] bg-[#FFF0F4] rounded-xl px-3 py-2">{error}</p>}
-       <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='goal-close'?'Clôturer le projet':modal==='goal-edit'?'Enregistrer les modifications':modal==='goal-schedule'?'Enregistrer la programmation':modal==='pot-close'?'Clôturer la collecte':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
+       <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='goal-close'?'Clôturer le projet':modal==='goal-edit'?'Enregistrer les modifications':modal==='goal-schedule'?'Enregistrer la programmation':modal==='pot-close'?'Clôturer la collecte':modal==='new-chat'?'Créer la discussion':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
        <button type="button" onClick={close} className="w-full text-xs font-bold py-2 text-[#8B7F98]">Annuler</button>
       </form>}
     </div>
