@@ -51,7 +51,7 @@ type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-a
   'limit'|'goal-schedule'|null;
 type FormData = Record<string,string>;
 type PendingPayment = { from: string; to:string; amount:number; label:string; category:string; alertId?:string };
-const nowDate = () => new Date().toISOString().slice(0,10);
+const nowDate = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 const cx = 'text-[#171126]';
 const subtle = 'text-[#817895]';
 const softBorder='border border-[#EDE7F6]';
@@ -246,7 +246,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   back();
  };
  const toDashboard=()=>{setStack([]);setRoute('dashboard');scrollTop()};
- const launch=(kind:ModalKind,initial:FormData={})=>{setModal(kind);setForm(initial);setError('')};
+ const launch=(kind:ModalKind,initial:FormData={})=>{setModal(kind);setForm(kind==='new-goal'?{startDate:nowDate(),...initial}:initial);setError('')};
  const close=()=>{setModal(null);setError('');setPendingPayment(null)};
  const setField=(field:string,value:string)=>setForm(prev=>({...prev,[field]:value}));
  const mutate=(action:(d:FamilyState,f:Family)=>void)=>{
@@ -423,10 +423,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    case 'new-goal':{
      const target=parseMoney(form.target||'0');if(!moneyValid(target)){setError('Indiquez un objectif d’épargne valide.');return;}
      if(!form.title?.trim()){setError('Donnez un nom à votre objectif.');return;}
-     if(!form.deadline||form.deadline<nowDate()){setError('Choisissez une date à venir.');return;}
+     if(!form.startDate||form.startDate<nowDate()){setError('Choisissez une date de début à partir d’aujourd’hui.');return;}
+     if(!form.deadline||form.deadline<=form.startDate){setError('La date de fin doit être postérieure à la date de début.');return;}
      const ownerId=admin?(form.owner||data.viewerId):data.viewerId;
      const contributors=(form.contributors||ownerId).split(',').filter(id=>family.members.some(m=>m.id===id));
-     mutate((_d,f)=>f.goals.push({id:uid('goal'),title:form.title.trim(),creatorId:data.viewerId,ownerId,target,balance:0,deadline:form.deadline,contributors:[...new Set([...contributors,ownerId])],scheduledAmount:0,status:'active',history:[]}));
+     mutate((_d,f)=>f.goals.push({id:uid('goal'),title:form.title.trim(),creatorId:data.viewerId,ownerId,target,balance:0,startDate:form.startDate,deadline:form.deadline,contributors:[...new Set([...contributors,ownerId])],scheduledAmount:0,status:'active',history:[]}));
      close();go('savings');show('Objectif d’épargne créé.');break;
    }
    case 'goal-deposit':{
@@ -465,11 +466,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      if(!goal||goal.status!=='active'||!canManageGoal){setError('Modification non autorisée.');return;}
      const target=parseMoney(form.target||'0');
      if(!form.title?.trim()||!moneyValid(target)||target<goal.balance){setError('Saisissez un titre et une cible au moins égale au solde épargné.');return;}
-     if(!form.deadline||form.deadline<nowDate()){setError('Choisissez une date future.');return;}
+     if(!form.startDate){setError('Choisissez une date de début.');return;}
+     if(!form.deadline||form.deadline<=form.startDate||form.deadline<nowDate()){setError('La date de fin doit être future et postérieure à la date de début.');return;}
      const contributors=(form.contributors||'').split(',').filter(id=>family.members.some(m=>m.id===id));
      const allowed=[...new Set([...contributors,goal.ownerId])];
      mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;
-       g.title=form.title.trim();g.target=target;g.deadline=form.deadline;
+       g.title=form.title.trim();g.target=target;g.startDate=form.startDate;g.deadline=form.deadline;
        g.coverId=['goal_vac','goal_school','goal_weekend'].includes(form.coverId||'')?form.coverId:undefined;
        g.contributors=allowed;
        if(g.balance>=g.target)closeSavingsGoal(f,g.id,'reached');
@@ -1117,7 +1119,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          {goalManageOpen&&<Panel className="px-4 mt-2">
            {goal.status==='active'&&<>
              <ActionLine icon={PenLine} title="Modifier le projet" subtitle="Nom, image, montant, échéance et membres habilités"
-               onClick={()=>launch('goal-edit',{title:goal.title,target:String(goal.target),deadline:goal.deadline,coverId:goal.coverId||(['goal_vac','goal_school','goal_weekend'].includes(goal.id)?goal.id:'goal_vac'),contributors:goal.contributors.join(',')})}/>
+               onClick={()=>launch('goal-edit',{title:goal.title,target:String(goal.target),startDate:goal.startDate||nowDate(),deadline:goal.deadline,coverId:goal.coverId||(['goal_vac','goal_school','goal_weekend'].includes(goal.id)?goal.id:'goal_vac'),contributors:goal.contributors.join(',')})}/>
              <ActionLine icon={CheckCircle2} title="Clôturer le projet" subtitle="Arrêter les contributions et la programmation" onClick={()=>launch('goal-close')}/>
            </>}
            {goal.status==='active'
@@ -1473,7 +1475,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='transfer'&&<><SelectInput label="Depuis" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions}/><SelectInput label="Vers" value={form.to||transferOptions[1]?.value||transferOptions[0]?.value} onChange={v=>setField('to',v)} options={transferOptions}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 300"/><Input label="Libellé (facultatif)" value={form.label} onChange={v=>setField('label',v)} placeholder="Argent de poche"/></>}
        {(modal==='pay-bill'||modal==='simple-pay')&&<><SelectInput label="Compte à débiter" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions.filter(o=>modal==='pay-bill'||o.value==='account')}/><Input label={modal==='simple-pay'?'Destinataire':'Organisme / facture'} value={form.beneficiary} onChange={v=>setField('beneficiary',v)} placeholder={modal==='simple-pay'?'Bénéficiaire':'Électricité, Internet…'}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)} readOnly={modal==='pay-bill'&&Boolean(form.alertId)}/>{modal==='pay-bill'&&form.alertId&&<p className="text-[11px] text-[#82758E]">Montant exact de la facture prérempli. Les paiements partiels ne sont pas prévus dans cette démonstration.</p>}</>}
        {modal==='create-card'&&<><Input label="Nom de la carte" value={form.label} onChange={v=>setField('label',v)} placeholder="Carte courses"/><SelectInput label="Compte ou pocket associé" value={form.source} onChange={v=>setField('source',v)} options={[...(family?.account?[{value:'family',label:'Sous-compte Famille'}]:[]),...(family&&canViewJointAccount(family,data.viewerId)?[{value:'joint',label:'Compte joint'}]:[]),...(family?.pockets||[]).map(p=>({value:`pocket:${p.ownerId}`,label:`Pocket ${initialsFor(p.ownerId)}`}))]}/><SelectInput label="Titulaire de la carte" value={form.holder} onChange={v=>setField('holder',v)} options={memberOptions}/></>}
-       {modal==='new-goal'&&<><Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/><Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)}/><Input label="Date de fin" type="date" min={nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)}/><SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/><div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p><div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]"><input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)s.add(m.id);else s.delete(m.id);setField('contributors',[...s].join(','))}}/>{m.name}</label>)}</div></div></>}
+       {modal==='new-goal'&&<><Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/><Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)}/><Input label="Date de début" type="date" min={nowDate()} value={form.startDate||nowDate()} onChange={v=>setField('startDate',v)} required/><Input label="Date de fin" type="date" min={form.startDate||nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)} required/><SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/><div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p><div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]"><input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)s.add(m.id);else s.delete(m.id);setField('contributors',[...s].join(','))}}/>{m.name}</label>)}</div></div></>}
        {(modal==='goal-deposit'||modal==='goal-withdraw'||modal==='limit')&&<>
           <Input label={modal==='limit'?'Plafond par virement sortant (DH)':'Montant (DH)'} type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 500"/>
           <p className="text-xs text-[#847992]">{modal==='limit'?'Plafond appliqué aux virements sortants de la pocket uniquement dans la démonstration. Ce n’est pas un plafond bancaire Simple One.':`Disponible sur votre compte Simple fictif : ${currency(viewer?.simpleBalance||0)}.`}</p>
@@ -1490,7 +1492,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
           <SelectInput label="Image du projet" value={form.coverId||'goal_vac'} onChange={v=>setField('coverId',v)}
             options={[{value:'goal_vac',label:'Voyage en famille'},{value:'goal_school',label:'Études'},{value:'goal_weekend',label:'Week-end en famille'}]}/>
           <Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)} required/>
-          <Input label="Date d'échéance" type="date" min={nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)} required/>
+          <Input label="Date de début" type="date" value={form.startDate} onChange={v=>setField('startDate',v)} required/>
+          <Input label="Date d'échéance" type="date" min={form.startDate&&form.startDate>nowDate()?form.startDate:nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)} required/>
           <p className="text-[11px] text-[#847992]">Bénéficiaire : {goal?initialsFor(goal.ownerId):'—'}. Il reste inchangé.</p>
           <div className="space-y-2">
             <p className="text-[12px] font-bold text-[#554967]">Membres habilités à contribuer</p>
