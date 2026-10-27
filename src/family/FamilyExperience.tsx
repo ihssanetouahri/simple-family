@@ -6,13 +6,13 @@ import {
   Gift, HeartHandshake, Home, Landmark, LockKeyhole, MessageCircle, MoreHorizontal, Plus,
   ReceiptText, RotateCcw, Send, Settings2, ShieldCheck, Sparkles, Target, Trash2, Users,
   Wallet, X, Eye, PiggyBank, Plane, Coins, PenLine, CheckCheck, UserPlus, Camera,
-  WalletCards, Download, Info, BadgeCheck, ExternalLink
+  WalletCards, Download, Info, BadgeCheck, ExternalLink, Search
 } from 'lucide-react';
 import { MobileHeader, SimpleButton, type Navigate } from '../components/SimpleUI';
 import {
   avatarFor, canSeePocket, createDemoState, currency, findMember, isAdmin, loadFamilyState,
   moneyValid, parseMoney, roleLabel, saveFamilyState, today, uid,
-  type Family, type FamilyState, type Member, type Role
+  type ChatThread, type Family, type FamilyState, type Member, type Role
 } from './model';
 import lamiaAvatar from '../assets/images/lamia_avatar.jpg';
 import karimAvatar from '../assets/images/karim.jpg';
@@ -22,9 +22,9 @@ import { familyCoverSprite } from './coverSprite';
 import { AccountJourneys, type AccountJourneyHandle } from './AccountJourneys';
 
 type Route = 'dashboard'|'members'|'accounts'|'pocket'|'cards'|'savings'|'goal'|'pots'|'pot'|
- 'pockets'|'services'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
+ 'pockets'|'services'|'chats'|'chat'|'vault'|'trip'|'loyalty'|'loan'|'pfm'|'preferences'|'invite'|'alerts'|'sub-account'|'joint-account';
 type ModalKind = 'new-family'|'join-family'|'invite'|'rename'|'transfer'|'open-account'|'open-joint'|'create-card'|
-  'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'goal-edit'|'goal-close'|'new-pot'|'pot-deposit'|'pot-invite'|'pot-edit'|'pot-close'|'new-document'|
+  'new-chat'|'new-goal'|'goal-deposit'|'goal-withdraw'|'goal-delete'|'goal-edit'|'goal-close'|'new-pot'|'pot-deposit'|'pot-invite'|'pot-edit'|'pot-close'|'new-document'|
   'pay-bill'|'simple-pay'|'new-trip'|'new-credit'|'member-delete'|'family-delete'|'otp'|
   'limit'|'goal-schedule'|null;
 type FormData = Record<string,string>;
@@ -166,6 +166,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [pendingPayment,setPendingPayment]=useState<PendingPayment|null>(null);
  const [otpStage,setOtpStage]=useState(1);
  const [chatInput,setChatInput]=useState('');
+ const [chatSearch,setChatSearch]=useState('');
+ const [selectedChatId,setSelectedChatId]=useState('family');
  const [selectorOpen,setSelectorOpen]=useState(false);
  const [selectorPosition,setSelectorPosition]=useState({top:0,right:12,width:252});
  const familySelectorButtonRef=useRef<HTMLButtonElement>(null);
@@ -175,6 +177,10 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const [showAmounts,setShowAmounts]=useState(true);
  const family = data.families.find(f=>f.id===data.activeFamilyId) || null;
  const viewer = family?.members.find(m=>m.id===data.viewerId) || null;
+ const selectedThread=family?.chatThreads?.find(t=>t.id===selectedChatId&&t.participantIds.includes(data.viewerId));
+ const currentChatMessages=selectedChatId==='family'?(family?.chat||[]):(selectedThread?.messages||[]);
+ const displayChatTitle=(thread:ChatThread)=>thread.kind==='direct'?(family?.members.find(m=>m.id!==data.viewerId&&thread.participantIds.includes(m.id))?.name||'Discussion privée'):thread.title;
+ const availableChatThreads=(family?.chatThreads||[]).filter(t=>t.participantIds.includes(data.viewerId));
  const admin = family ? isAdmin(family,data.viewerId):false;
  const leader = viewer?.role==='leader';
  const canViewFamilyAccount = family ? admin || family.accountViewIds.includes(data.viewerId) : false;
@@ -260,7 +266,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    if(route!=='chat')return;
    const scrollable=document.getElementById('simple-scroll-area');
    if(scrollable)scrollable.scrollTop=scrollable.scrollHeight;
- },[route,family?.chat.length]);
+ },[route,selectedChatId,currentChatMessages.length]);
  const memberOptions=family?.members.map(m=>({value:m.id,label:`${m.name}${m.simpleOne?' · Simple One':''}`}))||[];
  const visiblePockets=family?.pockets.filter(p=>canSeePocket(family,data.viewerId,p.ownerId))||[];
  const transferOptions=useMemo(()=>{
@@ -504,7 +510,16 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
    if(!family||!leader)return;const m=findMember(family,memberId);if(!m||m.role==='leader'||(m.simpleOne&&role==='coleader')){show('Rôle non autorisé.');return;}
    mutate((_d,f)=>{findMember(f,memberId)!.role=role});show('Rôle mis à jour dans la démonstration.');
  }
- function createMessage(e:React.FormEvent){e.preventDefault();if(!chatInput.trim()||!viewer)return;mutate((_d,f)=>f.chat.push({id:uid('msg'),authorId:viewer.id,text:chatInput.trim(),date:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}));setChatInput('');}
+ function createMessage(e:React.FormEvent){
+  e.preventDefault();
+  if(!chatInput.trim()||!viewer||(selectedChatId!=='family'&&!selectedThread))return;
+  const message={id:uid('msg'),authorId:viewer.id,text:chatInput.trim(),date:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})};
+  mutate((_d,f)=>{
+    if(selectedChatId==='family')f.chat.push(message);
+    else {const thread=f.chatThreads?.find(t=>t.id===selectedChatId&&t.participantIds.includes(data.viewerId));if(thread)thread.messages.push(message);}
+  });
+  setChatInput('');
+ }
  function toggleCard(id:string){if(!admin){show('Seuls Leader et Co-leaders gèrent les cartes familiales.');return;}mutate((_d,f)=>{const c=f.cards.find(x=>x.id===id);if(c)c.active=!c.active});show('État de la carte actualisé (simulation).')}
  function switchFamily(id:string){const f=data.families.find(x=>x.id===id);if(!f)return;setData(prev=>({...prev,activeFamilyId:id,viewerId:f.members.find(x=>x.id==='lamia')?.id||f.members[0].id}));setSelectorOpen(false);toDashboard();}
  function switchViewer(id:string){setData(prev=>({...prev,viewerId:id}));setDemoOpen(false);toDashboard();show('Profil fictif changé : les accès se mettent à jour.');}
@@ -512,8 +527,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const showBalance=(n:number)=>showAmounts?currency(n):'•••• DH';
  const context={}; void context;
 
- const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chat:'Chat Famille',vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
+ const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chats:'Discussions',chat:selectedChatId==='family'?'Discussion familiale':(selectedThread?displayChatTitle(selectedThread):'Discussion'),vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
+ const openChat=(id:string)=>{setSelectedChatId(id);setChatInput('');go('chat')};
  const isAccountRoute=(value:Route|undefined):value is 'sub-account'|'joint-account'=>value==='sub-account'||value==='joint-account';
  // Keep the journey mounted when visiting family member management, so the back arrow
  // restores the exact account screen rather than resetting to account overview.
@@ -546,8 +562,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      <button type="button" aria-label="Réglages de la famille" onClick={()=>mainGo('preferences')} className="family-hover-control w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center"><Settings2 size={19}/></button>
     </div></div> : <MobileHeader title={pageTitles[route]} onBack={handleBack} subtitle={route==='goal'?'Projet d’épargne familial':route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
-     {route!=='savings'&&route!=='pot'&&route!=='goal'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
-     {route!=='savings'&&route!=='pot'&&route!=='goal'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
+     {route!=='savings'&&route!=='pot'&&route!=='goal'&&route!=='chats'&&route!=='chat'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
+     {route!=='savings'&&route!=='pot'&&route!=='goal'&&route!=='chats'&&route!=='chat'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
        {family?.members.map(m=><button key={m.id} type="button" onClick={()=>switchViewer(m.id)} className="w-full flex items-center gap-2 p-2 bg-[#F8F5FE] rounded-xl text-left"><Avatar member={m} size={29}/><span className="text-xs font-bold flex-1">{m.name}</span><Tag tone={m.id===data.viewerId?'green':'gray'}>{roleLabel(m.role)}</Tag></button>)}
        <button type="button" className="text-xs font-bold text-[#8C4DDA]" onClick={()=>{setData(createDemoState());toDashboard();setDemoOpen(false);show('Scénario initial restauré.')}}><RotateCcw size={13} className="inline mr-1"/> Restaurer les données fictives</button>
      </Panel>}
@@ -661,7 +677,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          <Heading title="Services familiaux" right={<button type="button" onClick={()=>mainGo('services')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Tous les services <ChevronRight size={15}/></button>}/>
          <Panel className="px-3 py-4">
            <div className="grid grid-cols-4 gap-1.5">
-             {[{label:'Chat familial',icon:MessageCircle,screen:'chat'},{label:'Simple Trip',icon:Plane,screen:'trip'},{label:'Documents',icon:LockKeyhole,screen:'vault'},{label:'Autres',icon:MoreHorizontal,screen:'services'}].map(item=>
+             {[{label:'Chat familial',icon:MessageCircle,screen:'chats'},{label:'Simple Trip',icon:Plane,screen:'trip'},{label:'Documents',icon:LockKeyhole,screen:'vault'},{label:'Autres',icon:MoreHorizontal,screen:'services'}].map(item=>
                <button type="button" key={item.label} onClick={()=>mainGo(item.screen as Route)} className="family-hover-service w-full min-w-0 min-h-[76px] rounded-2xl px-0.5 py-1 flex flex-col items-center justify-start gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#7630E3]">
                  <span className="w-11 h-11 rounded-[16px] bg-[#F2EAFE] text-[#6E28D7] flex items-center justify-center"><item.icon size={20}/></span>
                  <span className="text-[10px] font-bold text-center leading-tight text-[#554568] break-words">{item.label}</span>
@@ -1016,7 +1032,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      {route==='services'&&<>
        <Panel className="p-5"><p className="text-xs text-[#8738DB] font-bold">Simple Family</p><h2 className="text-[22px] font-extrabold mt-1">Tous vos services</h2><p className="text-xs text-[#84798F] mt-1">Un seul espace pour les usages bancaires et familiaux du quotidien.</p></Panel>
        <section><Heading title="Paiements et réservations"/><Panel className="px-4"><ActionLine icon={Send} title="Simple Pay Famille" subtitle="Réservé au Leader et aux Co-leaders" disabled={!admin||!family.account} onClick={()=>launch('simple-pay',{from:'account'})}/><ActionLine icon={ReceiptText} title="Payer une facture" subtitle="Selon les comptes et droits attribués" onClick={()=>launch('pay-bill',{from:admin&&family.account?'account':`simple:${data.viewerId}`})}/><ActionLine icon={Plane} title="Simple Trip" subtitle="Réservations pour les membres de la famille" onClick={()=>mainGo('trip')}/></Panel></section>
-       <section><Heading title="Vie de famille"/><Panel className="px-4"><ActionLine icon={MessageCircle} title="Chat Famille" subtitle="Échangez avec vos proches" onClick={()=>mainGo('chat')}/><ActionLine icon={LockKeyhole} title="Coffre-fort numérique" subtitle="Documents et accès partagés" onClick={()=>mainGo('vault')}/><ActionLine icon={Gift} title="Cagnottes familiales" subtitle="Contributions et objectifs partagés" onClick={()=>mainGo('pots')}/></Panel></section>
+       <section><Heading title="Vie de famille"/><Panel className="px-4"><ActionLine icon={MessageCircle} title="Chat Famille" subtitle="Échangez avec vos proches" onClick={()=>mainGo('chats')}/><ActionLine icon={LockKeyhole} title="Coffre-fort numérique" subtitle="Documents et accès partagés" onClick={()=>mainGo('vault')}/><ActionLine icon={Gift} title="Cagnottes familiales" subtitle="Contributions et objectifs partagés" onClick={()=>mainGo('pots')}/></Panel></section>
        <section><Heading title="Autres avantages"/><Panel className="px-4"><ActionLine icon={Coins} title="Fidélité Famille" subtitle="Points liés aux opérations éligibles" onClick={()=>mainGo('loyalty')}/><ActionLine icon={Landmark} title="Demande de crédit" subtitle="Selon le profil et les droits" onClick={()=>mainGo('loan')}/></Panel></section>
      </>}
 
