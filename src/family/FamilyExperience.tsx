@@ -27,6 +27,7 @@ import { PocketDetail } from './pockets/PocketDetail';
 import { closeFamilyPot, closeSavingsGoal, goalDisplayState, goalContributions, potContributions, potDisplayState } from './savings/savingsRules';
 import { FamilyCardsView } from './pockets/FamilyCardsView';
 import { FamilyPreviewCarousel } from './components/FamilyPreviewCarousel';
+import { FamilyCreateCarouselCard } from './components/FamilyCreateCarouselCard';
 import { HouseholdPFMBridge } from './pfm/HouseholdPFMBridge';
 import { memberRemovalIssues } from './quality/familyIntegrity';
 import { validateLinkedBillPayment } from './payments/billRules';
@@ -807,29 +808,20 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {/* Two cards visible in each preview; swipe to view the second. */}
        <section>
          <Heading title="Nos projets d’épargne" right={<button type="button" onClick={()=>mainGo('savings')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         {visibleGoals.some(g=>g.status==='active')?
-           <FamilyPreviewCarousel label="Projets d’épargne, faire défiler horizontalement">
-             {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
-               description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} showAmounts={showAmounts} onClick={()=>navigateToGoal(g.id)}/>)}
-           </FamilyPreviewCarousel>:
-           <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
-             <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
-               <button type="button" onClick={()=>mainGo('savings')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer un projet <ArrowRight size={14} className="inline"/></button>
-             </div>
-           </Panel>}
+         <FamilyPreviewCarousel label="Projets d’épargne, faire défiler horizontalement">
+           {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
+             description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} showAmounts={showAmounts} onClick={()=>navigateToGoal(g.id)}/>)}
+           {viewer&&<FamilyCreateCarouselCard key="create-goal" kind="goal"
+             onCreate={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:admin?family.members.map(m=>m.id).join(','):data.viewerId})}/>}
+         </FamilyPreviewCarousel>
        </section>
        <section>
          <Heading title="Nos cagnottes" right={<button type="button" onClick={()=>mainGo('pots')} className="family-hover-link text-[12px] text-[#6428DF] font-bold flex items-center">Voir tout <ChevronRight size={15}/></button>}/>
-         {family.pots.some(p=>p.status==='active')?
-           <FamilyPreviewCarousel label="Cagnottes, faire défiler horizontalement">
-             {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
-               description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} showAmounts={showAmounts} onClick={()=>navigateToPot(p.id)}/>)}
-           </FamilyPreviewCarousel>:
-           <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
-             <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
-               <button type="button" onClick={()=>mainGo('pots')} className="text-[12px] font-bold text-[#6929D4] mt-1">Créer une cagnotte <ArrowRight size={14} className="inline"/></button>
-             </div>
-           </Panel>}
+         <FamilyPreviewCarousel label="Cagnottes, faire défiler horizontalement">
+           {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
+             description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} showAmounts={showAmounts} onClick={()=>navigateToPot(p.id)}/>)}
+           {viewer&&<FamilyCreateCarouselCard key="create-pot" kind="pot" onCreate={()=>launch('new-pot')}/>}
+         </FamilyPreviewCarousel>
        </section>
 
        <section>
