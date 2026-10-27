@@ -1193,7 +1193,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='new-chat'&&<div className="space-y-3">
          <p className="text-[12px] text-[#736581]">Choisissez un membre pour une discussion privée, ou plusieurs pour créer un groupe.</p>
          <div className="space-y-2">
-           {family.members.filter(m=>m.id!==data.viewerId).map(m=><label key={m.id} className="flex items-center gap-3 p-3 rounded-2xl bg-[#F9F6FE] border border-[#F0EAF6] cursor-pointer">
+           {(family?.members||[]).filter(m=>m.id!==data.viewerId).map(m=><label key={m.id} className="flex items-center gap-3 p-3 rounded-2xl bg-[#F9F6FE] border border-[#F0EAF6] cursor-pointer">
              <Avatar member={m} size={34}/>
              <span className="flex-1 min-w-0 text-[13px] font-bold">{m.name}</span>
              <input type="checkbox" className="w-4 h-4 accent-[#762ADC]" checked={(form.participants||'').split(',').includes(m.id)}
