@@ -1202,11 +1202,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          statusLabel={pot.status==='closed'?(pot.closedReason==='target'?'Objectif atteint':'Collecte clôturée'):potDisplayState(pot,nowDate()).label}
          statusTone={potDisplayState(pot,nowDate()).tone==='orange'?'amber':potDisplayState(pot,nowDate()).tone==='green'?'green':'violet'}
          showAmounts={showAmounts} detail/>
-       {(canManagePot||canSeePotHistory)&&<button type="button"
-         onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
-         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
-         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
-       </button>}
+       {pot.status==='active'&&canParticipateInPot&&<PillButton onClick={()=>launch('pot-deposit',{source:`simple:${data.viewerId}`,amount:''})}>
+         Participer à la cagnotte <Plus size={17}/>
+       </PillButton>}
        {(pot.status==='closed'||potDisplayState(pot,nowDate()).tone==='orange')&&
          <p className="px-3 py-2 rounded-[14px] bg-[#F8F5FF] text-[11px] leading-relaxed text-[#786A87]">
            {potDisplayState(pot,nowDate()).description}
@@ -1284,9 +1282,11 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          </Panel>
        </section>
 
-       {pot.status==='active'&&canParticipateInPot&&<PillButton onClick={()=>launch('pot-deposit',{source:`simple:${data.viewerId}`,amount:''})}>
-         Participer à la cagnotte <Plus size={17}/>
-       </PillButton>}
+       {(canManagePot||canSeePotHistory)&&<button type="button"
+         onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
+         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
+         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
+       </button>}
        {pot.status==='active'&&!canParticipateInPot&&!(pot.pendingInvites||[]).includes(data.viewerId)&&
          <Panel className="p-4 text-[12px] text-[#7E728E]">Vous ne participez pas encore à cette cagnotte. Un organisateur peut vous inviter à la rejoindre.</Panel>}
        {pot.status==='closed'&&<Panel className="p-4 flex items-center gap-2 text-[#158767]">
