@@ -1282,16 +1282,16 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
          </Panel>
        </section>
 
-       {(canManagePot||canSeePotHistory)&&<button type="button"
-         onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
-         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
-         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
-       </button>}
        {pot.status==='active'&&!canParticipateInPot&&!(pot.pendingInvites||[]).includes(data.viewerId)&&
          <Panel className="p-4 text-[12px] text-[#7E728E]">Vous ne participez pas encore à cette cagnotte. Un organisateur peut vous inviter à la rejoindre.</Panel>}
        {pot.status==='closed'&&<Panel className="p-4 flex items-center gap-2 text-[#158767]">
          <CheckCircle2 size={19}/><p className="text-[12px] font-bold">Cette collecte est clôturée. Les contributions ne sont plus possibles.</p>
        </Panel>}
+       {(canManagePot||canSeePotHistory)&&<button type="button"
+         onClick={()=>openChatWithDraft(composeFamilyMessage({kind:'pot',title:pot.title}))}
+         className="w-full rounded-[17px] border border-[#E9DDF7] bg-[#F6F0FF] p-3 text-[12px] font-bold text-[#6A2DCE] flex items-center justify-center gap-2">
+         <MessageCircle size={17}/> Préparer un message pour la famille <ArrowRight size={15}/>
+       </button>}
      </>}
 
      {route==='services'&&<>
