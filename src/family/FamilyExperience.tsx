@@ -220,7 +220,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const filteredGoals=visibleGoals.filter(g=>projectFilter==='all'||g.status===projectFilter);
  const goal=family?.goals.find(g=>g.id===selectedGoal);
  const canManageGoal=Boolean(family&&goal&&canEditSavingsGoal(family,data.viewerId,goal));
- const canScheduleGoal=Boolean(goal&&(admin||goal.ownerId===data.viewerId));
+ const canScheduleGoal=Boolean(goal&&(admin||goal.ownerId===data.viewerId)&&(!goal.scheduledById||goal.scheduledById===data.viewerId||goal.scheduledAmount<=0));
  const pocket = family?.pockets.find(p=>p.ownerId===selectedMember);
  const owner=family?.members.find(m=>m.id===selectedMember);
  const pot=family?.pots.find(p=>p.id===selectedPot);
@@ -246,7 +246,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
   back();
  };
  const toDashboard=()=>{setStack([]);setRoute('dashboard');scrollTop()};
- const launch=(kind:ModalKind,initial:FormData={})=>{setModal(kind);setForm(kind==='new-goal'?{startDate:nowDate(),...initial}:initial);setError('')};
+ const launch=(kind:ModalKind,initial:FormData={})=>{setModal(kind);setForm(kind==='new-goal'?{startDate:nowDate(),stage:'details',savingMethod:'one-off',frequency:'monthly',initialAmount:'',scheduledAmount:'',...initial}:initial);setError('')};
  const close=()=>{setModal(null);setError('');setPendingPayment(null)};
  const setField=(field:string,value:string)=>setForm(prev=>({...prev,[field]:value}));
  const mutate=(action:(d:FamilyState,f:Family)=>void)=>{
@@ -421,14 +421,53 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      mutate((_d,f)=>f.cards.push({id:uid('card'),label:form.label?.trim()||'Carte virtuelle',last4:String(Math.floor(1000+Math.random()*9000)),source:form.source,holderId:form.holder||data.viewerId,active:true}));close();show('Carte virtuelle ajoutée à la démonstration.');break;
    }
    case 'new-goal':{
-     const target=parseMoney(form.target||'0');if(!moneyValid(target)){setError('Indiquez un objectif d’épargne valide.');return;}
+     const target=parseMoney(form.target||'0');
      if(!form.title?.trim()){setError('Donnez un nom à votre objectif.');return;}
+     if(!moneyValid(target)){setError('Indiquez un montant cible valide.');return;}
      if(!form.startDate||form.startDate<nowDate()){setError('Choisissez une date de début à partir d’aujourd’hui.');return;}
      if(!form.deadline||form.deadline<=form.startDate){setError('La date de fin doit être postérieure à la date de début.');return;}
+     if(form.stage!=='method'){
+       setForm(prev=>({...prev,stage:'method',nextDate:prev.nextDate&&prev.nextDate>=form.startDate?prev.nextDate:form.startDate}));
+       return;
+     }
      const ownerId=admin?(form.owner||data.viewerId):data.viewerId;
      const contributors=(form.contributors||ownerId).split(',').filter(id=>family.members.some(m=>m.id===id));
-     mutate((_d,f)=>f.goals.push({id:uid('goal'),title:form.title.trim(),creatorId:data.viewerId,ownerId,target,balance:0,startDate:form.startDate,deadline:form.deadline,contributors:[...new Set([...contributors,ownerId])],scheduledAmount:0,status:'active',history:[]}));
-     close();go('savings');show('Objectif d’épargne créé.');break;
+     const allowed=[...new Set([...contributors,ownerId])];
+     const method=form.savingMethod==='scheduled'?'scheduled':'one-off';
+     const initialAmount=method==='one-off'&&form.initialAmount?.trim()?parseMoney(form.initialAmount):0;
+     if(method==='one-off'&&(!Number.isFinite(initialAmount)||initialAmount<0||initialAmount>target)){
+       setError('Saisissez un premier versement valide, sans dépasser le montant cible.');return;
+     }
+     if(method==='one-off'&&initialAmount>0){
+       if(form.startDate>nowDate()){setError('Le premier versement sera possible à partir de la date de début.');return;}
+       if(!allowed.includes(data.viewerId)){setError('Ajoutez-vous aux contributeurs pour effectuer un premier versement.');return;}
+       if(!viewer||viewer.simpleBalance<initialAmount){setError('Solde insuffisant sur votre compte pour ce premier versement simulé.');return;}
+     }
+     const scheduledAmount=method==='scheduled'?parseMoney(form.scheduledAmount||'0'):0;
+     const frequency=form.frequency==='weekly'?'weekly':'monthly';
+     const firstDate=form.nextDate||form.startDate;
+     if(method==='scheduled'){
+       if(!moneyValid(scheduledAmount)||scheduledAmount>target){setError('Saisissez un versement programmé valide, inférieur ou égal au montant cible.');return;}
+       if(!allowed.includes(data.viewerId)){setError('Ajoutez-vous aux contributeurs pour programmer une épargne depuis votre compte.');return;}
+       if(!firstDate||firstDate<nowDate()||firstDate<form.startDate||firstDate>form.deadline){
+         setError('La première date de versement doit être comprise entre le début et la fin de l’objectif.');return;
+       }
+     }
+     const id=uid('goal');
+     mutate((_d,f)=>{
+       f.goals.push({id,title:form.title.trim(),creatorId:data.viewerId,ownerId,target,balance:initialAmount,
+         startDate:form.startDate,deadline:form.deadline,contributors:allowed,
+         savingMethod:method,scheduledAmount,scheduledById:method==='scheduled'?data.viewerId:undefined,
+         scheduledFrequency:method==='scheduled'?frequency:undefined,
+         nextScheduledDate:method==='scheduled'?firstDate:undefined,status:'active',
+         history:initialAmount>0?[{id:uid('gh'),memberId:data.viewerId,amount:initialAmount,date:today(),kind:'deposit'}]:[]});
+       if(initialAmount>0){
+         const payer=findMember(f,data.viewerId);
+         if(payer)payer.simpleBalance=roundMoney(payer.simpleBalance-initialAmount);
+         if(initialAmount>=target)closeSavingsGoal(f,id,'reached');
+       }
+     });
+     close();go('savings');show(method==='scheduled'?'Objectif créé, programmation indicative enregistrée.':'Objectif d’épargne créé.');break;
    }
    case 'goal-deposit':{
      if(!goal||goal.status!=='active'){setError('Cet objectif est clôturé.');return;}
@@ -458,8 +497,12 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
      if(amount<0||!Number.isFinite(amount)){setError('Montant invalide.');return;}
      const freq=form.frequency==='weekly'?'weekly':'monthly';
      const nextDate=form.nextDate||nowDate();
-     if(amount>0&&nextDate<nowDate()){setError('Choisissez une prochaine date à venir.');return;}
-     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;g.scheduledAmount=amount;g.scheduledFrequency=amount>0?freq:undefined;g.nextScheduledDate=amount>0?nextDate:undefined});
+     if(amount>0&&(nextDate<nowDate()||nextDate<(goal.startDate||nowDate())||nextDate>goal.deadline)){setError('Choisissez une date comprise entre le début et la fin de l’objectif.');return;}
+     mutate((_d,f)=>{const g=f.goals.find(x=>x.id===selectedGoal)!;
+       g.scheduledAmount=amount;g.savingMethod=amount>0?'scheduled':'one-off';
+       g.scheduledById=amount>0?data.viewerId:undefined;
+       g.scheduledFrequency=amount>0?freq:undefined;g.nextScheduledDate=amount>0?nextDate:undefined;
+     });
      close();show(amount>0?'Programmation indicative enregistrée, sans débit automatique.':'Programmation désactivée.');break;
    }
    case 'goal-edit':{
