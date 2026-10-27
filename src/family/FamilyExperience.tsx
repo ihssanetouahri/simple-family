@@ -95,6 +95,29 @@ function FamilyProgressPhotoCard({id,kind,title,description,current,target,onCli
       </button>;
 }
 
+
+/** Final swipe card: create a new goal or pot without leaving the family overview. */
+function FamilyCarouselAddCard({kind,onClick}:{kind:'goal'|'pot';onClick:()=>void}) {
+  const isPot=kind==='pot';
+  const accent=isPot?'#169C72':'#8000EB';
+  const title=isPot?'Ajouter une cagnotte':'Ajouter un objectif';
+  const description=isPot?'Lancez une nouvelle collecte en famille':'Préparez un nouveau projet d’épargne';
+  return <button type="button" onClick={onClick} aria-label={title}
+    className="family-hover-card shrink-0 snap-start self-stretch w-[264px] min-h-[320px] rounded-[27px] border border-dashed border-[#DCCFEC] bg-white/85 px-5 py-6 flex flex-col items-center justify-center gap-4 text-center shadow-[0_5px_16px_rgba(72,30,132,0.04)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+    <span className="w-[92px] h-[92px] rounded-full flex items-center justify-center"
+      style={{backgroundColor:isPot?'#E9F8F1':'#F3EAFE',color:accent}}>
+      <Plus size={34} strokeWidth={1.8}/>
+    </span>
+    <div>
+      <p className="font-extrabold text-[15px] text-[#281936]">{title}</p>
+      <p className="text-[12px] text-[#81758F] leading-relaxed mt-2">{description}</p>
+    </div>
+    <span className="inline-flex items-center gap-1.5 font-bold text-[12px]" style={{color:accent}}>
+      Créer <ArrowRight size={15}/>
+    </span>
+  </button>;
+}
+
 function Avatar({member, size=42}: {member?:Member;size?:number}) {
  const photo=member ? ({lamia:lamiaAvatar,karim:karimAvatar,yasmine:yasmineAvatar} as Record<string,string>)[avatarFor(member.id)] : undefined;
  return <div style={{width:size,height:size}} className="rounded-full flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#DFCCFF] to-[#A68BEB] border-2 border-white shadow-sm text-[#482096] font-extrabold">
@@ -609,6 +632,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Projets d’épargne, faire défiler horizontalement">
              {visibleGoals.filter(g=>g.status==='active').slice(0,2).map(g=><FamilyProgressPhotoCard key={g.id} id={g.coverId||g.id} kind="goal" title={g.title}
                description={`Échéance : ${dateFor(g.deadline)}`} current={g.balance} target={g.target} onClick={()=>navigateToGoal(g.id)}/>)}
+             <FamilyCarouselAddCard kind="goal" onClick={()=>launch('new-goal',{owner:data.viewerId,deadline:'2027-07-15',contributors:admin?family.members.map(m=>m.id).join(','):data.viewerId})}/>
            </div>:
            <Panel className="p-5 flex items-center gap-3"><PiggyBank size={24} className="text-[#7732D9] shrink-0"/>
              <div className="flex-1"><p className="text-[13px] font-bold">Un projet à préparer ensemble ?</p>
@@ -622,6 +646,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain no-scrollbar pb-3 -mx-1 px-1" aria-label="Cagnottes, faire défiler horizontalement">
              {family.pots.filter(p=>p.status==='active').slice(0,2).map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
                description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} onClick={()=>navigateToPot(p.id)}/>)}
+             <FamilyCarouselAddCard kind="pot" onClick={()=>launch('new-pot')}/>
            </div>:
            <Panel className="p-5 flex items-center gap-3"><Gift size={24} className="text-[#198A66] shrink-0"/>
              <div className="flex-1"><p className="text-[13px] font-bold">Une occasion à célébrer ?</p>
