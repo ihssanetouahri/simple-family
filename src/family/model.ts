@@ -4,7 +4,7 @@ export type Member = { id: string; name: string; relation: string; role: Role; s
 export type Pocket = { id: string; ownerId: string; balance: number; limit: number; };
 export type BankAccount = { id: string; label: string; balance: number; limit: number; };
 export type FamilyTransaction = { id: string; date: string; title: string; amount: number; category: string; source: string; target: string; };
-export type SavingsGoal = { id: string; title: string; creatorId: string; ownerId: string; target: number; balance: number; deadline: string; contributors: string[]; scheduledAmount: number; scheduledFrequency?: 'weekly'|'monthly'; nextScheduledDate?: string; coverId?: string; status: 'active'|'closed'; closedReason?: 'reached'|'manual'; closedAt?: string; settledAmount?: number; history: { id:string; memberId: string; amount: number; date:string; kind: 'deposit'|'withdrawal'|'settlement' }[] };
+export type SavingsGoal = { id: string; title: string; creatorId: string; ownerId: string; target: number; balance: number; startDate?: string; deadline: string; contributors: string[]; scheduledAmount: number; scheduledFrequency?: 'weekly'|'monthly'; nextScheduledDate?: string; coverId?: string; status: 'active'|'closed'; closedReason?: 'reached'|'manual'; closedAt?: string; settledAmount?: number; history: { id:string; memberId: string; amount: number; date:string; kind: 'deposit'|'withdrawal'|'settlement' }[] };
 export type PotContribution = { id: string; memberId: string; amount: number; date: string };
 export type FamilyPot = {
   id: string; title: string; target: number; balance: number; members: string[]; status: 'active'|'closed';
@@ -75,9 +75,9 @@ export function createDemoState(): FamilyState {
         {id:'t4',date:'12 oct.',title:'Activités du week-end',amount:-310,category:'Loisirs',source:'Sous-compte Famille',target:'Sorties'},
       ],
       goals:[
-        {id:'goal_vac',title:'Vacances en famille',creatorId:'lamia',ownerId:'lamia',target:10000,balance:4500,deadline:'2027-07-15',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g1',memberId:'lamia',amount:2500,date:'10 oct.',kind:'deposit'},{id:'g2',memberId:'karim',amount:2000,date:'15 oct.',kind:'deposit'}]},
-        {id:'goal_school',title:'Études de Yasmine',creatorId:'lamia',ownerId:'yasmine',target:8000,balance:2400,deadline:'2027-09-01',contributors:['lamia','karim'],scheduledAmount:200,status:'active',history:[{id:'g3',memberId:'lamia',amount:1500,date:'08 oct.',kind:'deposit'},{id:'g4',memberId:'karim',amount:900,date:'17 oct.',kind:'deposit'}]},
-        {id:'goal_weekend',title:'Week-end en famille',creatorId:'karim',ownerId:'karim',target:3500,balance:900,deadline:'2027-04-30',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g5',memberId:'karim',amount:900,date:'19 oct.',kind:'deposit'}]},
+        {id:'goal_vac',title:'Vacances en famille',creatorId:'lamia',ownerId:'lamia',target:10000,balance:4500,startDate:'2026-10-01',deadline:'2027-07-15',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g1',memberId:'lamia',amount:2500,date:'10 oct.',kind:'deposit'},{id:'g2',memberId:'karim',amount:2000,date:'15 oct.',kind:'deposit'}]},
+        {id:'goal_school',title:'Études de Yasmine',creatorId:'lamia',ownerId:'yasmine',target:8000,balance:2400,startDate:'2026-10-01',deadline:'2027-09-01',contributors:['lamia','karim'],scheduledAmount:200,status:'active',history:[{id:'g3',memberId:'lamia',amount:1500,date:'08 oct.',kind:'deposit'},{id:'g4',memberId:'karim',amount:900,date:'17 oct.',kind:'deposit'}]},
+        {id:'goal_weekend',title:'Week-end en famille',creatorId:'karim',ownerId:'karim',target:3500,balance:900,startDate:'2026-10-01',deadline:'2027-04-30',contributors:['lamia','karim'],scheduledAmount:0,status:'active',history:[{id:'g5',memberId:'karim',amount:900,date:'19 oct.',kind:'deposit'}]},
       ],
       pots:[
         {id:'pot1',title:'Anniversaire de Yasmine',creatorId:'lamia',
