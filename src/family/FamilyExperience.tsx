@@ -259,7 +259,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  useEffect(()=>{saveFamilyState(data)},[data]);
  useEffect(()=>{if(route==='dashboard')scrollTop()},[data.activeFamilyId]);
  useEffect(()=>{
-   onChatViewChange?.(route==='chat');
+   onChatViewChange?.(route==='chats'||route==='chat');
    return ()=>onChatViewChange?.(false);
  },[route,onChatViewChange]);
  useEffect(()=>{
@@ -540,7 +540,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const showBalance=(n:number)=>showAmounts?currency(n):'•••• DH';
  const context={}; void context;
 
- const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chats:'Discussions',chat:selectedChatId==='family'?'Discussion familiale':(selectedThread?displayChatTitle(selectedThread):'Discussion'),vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
+ const pageTitles:Record<Route,string>={dashboard:'Ma famille',members:'Membres et accès',accounts:'Comptes partagés','sub-account':'Sous-compte Famille','joint-account':'Compte joint',pockets:'Pockets des membres',pocket:`Pocket ${owner?.name||''}`,cards:'Cartes virtuelles',savings:'Nos projets d’épargne',goal:'Objectif d’épargne',pots:'Cagnottes familiales',pot:'Cagnotte',services:'Services familiaux',chats:'Chat Famille',chat:selectedChatId==='family'?'Discussion familiale':(selectedThread?displayChatTitle(selectedThread):'Discussion'),vault:'Coffre-fort',trip:'Simple Trip',loyalty:'Ma fidélité',loan:'Demande de crédit',pfm:'Mon foyer · PFM',preferences:'Réglages Famille',invite:'Invitations',alerts:'À suivre en famille'};
  const mainGo=(next:Route)=>{if(route===next)return;go(next)};
  const openChat=(id:string)=>{setSelectedChatId(id);setChatInput('');go('chat')};
  const isAccountRoute=(value:Route|undefined):value is 'sub-account'|'joint-account'=>value==='sub-account'||value==='joint-account';
@@ -1051,7 +1051,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
 
      {route==='chats'&&<div className="space-y-4">
        <div className="flex items-center justify-between gap-3 px-1">
-         <div><h2 className="text-[19px] font-extrabold text-[#281936]">Vos discussions</h2>
+         <div><h2 className="text-[19px] font-extrabold text-[#281936]">Discussions</h2>
            <p className="text-[12px] text-[#81758F] mt-1">Retrouvez vos échanges en famille</p></div>
          <button type="button" onClick={()=>launch('new-chat',{participants:''})}
            aria-label="Nouvelle discussion"
