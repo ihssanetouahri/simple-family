@@ -1097,6 +1097,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section>
          <Heading title="Versements programmés"/>
          <Panel className="p-4 space-y-3">
+           <div className="text-[11px] text-[#755F8D] font-semibold">Méthode choisie : {goal.scheduledAmount>0?'Épargne programmée':'Versement ponctuel'}</div>
+           {goal.scheduledAmount>0&&goal.scheduledById&&<p className="text-[11px] text-[#877995]">Programmée par {initialsFor(goal.scheduledById)} depuis son compte personnel.</p>}
            <div className="flex gap-3 items-start">
              <div className="w-11 h-11 rounded-2xl bg-[#F3ECFF] text-[#7228D6] flex items-center justify-center shrink-0"><CalendarClock size={20}/></div>
              <div className="min-w-0 flex-1">
@@ -1518,7 +1520,72 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='transfer'&&<><SelectInput label="Depuis" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions}/><SelectInput label="Vers" value={form.to||transferOptions[1]?.value||transferOptions[0]?.value} onChange={v=>setField('to',v)} options={transferOptions}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 300"/><Input label="Libellé (facultatif)" value={form.label} onChange={v=>setField('label',v)} placeholder="Argent de poche"/></>}
        {(modal==='pay-bill'||modal==='simple-pay')&&<><SelectInput label="Compte à débiter" value={form.from||transferOptions[0]?.value} onChange={v=>setField('from',v)} options={transferOptions.filter(o=>modal==='pay-bill'||o.value==='account')}/><Input label={modal==='simple-pay'?'Destinataire':'Organisme / facture'} value={form.beneficiary} onChange={v=>setField('beneficiary',v)} placeholder={modal==='simple-pay'?'Bénéficiaire':'Électricité, Internet…'}/><Input label="Montant (DH)" type="number" min="0.01" value={form.amount} onChange={v=>setField('amount',v)} readOnly={modal==='pay-bill'&&Boolean(form.alertId)}/>{modal==='pay-bill'&&form.alertId&&<p className="text-[11px] text-[#82758E]">Montant exact de la facture prérempli. Les paiements partiels ne sont pas prévus dans cette démonstration.</p>}</>}
        {modal==='create-card'&&<><Input label="Nom de la carte" value={form.label} onChange={v=>setField('label',v)} placeholder="Carte courses"/><SelectInput label="Compte ou pocket associé" value={form.source} onChange={v=>setField('source',v)} options={[...(family?.account?[{value:'family',label:'Sous-compte Famille'}]:[]),...(family&&canViewJointAccount(family,data.viewerId)?[{value:'joint',label:'Compte joint'}]:[]),...(family?.pockets||[]).map(p=>({value:`pocket:${p.ownerId}`,label:`Pocket ${initialsFor(p.ownerId)}`}))]}/><SelectInput label="Titulaire de la carte" value={form.holder} onChange={v=>setField('holder',v)} options={memberOptions}/></>}
-       {modal==='new-goal'&&<><Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/><Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)}/><Input label="Date de début" type="date" min={nowDate()} value={form.startDate||nowDate()} onChange={v=>setField('startDate',v)} required/><Input label="Date de fin" type="date" min={form.startDate||nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)} required/><SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/><div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p><div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]"><input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)} onChange={e=>{const s=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)s.add(m.id);else s.delete(m.id);setField('contributors',[...s].join(','))}}/>{m.name}</label>)}</div></div></>}
+       {modal==='new-goal'&&<div className="space-y-4">
+         <div className="space-y-2">
+           <div className="flex items-center justify-between text-[11px] font-bold text-[#6E2BCF]">
+             <span>Étape {form.stage==='method'?'2':'1'} sur 2</span>
+             <span>{form.stage==='method'?'Méthode d’épargne':'Informations de l’objectif'}</span>
+           </div>
+           <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#EEE6FA]">
+             <div className="h-full rounded-full bg-[#8000EB] transition-all" style={{width:form.stage==='method'?'100%':'50%'}}/>
+           </div>
+         </div>
+         {form.stage==='method'?<>
+           <div className="rounded-[20px] border border-[#E9DFF7] bg-[#F8F5FF] p-3.5 space-y-1">
+             <p className="text-[12px] font-extrabold text-[#362447]">{form.title}</p>
+             <p className="text-[11px] text-[#7B6B8F]">{currency(parseMoney(form.target||'0'))} · Du {dateFor(form.startDate)} au {dateFor(form.deadline)}</p>
+           </div>
+           <div>
+             <h4 className="text-[16px] font-extrabold text-[#281936]">Comment souhaitez-vous épargner ?</h4>
+             <p className="text-[12px] text-[#80758D] mt-1">Choisissez comment alimenter cet objectif avec votre propre compte.</p>
+           </div>
+           <div role="radiogroup" aria-label="Méthode d’épargne" className="space-y-2.5">
+             <button type="button" role="radio" aria-checked={form.savingMethod!=='scheduled'}
+               onClick={()=>setField('savingMethod','one-off')}
+               className={`family-hover-card w-full flex items-center gap-3 text-left border rounded-[21px] p-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB] ${form.savingMethod!=='scheduled'?'bg-[#F4ECFF] border-[#A97AEF]':'bg-white border-[#EBE4F5]'}`}>
+               <span className="shrink-0 w-11 h-11 rounded-2xl bg-[#E6D6FF] text-[#7129D9] flex items-center justify-center"><PiggyBank size={22}/></span>
+               <span className="flex-1 min-w-0"><span className="block text-[13px] font-extrabold text-[#2A1D3A]">Versement ponctuel</span>
+                 <span className="block text-[11px] leading-snug text-[#7E7190] mt-1">J’ajoute de l’argent quand je le souhaite.</span></span>
+               <span className={`w-5 h-5 rounded-full shrink-0 border flex items-center justify-center ${form.savingMethod!=='scheduled'?'border-[#7225DE] bg-[#7225DE] text-white':'border-[#C8BAD9]'}`}>
+                 {form.savingMethod!=='scheduled'&&<Check size={12}/>}</span>
+             </button>
+             <button type="button" role="radio" aria-checked={form.savingMethod==='scheduled'}
+               onClick={()=>setField('savingMethod','scheduled')}
+               className={`family-hover-card w-full flex items-center gap-3 text-left border rounded-[21px] p-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB] ${form.savingMethod==='scheduled'?'bg-[#F4ECFF] border-[#A97AEF]':'bg-white border-[#EBE4F5]'}`}>
+               <span className="shrink-0 w-11 h-11 rounded-2xl bg-[#E6D6FF] text-[#7129D9] flex items-center justify-center"><CalendarClock size={22}/></span>
+               <span className="flex-1 min-w-0"><span className="block text-[13px] font-extrabold text-[#2A1D3A]">Épargne programmée</span>
+                 <span className="block text-[11px] leading-snug text-[#7E7190] mt-1">Je planifie des versements réguliers.</span></span>
+               <span className={`w-5 h-5 rounded-full shrink-0 border flex items-center justify-center ${form.savingMethod==='scheduled'?'border-[#7225DE] bg-[#7225DE] text-white':'border-[#C8BAD9]'}`}>
+                 {form.savingMethod==='scheduled'&&<Check size={12}/>}</span>
+             </button>
+           </div>
+           {form.savingMethod==='scheduled'?<div className="space-y-3 rounded-[22px] bg-[#FBF9FE] border border-[#EEE7F7] p-4">
+             <Input label="Montant par versement (DH)" value={form.scheduledAmount} onChange={v=>setField('scheduledAmount',v)} type="number" min="0.01" placeholder="Ex. 300" required/>
+             <SelectInput label="Fréquence" value={form.frequency||'monthly'} onChange={v=>setField('frequency',v)}
+               options={[{value:'weekly',label:'Chaque semaine'},{value:'monthly',label:'Chaque mois'}]}/>
+             <Input label="Date du premier versement" type="date" min={form.startDate||nowDate()} value={form.nextDate||form.startDate} onChange={v=>setField('nextDate',v)} required/>
+             <div className="rounded-xl bg-[#F0E9FB] px-3 py-3 text-[11px] leading-relaxed text-[#68547E]">
+               Compte à débiter : <strong>{viewer?.simpleOne?'Mon compte Simple One':'Mon compte Simple'} ({viewer?.name})</strong>
+               <p className="mt-1">Programmation simulée : aucun prélèvement automatique réel n’est effectué.</p>
+             </div>
+           </div>:<div className="space-y-2 rounded-[22px] bg-[#FBF9FE] border border-[#EEE7F7] p-4">
+             <Input label="Premier versement (facultatif, DH)" value={form.initialAmount} onChange={v=>setField('initialAmount',v)} type="number" min="0" placeholder="Ex. 500"/>
+             <p className="text-[11px] leading-relaxed text-[#877994]">Laissez vide pour créer l’objectif sans versement. Vous pourrez contribuer à tout moment depuis sa fiche. Si un montant est indiqué, il sera débité fictivement de votre compte.</p>
+           </div>}
+         </>:<>
+           <Input label="Nom de l’objectif" value={form.title} onChange={v=>setField('title',v)} placeholder="Vacances, études…" required/>
+           <Input label="Montant cible (DH)" type="number" min="1" value={form.target} onChange={v=>setField('target',v)} required/>
+           <Input label="Date de début" type="date" min={nowDate()} value={form.startDate||nowDate()} onChange={v=>setField('startDate',v)} required/>
+           <Input label="Date de fin" type="date" min={form.startDate||nowDate()} value={form.deadline} onChange={v=>setField('deadline',v)} required/>
+           <SelectInput label="Bénéficiaire / propriétaire" value={form.owner||data.viewerId} onChange={v=>setField('owner',v)} options={admin?memberOptions:memberOptions.filter(x=>x.value===data.viewerId)}/>
+           <div><p className="text-xs font-bold text-[#56466A] mb-2">Membres autorisés à contribuer</p>
+             <div className="space-y-2">{family?.members.map(m=><label key={m.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#FAF8FE] text-[12px]">
+               <input type="checkbox" className="accent-[#762ADC]" checked={(form.contributors||'').split(',').includes(m.id)}
+                 onChange={e=>{const selected=new Set((form.contributors||'').split(',').filter(Boolean));if(e.target.checked)selected.add(m.id);else selected.delete(m.id);setField('contributors',[...selected].join(','))}}/>{m.name}
+             </label>)}</div>
+           </div>
+         </>}
+       </div>}
        {(modal==='goal-deposit'||modal==='goal-withdraw'||modal==='limit')&&<>
           <Input label={modal==='limit'?'Plafond par virement sortant (DH)':'Montant (DH)'} type="number" min="0" value={form.amount} onChange={v=>setField('amount',v)} placeholder="Ex. 500"/>
           <p className="text-xs text-[#847992]">{modal==='limit'?'Plafond appliqué aux virements sortants de la pocket uniquement dans la démonstration. Ce n’est pas un plafond bancaire Simple One.':`Disponible sur votre compte Simple fictif : ${currency(viewer?.simpleBalance||0)}.`}</p>
@@ -1588,7 +1655,9 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        {modal==='new-credit'&&<><Input label="Montant souhaité (DH)" value={form.amount} onChange={v=>setField('amount',v)} type="number" min="1"/><SelectInput label="Compte associé" value={form.account||`simple:${data.viewerId}`} onChange={v=>setField('account',v)} options={[{value:`simple:${data.viewerId}`,label:'Mon compte Simple'},...(admin&&family?.account?[{value:'account',label:'Sous-compte Famille'}]:[]),...(family&&canViewJointAccount(family,data.viewerId)?[{value:'joint',label:'Compte joint'}]:[])]}/><p className="text-xs text-[#867991]">Aucune demande bancaire réelle ne sera transmise.</p></>}
        {(modal==='goal-delete'||modal==='member-delete'||modal==='family-delete')&&<div className="bg-[#FFF4F7] p-4 rounded-2xl"><p className="text-[13px] text-[#A13F66] font-semibold">Cette action modifie les données locales du prototype.</p><p className="text-[11px] text-[#94667B] mt-1">{modal==='member-delete'?'Le retrait est bloqué tant que des fonds ou des engagements sont associés au membre.':modal==='goal-delete'?'Le solde de l’épargne active sera simulé comme reversé au propriétaire.':'La famille disparaîtra de cette démonstration.'}</p></div>}
        {error&&<p role="alert" className="text-xs text-[#BE3463] bg-[#FFF0F4] rounded-xl px-3 py-2">{error}</p>}
-       <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='goal-close'?'Clôturer le projet':modal==='goal-edit'?'Enregistrer les modifications':modal==='goal-schedule'?'Enregistrer la programmation':modal==='pot-close'?'Clôturer la collecte':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
+       <button type="submit" className="btn-simple-primary w-full h-12 text-sm font-bold flex gap-2 items-center justify-center">{modal==='member-delete'||modal==='family-delete'||modal==='goal-delete'?'Confirmer la suppression':modal==='new-goal'?(form.stage==='method'?'Créer mon objectif':'Choisir ma méthode d’épargne'):modal==='goal-close'?'Clôturer le projet':modal==='goal-edit'?'Enregistrer les modifications':modal==='goal-schedule'?'Enregistrer la programmation':modal==='pot-close'?'Clôturer la collecte':modal==='pot-invite'?'Envoyer l’invitation':modal==='pot-edit'?'Enregistrer':modal==='pot-deposit'?(form.stage==='confirm'?'Confirmer ma contribution':'Vérifier ma contribution'):modal==='open-account'||modal==='open-joint'?'Confirmer l’ouverture':'Continuer'} <ArrowRight size={17}/></button>
+       {modal==='new-goal'&&form.stage==='method'&&<button type="button"
+         onClick={()=>{setField('stage','details');setError('')}} className="w-full text-[12px] font-bold py-2 text-[#6F2CCE]">Retour aux informations</button>}
        <button type="button" onClick={close} className="w-full text-xs font-bold py-2 text-[#8B7F98]">Annuler</button>
       </form>}
     </div>
