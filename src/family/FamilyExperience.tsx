@@ -210,6 +210,7 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const familySelectorMenuRef=useRef<HTMLDivElement>(null);
  const [demoOpen,setDemoOpen]=useState(false);
  const [projectFilter,setProjectFilter]=useState<'all'|'active'|'closed'>('all');
+ const [potFilter,setPotFilter]=useState<'all'|'active'|'closed'>('all');
  const [showAmounts,setShowAmounts]=useState(true);
  const family = data.families.find(f=>f.id===data.activeFamilyId) || null;
  const viewer = family?.members.find(m=>m.id===data.viewerId) || null;
@@ -218,6 +219,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
  const canViewFamilyAccount = family ? mayViewFamilyAccount(family,data.viewerId):false;
  const visibleGoals=family?.goals.filter(g=>canViewSavingsGoal(family,data.viewerId,g))||[];
  const filteredGoals=visibleGoals.filter(g=>projectFilter==='all'||g.status===projectFilter);
+ const filteredPots=family?.pots.filter(p=>potFilter==='all'||p.status===potFilter)||[];
+ const pendingPotInvites=family?.pots.filter(p=>p.status==='active'&&(p.pendingInvites||[]).includes(data.viewerId))||[];
  const goal=family?.goals.find(g=>g.id===selectedGoal);
  const canManageGoal=Boolean(family&&goal&&canEditSavingsGoal(family,data.viewerId,goal));
  const canScheduleGoal=Boolean(goal&&(admin||goal.ownerId===data.viewerId)&&(!goal.scheduledById||goal.scheduledById===data.viewerId||goal.scheduledAmount<=0));
@@ -764,8 +767,8 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
       subtitle={route==='chat'?(chatHeaderRoom?(chatHeaderRoom.kind==='direct'?'Discussion privée':`${chatHeaderRoom.participantIds.length} participants`):undefined):
         route==='goal'?'Projet d’épargne familial':route==='pot'?'Collecte familiale':route==='savings'?'Gérez les projets de votre famille':route==='pfm'?'Aperçu de la passerelle':'Services de votre famille'}/>}
    <div className="px-5 pb-7 pt-3 space-y-5 flex-1">
-     {route!=='savings'&&route!=='pot'&&route!=='goal'&&route!=='chat'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
-     {route!=='savings'&&route!=='pot'&&route!=='goal'&&route!=='chat'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
+     {route!=='savings'&&route!=='pots'&&route!=='pot'&&route!=='goal'&&route!=='chat'&&<div className="flex items-center justify-between gap-2 px-1"><span className="flex items-center gap-1.5 text-[10px] font-bold text-[#7E4DBD]"><span className="w-1.5 h-1.5 bg-[#7B34E8] rounded-full"/> PROTOTYPE INTERACTIF</span><button type="button" onClick={()=>setDemoOpen(o=>!o)} className="text-[10px] text-[#6A2CCC] font-bold bg-[#EDE5FD] px-2.5 py-1.5 rounded-full flex items-center gap-1">Mode démo <ChevronDown size={12}/></button></div>}
+     {route!=='savings'&&route!=='pots'&&route!=='pot'&&route!=='goal'&&route!=='chat'&&demoOpen && <Panel className="p-4 space-y-3"><div className="flex justify-between items-center"><strong className="text-sm">Tester les droits par profil</strong><button type="button" aria-label="Fermer" onClick={()=>setDemoOpen(false)}><X size={17}/></button></div>
        {family?.members.map(m=><button key={m.id} type="button" onClick={()=>switchViewer(m.id)} className="w-full flex items-center gap-2 p-2 bg-[#F8F5FE] rounded-xl text-left"><Avatar member={m} size={29}/><span className="text-xs font-bold flex-1">{m.name}</span><Tag tone={m.id===data.viewerId?'green':'gray'}>{roleLabel(m.role)}</Tag></button>)}
        <button type="button" className="text-xs font-bold text-[#8C4DDA]" onClick={()=>{setData(createDemoState());toDashboard();setDemoOpen(false);show('Scénario initial restauré.')}}><RotateCcw size={13} className="inline mr-1"/> Restaurer les données fictives</button>
      </Panel>}
@@ -1174,10 +1177,78 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        </section>}
      </>}
 
-     {route==='pots'&&<><Heading title="Les cagnottes familiales"/><p className="text-[12px] text-[#847791]">Cagnottes partagées : démonstration d'usage. Les règles transactionnelles détaillées de Famille restent à valider.</p><div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3" aria-label="Toutes les cagnottes">
-       {family.pots.map(p=><FamilyProgressPhotoCard key={p.id} id={p.id} kind="pot" title={p.title}
-         description={`Cagnotte collective · ${p.members.length} participants`} current={p.balance} target={p.target} showAmounts={showAmounts} onClick={()=>navigateToPot(p.id)}/>)}
-       </div><PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton></>}
+     {route==='pots'&&<>
+       <Panel className="p-4 bg-[#F1EAFC] border border-[#E1D5F5] shadow-none">
+         <div className="flex items-center gap-2 text-[#6730BE]"><Gift size={18}/><p className="text-[12px] font-semibold">Total collecté dans nos cagnottes</p></div>
+         <p className="text-[28px] font-extrabold text-[#361753] mt-2">{showBalance(family.pots.filter(p=>p.status==='active').reduce((sum,p)=>sum+p.balance,0))}</p>
+         <div className="flex items-center gap-2 mt-1 text-[#806D99]"><Target size={14}/><p className="text-[11px]">{family.pots.filter(p=>p.status==='active').length} cagnotte{family.pots.filter(p=>p.status==='active').length!==1?'s':''} en cours</p></div>
+       </Panel>
+       {pendingPotInvites.length>0&&<section className="space-y-2" aria-label="Invitations en attente">
+         {pendingPotInvites.map(p=><button key={p.id} type="button" onClick={()=>navigateToPot(p.id)}
+           className="family-hover-row w-full rounded-[20px] border border-[#D9CBF2] bg-[#F2EBFF] px-4 py-3 flex items-center gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+           <span className="h-10 w-10 rounded-xl flex items-center justify-center bg-white text-[#742BDB] shrink-0"><UserPlus size={19}/></span>
+           <span className="min-w-0 flex-1">
+             <span className="block font-extrabold text-[12px] text-[#352045]">Invitation à une cagnotte</span>
+             <span className="block text-[11px] text-[#7E6F92] truncate mt-0.5">{p.title} · À accepter ou refuser</span>
+           </span>
+           <ChevronRight size={17} className="text-[#7834D7] shrink-0"/>
+         </button>)}
+       </section>}
+       <section>
+         <Heading title="Toutes nos cagnottes" right={
+           <button type="button" aria-label="Créer une nouvelle cagnotte" onClick={()=>launch('new-pot')}
+             className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-white bg-[#6B26D8] text-[12px] font-bold shadow-sm">
+             <Plus size={15}/> Nouveau
+           </button>
+         }/>
+         <div role="group" aria-label="Filtrer les cagnottes" className="grid grid-cols-3 bg-[#EDE6F8] p-1 rounded-[17px] gap-1 mb-3">
+           {([{value:'all',label:'Toutes'},{value:'active',label:'En cours'},{value:'closed',label:'Terminées'}] as const).map(option=>
+             <button key={option.value} type="button" aria-pressed={potFilter===option.value} onClick={()=>setPotFilter(option.value)}
+               className={'rounded-[13px] py-2 px-1 text-[11px] font-bold transition-colors '+(potFilter===option.value?'bg-white text-[#6D24DA] shadow-sm':'text-[#827391] hover:bg-white/65')}>
+               {option.label}
+             </button>)}
+         </div>
+         <p className="text-[11px] text-[#887A98] px-1 mb-3">{filteredPots.length} cagnotte{filteredPots.length!==1?'s':''} affichée{filteredPots.length!==1?'s':''}</p>
+         <div className="space-y-3">
+           {filteredPots.map(p=><button key={p.id} type="button" onClick={()=>navigateToPot(p.id)}
+             className="family-hover-card block w-full rounded-[23px] bg-white border border-[#EBE3F5] p-3 text-left shadow-sm hover:shadow-[0_6px_20px_rgba(85,35,135,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+             <div className="flex gap-3 items-center">
+               <div className="w-[83px] h-[83px] shrink-0 rounded-[18px] overflow-hidden bg-[#F0E9F9]">
+                 <FamilyPhotoCover id={p.id} kind="pot" label={`Photo de la cagnotte ${p.title}`}/>
+               </div>
+               <div className="min-w-0 flex-1">
+                 <div className="flex items-start justify-between gap-1">
+                   <h3 className="text-[13px] font-extrabold leading-snug text-[#2D1D40] line-clamp-2">{p.title}</h3>
+                   <ChevronRight size={16} className="text-[#AA99BA] shrink-0"/>
+                 </div>
+                 <p className="text-[10px] text-[#887A99] mt-1">{p.deadline?`Fin prévue : ${dateFor(p.deadline)}`:p.status==='closed'?'Collecte terminée':'Cagnotte collective'}</p>
+                 <div className="mt-2"><Progress value={p.balance} total={p.target} tone="green"/></div>
+                 <div className="flex justify-between items-center mt-1.5 gap-2">
+                   <span className="text-[11px] font-extrabold text-[#169C72]">{showBalance(p.balance)}</span>
+                   <span className="text-[11px] font-bold text-[#83748F]">{p.target>0?Math.min(100,Math.round(p.balance/p.target*100)):0} %</span>
+                 </div>
+               </div>
+             </div>
+             <div className="flex justify-between gap-2 mt-2 pt-2 border-t border-[#F1ECF8] px-1">
+               <span className="text-[10px] text-[#827590]">{p.status==='closed'?'Cagnotte terminée':'Objectif : '+showBalance(p.target)}</span>
+               <span className="text-[10px] text-[#827590] shrink-0">{p.members.length} participant{p.members.length!==1?'s':''}</span>
+             </div>
+             {(p.pendingInvites||[]).includes(data.viewerId)&&p.status==='active'&&
+               <span className="block mt-2 px-1 text-[11px] font-bold text-[#772DDC]">Invitation en attente</span>}
+           </button>)}
+           {filteredPots.length===0&&<Panel className="p-6 text-center space-y-3">
+             <div className="w-12 h-12 rounded-full bg-[#E8F6EF] text-[#169C72] mx-auto flex items-center justify-center">
+               {potFilter==='closed'?<CheckCircle2 size={24}/>:<Gift size={24}/>}
+             </div>
+             <p className="font-extrabold text-[14px]">{potFilter==='closed'?'Aucune cagnotte terminée':potFilter==='active'?'Aucune cagnotte en cours':'Aucune cagnotte pour le moment'}</p>
+             <p className="text-[12px] text-[#817690]">{potFilter==='closed'?'Vos cagnottes clôturées apparaîtront ici.':'Créez une cagnotte pour collecter ensemble.'}</p>
+             {potFilter==='closed'
+               ?<button type="button" onClick={()=>setPotFilter('active')} className="text-[#6C28D4] text-[12px] font-bold">Voir les cagnottes en cours <ArrowRight size={14} className="inline"/></button>
+               :<PillButton onClick={()=>launch('new-pot')}>Créer une cagnotte <Plus size={16}/></PillButton>}
+           </Panel>}
+         </div>
+       </section>
+     </>}
      {route==='pot'&&pot&&<>
        <div className="flex items-center justify-between px-1">
          <div className="flex items-center gap-2 text-[#7A678D] text-[11px] font-semibold"><Gift size={16} className="text-[#189B72]"/> Cagnotte familiale</div>
