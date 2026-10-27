@@ -1036,21 +1036,71 @@ export function FamilyExperience({navigate,onChatViewChange}:{navigate:Navigate;
        <section><Heading title="Autres avantages"/><Panel className="px-4"><ActionLine icon={Coins} title="Fidélité Famille" subtitle="Points liés aux opérations éligibles" onClick={()=>mainGo('loyalty')}/><ActionLine icon={Landmark} title="Demande de crédit" subtitle="Selon le profil et les droits" onClick={()=>mainGo('loan')}/></Panel></section>
      </>}
 
+     {route==='chats'&&<div className="space-y-4">
+       <div className="flex items-center justify-between gap-3 px-1">
+         <div><h2 className="text-[19px] font-extrabold text-[#281936]">Vos discussions</h2>
+           <p className="text-[12px] text-[#81758F] mt-1">Retrouvez vos échanges en famille</p></div>
+         <button type="button" onClick={()=>launch('new-chat',{participants:''})}
+           aria-label="Nouvelle discussion"
+           className="family-hover-control h-11 w-11 shrink-0 rounded-full bg-[#7226DE] text-white flex justify-center items-center shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+           <Plus size={23}/>
+         </button>
+       </div>
+       <label className="flex items-center gap-2.5 px-4 h-12 rounded-[18px] border border-[#E9E1F4] bg-white text-[#8A7C9B]">
+         <Search size={18}/>
+         <input value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Rechercher une discussion…"
+           aria-label="Rechercher une discussion" className="bg-transparent min-w-0 flex-1 outline-none text-[13px] text-[#2D2040]"/>
+       </label>
+       <section className="rounded-[25px] overflow-hidden bg-white border border-[#EEE6F6] shadow-[0_4px_14px_rgba(72,30,132,0.035)]" aria-label="Liste des discussions">
+         {([
+           {id:'family',title:'Discussion familiale',participantIds:family.members.map(m=>m.id),kind:'group' as const,messages:family.chat},
+           ...availableChatThreads.map(t=>({id:t.id,title:displayChatTitle(t),participantIds:t.participantIds,kind:t.kind,messages:t.messages}))
+         ]).filter(t=>t.title.toLowerCase().includes(chatSearch.trim().toLowerCase())).map(t=>{
+           const last=t.messages[t.messages.length-1];
+           const contact=t.kind==='direct'?family.members.find(m=>m.id!==data.viewerId&&t.participantIds.includes(m.id)):undefined;
+           return <button type="button" key={t.id} onClick={()=>openChat(t.id)}
+             className="family-hover-row w-full flex items-center gap-3 px-3.5 py-4 border-b border-[#F0EAF6] last:border-none text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#8000EB]">
+             {contact?<Avatar member={contact} size={49}/>:
+               <span className="w-[49px] h-[49px] rounded-full bg-[#F1E7FF] text-[#772BDE] flex justify-center items-center shrink-0"><Users size={22}/></span>}
+             <span className="min-w-0 flex-1">
+               <span className="flex items-center justify-between gap-2">
+                 <span className="text-[14px] font-extrabold text-[#2A1C39] truncate">{t.title}</span>
+                 {last&&<span className="text-[10px] shrink-0 text-[#9588A2]">{last.date}</span>}
+               </span>
+               <span className="block text-[11px] text-[#897C97] mt-1">{t.kind==='direct'?'Discussion privée':`${t.participantIds.length} membres · Groupe`}</span>
+               <span className="block text-[12px] text-[#726482] mt-1 truncate">{last?`${last.authorId===data.viewerId?'Vous':initialsFor(last.authorId)} : ${last.text}`:'Aucun message pour le moment'}</span>
+             </span>
+             <ChevronRight size={16} className="text-[#B0A5BF] shrink-0"/>
+           </button>;
+         })}
+         {!(['Discussion familiale',...availableChatThreads.map(t=>displayChatTitle(t))].some(name=>name.toLowerCase().includes(chatSearch.trim().toLowerCase())))&&
+           <p className="p-6 text-center text-[12px] text-[#8C7E9B]">Aucune discussion trouvée.</p>}
+       </section>
+       <button type="button" onClick={()=>launch('new-chat',{participants:''})}
+         className="family-hover-control w-full rounded-full border border-[#E3D4F8] bg-[#F1E8FF] text-[#6725CF] font-bold text-[13px] flex items-center justify-center gap-2 py-3.5">
+         <Plus size={17}/> Nouvelle discussion
+       </button>
+     </div>}
      {route==='chat'&&<div className="space-y-3">
-        <div className="flex items-center gap-2 px-1 text-[#7A6C90] text-[11px]">
-          <Users size={16} className="text-[#762DDC]"/>
-          <span>{family.members.length} membres · Discussion familiale</span>
-        </div>
-        <div className="space-y-4 pb-3" aria-label="Messages du chat famille">
-          {family.chat.map(msg=><div key={msg.id} className={`flex ${msg.authorId===data.viewerId?'justify-end':'justify-start'}`}>
-            <div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===data.viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-white border border-[#EBE3F5] text-[#352746] rounded-bl-sm'}`}>
-              <p className="text-[10px] font-bold opacity-70 mb-1">{initialsFor(msg.authorId)}</p>
-              <p className="text-[13px] break-words whitespace-pre-wrap">{msg.text}</p>
-              <p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p>
-            </div>
-          </div>)}
-        </div>
-      </div>}
+       <div className="flex items-center gap-2 px-1 text-[#7A6C90] text-[11px]">
+         <Users size={16} className="text-[#762DDC]"/>
+         <span>{selectedChatId==='family'
+           ?`${family.members.length} membres · Discussion familiale`
+           :selectedThread?.kind==='direct'
+             ?'Discussion privée'
+             :selectedThread?`${selectedThread.participantIds.length} membres · Groupe`:'Discussion indisponible'}</span>
+       </div>
+       <div className="space-y-4 pb-3" aria-label="Messages de la discussion">
+         {currentChatMessages.map(msg=><div key={msg.id} className={`flex ${msg.authorId===data.viewerId?'justify-end':'justify-start'}`}>
+           <div className={`rounded-[18px] max-w-[83%] px-3.5 py-2.5 ${msg.authorId===data.viewerId?'bg-[#6226D9] text-white rounded-br-sm':'bg-white border border-[#EBE3F5] text-[#352746] rounded-bl-sm'}`}>
+             <p className="text-[10px] font-bold opacity-70 mb-1">{initialsFor(msg.authorId)}</p>
+             <p className="text-[13px] break-words whitespace-pre-wrap">{msg.text}</p>
+             <p className="text-[10px] opacity-60 text-right mt-1">{msg.date}</p>
+           </div>
+         </div>)}
+         {currentChatMessages.length===0&&<p className="text-[12px] text-[#897C98] text-center py-9">Envoyez un premier message pour démarrer la discussion.</p>}
+       </div>
+     </div>}
       {route==='vault'&&<><Panel className="p-5"><div className="flex gap-3"><div className="w-12 h-12 rounded-2xl flex justify-center items-center bg-[#F1EAFF] text-[#7631DD]"><LockKeyhole size={23}/></div><div className="flex-1"><h2 className="text-lg font-extrabold">Documents de famille</h2><p className="text-xs text-[#8B7F98]">Centralisez les références utiles.</p></div></div></Panel>{family.documents.filter(d=>leader||d.visibleTo.includes(data.viewerId)||d.ownerId===data.viewerId).map(d=><Panel className="p-4 flex items-center gap-3" key={d.id}><FileText size={23} className="text-[#7132DC]"/><div className="flex-1"><strong className="text-[13px]">{d.title}</strong><p className="text-[11px] text-[#897D96]">{d.type}{d.expiry?` · Expire le ${dateFor(d.expiry)}`:''}</p><p className="text-[10px] text-[#887C97]">Accessible à {leader?'Leader / personnes autorisées':d.visibleTo.length+' membre(s)'}</p></div></Panel>)}<PillButton onClick={()=>launch('new-document',{type:'Autre',visibleTo:data.viewerId})}><Plus size={17}/>Ajouter une fiche document</PillButton><p className="text-xs text-[#897D97]">Aucun fichier n’est chargé ou hébergé par ce prototype ; il stocke uniquement des métadonnées locales.</p></>}
      {route==='trip'&&<><Panel className="p-5 space-y-3"><div className="text-4xl">🌍</div><h2 className="text-[21px] font-extrabold">Voyagez en famille</h2><p className="text-xs text-[#867A92]">Le Leader et les Co-leaders peuvent réserver pour les membres, dont les enfants. Simulation sans connexion à Simple Trip.</p></Panel>{family.bookings.map(b=><Panel key={b.id} className="p-4"><div className="flex gap-3"><Plane size={20} className="text-[#7432DF]"/><div><p className="text-sm font-bold">{b.destination}</p><p className="text-xs text-[#877A96]">{initialsFor(b.travelerId)} · {dateFor(b.date)}</p></div></div></Panel>)}{admin&&<PillButton onClick={()=>launch('new-trip',{traveler:data.viewerId,date:'2027-07-15'})}>Simuler une réservation <ArrowRight size={15}/></PillButton>}{!admin&&<p className="text-xs text-[#897D96]">Seul un Leader ou Co-leader peut réserver pour un membre de la famille.</p>}</>}
      {route==='loyalty'&&<><Panel className="p-6 text-center bg-gradient-to-br from-[#4A1A94] to-[#7A37E9] text-white border-none"><Gift size={31} className="mx-auto"/><p className="text-sm text-white/75 mt-3">Fidélité Famille</p><p className="text-[38px] font-extrabold mt-1">{family.loyaltyPoints.toLocaleString('fr-FR')}</p><p className="text-sm">Points illustratifs</p></Panel><Panel className="px-4"><ActionLine icon={CreditCard} title="Paiements éligibles" subtitle="Points selon le barème métier à valider"/><ActionLine icon={Target} title="Objectifs atteints" subtitle="Possibles bonus de fidélité"/><ActionLine icon={Sparkles} title="Défis familiaux" subtitle="Éligibilité et récompenses à définir"/></Panel><p className="text-xs text-[#8A7D95]">Les règles de calcul sont fictives. Les virements entre membres et les contributions ne génèrent pas de points dans le cadrage.</p></>}
