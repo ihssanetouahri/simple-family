@@ -9,18 +9,26 @@ export function FamilyPreviewCarousel({children,label}:Props) {
  const ref=useRef<HTMLDivElement>(null);
  const [index,setIndex]=useState(0);
  useEffect(()=>{setIndex(0);if(ref.current)ref.current.scrollLeft=0;},[count]);
+ const itemPositions=(element:HTMLDivElement):number[]=>{
+   const cards=Array.from(element.children) as HTMLElement[];
+   const first=cards[0]?.offsetLeft||0;
+   return cards.map(card=>card.offsetLeft-first);
+ };
  const select=(position:number)=>{
    const element=ref.current;
    if(!element)return;
-   const last=Math.max(0,element.scrollWidth-element.clientWidth);
    const next=Math.min(count-1,Math.max(0,position));
-   element.scrollTo({left:count>1?last*next/(count-1):0,behavior:'smooth'});
+   const positions=itemPositions(element);
+   element.scrollTo({left:positions[next]??0,behavior:'smooth'});
    setIndex(next);
  };
  const onScroll=(event:React.UIEvent<HTMLDivElement>)=>{
-   const el=event.currentTarget;
-   const max=Math.max(0,el.scrollWidth-el.clientWidth);
-   setIndex(count>1&&max>0?Math.min(count-1,Math.round((el.scrollLeft/max)*(count-1))):0);
+   const element=event.currentTarget;
+   const positions=itemPositions(element);
+   if(positions.length===0)return;
+   const closest=positions.reduce((best,left,i)=>
+     Math.abs(left-element.scrollLeft)<Math.abs(positions[best]-element.scrollLeft)?i:best,0);
+   setIndex(closest);
  };
  return <div className="space-y-2">
    <div ref={ref} onScroll={onScroll}
