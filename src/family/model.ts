@@ -4,7 +4,7 @@ export type Member = { id: string; name: string; relation: string; role: Role; s
 export type Pocket = { id: string; ownerId: string; balance: number; limit: number; };
 export type BankAccount = { id: string; label: string; balance: number; limit: number; };
 export type FamilyTransaction = { id: string; date: string; title: string; amount: number; category: string; source: string; target: string; };
-export type SavingsGoal = { id: string; title: string; creatorId: string; ownerId: string; target: number; balance: number; startDate?: string; deadline: string; contributors: string[]; scheduledAmount: number; scheduledFrequency?: 'weekly'|'monthly'; nextScheduledDate?: string; coverId?: string; status: 'active'|'closed'; closedReason?: 'reached'|'manual'; closedAt?: string; settledAmount?: number; history: { id:string; memberId: string; amount: number; date:string; kind: 'deposit'|'withdrawal'|'settlement' }[] };
+export type SavingsGoal = { id: string; title: string; creatorId: string; ownerId: string; target: number; balance: number; startDate?: string; deadline: string; contributors: string[]; scheduledAmount: number; savingMethod?: 'one-off'|'scheduled'; scheduledById?: string; scheduledFrequency?: 'weekly'|'monthly'; nextScheduledDate?: string; coverId?: string; status: 'active'|'closed'; closedReason?: 'reached'|'manual'; closedAt?: string; settledAmount?: number; history: { id:string; memberId: string; amount: number; date:string; kind: 'deposit'|'withdrawal'|'settlement' }[] };
 export type PotContribution = { id: string; memberId: string; amount: number; date: string };
 export type FamilyPot = {
   id: string; title: string; target: number; balance: number; members: string[]; status: 'active'|'closed';
